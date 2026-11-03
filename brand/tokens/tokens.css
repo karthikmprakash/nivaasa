@@ -1,0 +1,26 @@
+/* Nivaasa brand tokens — mirrors the app's globals.css */
+:root {
+  --nivaasa-ink: #131a2a;
+  --nivaasa-ink-soft: #4b566c;
+  --nivaasa-muted: #626e82;
+  --nivaasa-canvas: #f5f6f8;
+  --nivaasa-surface: #ffffff;
+  --nivaasa-line: #e3e7ee;
+
+  --nivaasa-blue: #3155d8;
+  --nivaasa-blue-deep: #223b94;
+  --nivaasa-periwinkle: #7795f7;
+  --nivaasa-blush: #ef7fa4;
+  --nivaasa-blush-soft: #f6abc4;
+  --nivaasa-brand-wash: #e7edff;
+  --nivaasa-blush-wash: #fdeaf0;
+
+  --nivaasa-font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --nivaasa-font-kannada: "Noto Sans Kannada", "Kannada Sangam MN", sans-serif;
+
+  --nivaasa-wordmark-tracking: -0.045em;
+  --nivaasa-radius-control: 0.625rem;
+  --nivaasa-radius-card: 1rem;
+  --nivaasa-radius-overlay: 1.25rem;
+  --nivaasa-icon-radius: 22.5%;
+}

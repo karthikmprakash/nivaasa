@@ -1,0 +1,33 @@
+{
+  "name": "Nivaasa",
+  "meaning": "ನಿವಾಸ — the place we live",
+  "updated": "2026-11-04",
+  "color": {
+    "ink": { "value": "#131A2A", "role": "Primary text, mark on light" },
+    "inkSoft": { "value": "#4B566C", "role": "Secondary text" },
+    "muted": { "value": "#626E82", "role": "Captions, taglines" },
+    "canvas": { "value": "#F5F6F8", "role": "App and page canvas" },
+    "surface": { "value": "#FFFFFF", "role": "Cards, reverse logo" },
+    "line": { "value": "#E3E7EE", "role": "Hairlines and dividers" },
+    "blue": { "value": "#3155D8", "role": "Primary brand blue, app icon" },
+    "blueDeep": { "value": "#223B94", "role": "Pressed states, dark blue" },
+    "periwinkle": { "value": "#7795F7", "role": "Supporting blue" },
+    "blush": { "value": "#EF7FA4", "role": "The lit window, accent, period" },
+    "blushSoft": { "value": "#F6ABC4", "role": "Soft blush surfaces" },
+    "brandWash": { "value": "#E7EDFF", "role": "Logo watermark, pale brand fields" },
+    "blushWash": { "value": "#FDEAF0", "role": "Pale blush fields" }
+  },
+  "logo": {
+    "markOnLight": { "stems": "#131A2A", "window": "#EF7FA4" },
+    "markOnBlue": { "stems": "#FFFFFF", "window": "#EF7FA4" },
+    "monoOnLight": { "stems": "#000000", "window": null },
+    "monoOnDark": { "stems": "#FFFFFF", "window": null }
+  },
+  "type": {
+    "wordmark": { "family": "Plus Jakarta Sans", "style": "ExtraBold", "tracking": "-0.045em" },
+    "ui": { "family": "Plus Jakarta Sans", "weights": ["Medium", "SemiBold", "Bold", "ExtraBold"] },
+    "kannadaMark": { "family": "Noto Sans Kannada", "style": "Black" },
+    "kannadaWordmark": { "family": "Noto Sans Kannada", "style": "Medium" }
+  },
+  "radius": { "control": 10, "card": 16, "overlay": 20, "icon": 230 }
+}

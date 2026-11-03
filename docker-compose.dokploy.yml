@@ -1,0 +1,30 @@
+# Dokploy / GHCR production compose.
+# The image is published by .github/workflows/docker.yml.
+services:
+  nivaasa:
+    image: ${NIVAASA_IMAGE:-ghcr.io/karthikmprakash/nivaasa:latest}
+    pull_policy: always
+    init: true
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      DATABASE_PATH: /app/data/nivaasa.db
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://nivaasa.karthikmprakash.online}
+      NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-true}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://nivaasa.karthikmprakash.online}
+      SEED_DEMO: ${SEED_DEMO:-true}
+    volumes:
+      - nivaasa-data:/app/data
+      - nivaasa-uploads:/app/apps/web/public/uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    stop_grace_period: 20s
+
+volumes:
+  nivaasa-data:
+  nivaasa-uploads:

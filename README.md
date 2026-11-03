@@ -7,6 +7,12 @@ Nivaasa is a self-hosted, multi-tenant community platform for resident welfare a
 
 > Built as a functional, open-source alternative to MyGate-style community platforms, with an entirely original brand, design system and codebase.
 
+[![CI](https://github.com/karthikmprakash/nivaasa/actions/workflows/ci.yml/badge.svg)](https://github.com/karthikmprakash/nivaasa/actions/workflows/ci.yml)
+[![Container](https://github.com/karthikmprakash/nivaasa/actions/workflows/docker.yml/badge.svg)](https://github.com/karthikmprakash/nivaasa/actions/workflows/docker.yml)
+[![Release](https://img.shields.io/github/v/release/karthikmprakash/nivaasa?color=3155d8)](https://github.com/karthikmprakash/nivaasa/releases)
+[![GHCR](https://img.shields.io/badge/ghcr.io-nivaasa-3155d8)](https://github.com/karthikmprakash/nivaasa/pkgs/container/nivaasa)
+[![License: MIT](https://img.shields.io/badge/license-MIT-3155d8.svg)](LICENSE)
+
 ![Nivaasa landing page](docs/screenshots/landing.jpg)
 
 ![Resident home](docs/screenshots/resident-home.jpg)
@@ -45,20 +51,30 @@ Nivaasa is a self-hosted, multi-tenant community platform for resident welfare a
 
 ## Design system
 
-- **Brand** — Nivaasa (Sanskrit *nivāsa*, “dwelling”). Subtle royal blue, white and blush pink.
+- **Brand** — Nivaasa (Kannada **ನಿವಾಸ**, “the place we live”). Blue tile, ink, white and blush; see [`brand/README.md`](brand/README.md).
 - **Type** — Plus Jakarta Sans for UI, Instrument Serif for editorial moments.
 - **Icons** — Lucide across web, mobile and admin.
-- **Surfaces** — soft off-white canvas, fine borders, restrained shadows, 18–24px radii.
-- **Charts** — Recharts with a calm, editorial palette.
+- **Surfaces** — soft off-white canvas, fine borders, restrained shadows, 10px controls, 16px panels and 20px overlays.
+- **Charts** — Recharts with readable axes, distinct line styles and accessible data tables.
+- **Type scale** — 12px captions, 14px body, 16px section titles and 28–30px page titles.
+- **UI architecture** — shared role-aware navigation, one responsive application shell, accessible field context and URL-backed view tabs.
+
+See [DESIGN.md](DESIGN.md) for the interface standards and implementation boundaries.
 
 Shared tokens live in [`apps/web/src/app/globals.css`](apps/web/src/app/globals.css) and [`apps/mobile/lib/theme.ts`](apps/mobile/lib/theme.ts).
+
+## Brand
+
+The mark is the Kannada syllable **ನಿ** (*ni*), the first sound of **ನಿವಾಸ**, with a blush window lit inside its loop. The full identity — blue tile, lockups, wordmark, icons, social assets, colour tokens and the motion pack (animated WebP, HEVC alpha, APNG, MP4/GIF) — lives in [`brand/`](brand/README.md).
+
+The website uses the blue-tile mark across the nav, login, app shell, footer and receipts, the mark-write animation in the landing CTA, and the success check on receipts.
 
 ## Quick start
 
 Requirements: **Node.js 22+** and npm 10+.
 
 ```bash
-git clone https://github.com/your-org/nivaasa.git
+git clone https://github.com/karthikmprakash/nivaasa.git
 cd nivaasa
 npm run setup     # install, create the SQLite schema, seed the demo community
 npm run dev       # http://localhost:3000
@@ -131,14 +147,24 @@ SEED_DEMO=true docker compose up --build
 - Persist `data/` and `apps/web/public/uploads/`.
 - Put a reverse proxy with TLS in front and set `NEXT_PUBLIC_APP_URL` accordingly.
 
+### Container image
+
+Every push to `main` and every `v*` tag publishes a multi-arch image to GHCR:
+
+```bash
+docker pull ghcr.io/karthikmprakash/nivaasa:1.0.0
+```
+
+For Dokploy, use [`docker-compose.dokploy.yml`](docker-compose.dokploy.yml) and follow [`docs/deploy-dokploy.md`](docs/deploy-dokploy.md). The compose file expects a named `nivaasa-data` volume for SQLite and `nivaasa-uploads` for uploads.
+
 ### Required environment
 
 ```env
-DATABASE_PATH=../../data/nivaasa.db
-SESSION_SECRET=use-a-long-random-value
+DATABASE_PATH=../../data/nivaasa.db   # local; /app/data/nivaasa.db in the container
 NEXT_PUBLIC_APP_URL=https://community.example.com
 CORS_ORIGIN=https://app.example.com
 NEXT_PUBLIC_DEMO_MODE=false
+SEED_DEMO=false
 # Optional production payment provider
 RAZORPAY_KEY_ID=
 RAZORPAY_KEY_SECRET=
@@ -185,6 +211,7 @@ npm run db:push      # apply schema changes
 npm run db:seed      # wipe and reseed demo data (destructive)
 npm run typecheck    # web types
 npm run check        # web + mobile typecheck
+npm run test:ui --workspace @mycommunity/web  # UI behavior regressions
 ```
 
 ## What is deliberately demo-only
@@ -210,6 +237,10 @@ See [docs/reference-notes.md](docs/reference-notes.md) for the public-source obs
 - WhatsApp Business / SMS / email channel adapters
 - Native admin screens and push notifications
 - Open API tokens and webhooks for community integrations
+
+## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and [SECURITY.md](SECURITY.md). Use the issue templates for bugs and feature requests; report vulnerabilities through GitHub Security Advisories, never as public issues.
 
 ## License
 

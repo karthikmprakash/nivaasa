@@ -1,0 +1,70 @@
+name: Bug report
+description: Something in Nivaasa is broken or behaves unexpectedly.
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please remove passwords, tokens and personal data before submitting.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the actual behaviour.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps; include the community/unit/role if relevant.
+      placeholder: |
+        1. Sign in as resident@nivaasa.app
+        2. Open Payments
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where is it happening?
+      options:
+        - Web — resident
+        - Web — admin
+        - Web — guard
+        - Web — login / onboarding
+        - Web — public landing
+        - Mobile — resident / guard
+        - Self-hosting / Docker / Dokploy
+        - Brand / logo / animation
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: The release tag, image tag or commit SHA.
+      placeholder: v1.0.0 / sha-abc1234
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, screenshots or screen recording
+      description: Paste relevant logs or drag images here. Do not include secrets.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: I removed passwords, tokens, cookies and personal data from this report.
+          required: true

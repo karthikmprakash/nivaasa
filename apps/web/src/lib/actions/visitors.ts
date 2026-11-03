@@ -15,7 +15,7 @@ export async function createPreApproval(_prev: PreApproveState, formData: FormDa
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const type = String(formData.get("type") ?? "guest") as "guest" | "delivery" | "cab" | "domestic_help" | "vendor" | "other";
-  const company = String(formData.get("company") ?? "").trim();
+  const company = String(formData.get("customCompany") ?? formData.get("company") ?? "").trim();
   const purpose = String(formData.get("purpose") ?? "").trim();
   const vehicleNo = String(formData.get("vehicleNo") ?? "").trim();
   const date = String(formData.get("date") ?? "");
@@ -30,7 +30,7 @@ export async function createPreApproval(_prev: PreApproveState, formData: FormDa
 
   const validFrom = new Date(`${date}T00:00:00`);
   if (Number.isNaN(validFrom.getTime())) return { fieldErrors: { date: "Choose a valid date." } };
-  const validTo = addDays(validFrom, days);
+  const validTo = addDays(validFrom, days - 1);
   validTo.setHours(23, 59, 0, 0);
 
   let code = randomCode(6);

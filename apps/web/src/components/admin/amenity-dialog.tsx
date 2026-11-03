@@ -15,7 +15,7 @@ export function CreateAmenityDialog() {
   useEffect(() => { if (state.ok) { toast.success(state.message); setOpen(false); router.refresh(); } }, [state.ok, state.message, router]);
   return (
     <>
-      <Button size="sm" onClick={() => setOpen(true)}><Plus className="size-3.5" /> New amenity</Button>
+      <Button size="sm" onClick={() => setOpen(true)}><Plus className="size-4" /> New amenity</Button>
       <Dialog open={open} onOpenChange={setOpen} title="Add an amenity" description="Configure capacity, slot length, pricing and house rules." className="max-w-xl">
         <form action={action} className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2"><Field label="Name"><Input name="name" required placeholder="Squash Court" /></Field><Field label="Location"><Input name="location" placeholder="Clubhouse, level 1" /></Field></div>
@@ -24,7 +24,7 @@ export function CreateAmenityDialog() {
           <div className="grid gap-3 sm:grid-cols-2"><Field label="Price (₹)"><Input name="price" type="number" min={0} defaultValue={0} /></Field><Field label="Deposit (₹)"><Input name="deposit" type="number" min={0} defaultValue={0} /></Field></div>
           <div className="grid gap-3 sm:grid-cols-2"><Field label="Opens"><Input name="openTime" type="time" defaultValue="06:00" /></Field><Field label="Closes"><Input name="closeTime" type="time" defaultValue="22:00" /></Field></div>
           <Field label="House rules"><Textarea name="rules" rows={2} placeholder="Cancellation window, guest limits, dress code…" /></Field>
-          {state.error ? <p className="text-[11px] text-[#c43d4d]">{state.error}</p> : null}
+          {state.error ? <p className="text-caption text-[#c43d4d]">{state.error}</p> : null}
           <Button type="submit" className="w-full" disabled={pending}>{pending ? "Adding…" : "Add amenity"}</Button>
         </form>
       </Dialog>

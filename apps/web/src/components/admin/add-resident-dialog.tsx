@@ -16,12 +16,12 @@ export function AddResidentDialog({ units }: { units: { id: string; number: stri
   useEffect(() => { if (state.ok) router.refresh(); }, [state.ok, router]);
   return (
     <>
-      <Button size="sm" onClick={() => { setOpen(true); setCopied(false); }}><UserPlus className="size-3.5" /> Add resident</Button>
+      <Button size="sm" onClick={() => { setOpen(true); setCopied(false); }}><UserPlus className="size-4" /> Add resident</Button>
       <Dialog open={open} onOpenChange={setOpen} title={state.ok ? "Resident added" : "Add a resident"} description={state.ok ? undefined : "Create a login for a new owner or tenant and link them to a home."}>
         {state.ok ? (
           <div>
-            <div className="rounded-2xl border border-mint-600/20 bg-mint-50 p-4"><p className="flex items-center gap-2 text-[12px] font-semibold text-mint-600"><Check className="size-4" /> {state.message}</p><p className="mt-1.5 text-[10.5px] leading-relaxed text-ink-soft">Share these temporary credentials securely. The resident can change their password after signing in.</p></div>
-            <div className="mt-4 rounded-xl border border-line bg-[#fbfcff] p-4"><p className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-muted"><KeyRound className="size-3" /> Temporary password</p><p className="mt-1 font-mono text-[18px] font-bold tracking-[0.1em] text-ink">{state.tempPassword}</p><button onClick={async () => { await navigator.clipboard.writeText(state.tempPassword ?? ""); setCopied(true); toast.success("Password copied"); }} className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-line bg-white px-2.5 py-1.5 text-[9.5px] font-semibold text-ink-soft">{copied ? <Check className="size-3 text-mint-600" /> : <Copy className="size-3" />} {copied ? "Copied" : "Copy password"}</button></div>
+            <div className="rounded-2xl border border-mint-600/20 bg-mint-50 p-4"><p className="flex items-center gap-2 text-body font-semibold text-mint-600"><Check className="size-4" /> {state.message}</p><p className="mt-1.5 text-caption leading-relaxed text-ink-soft">Share these temporary credentials securely. The resident can change their password after signing in.</p></div>
+            <div className="mt-4 rounded-xl border border-line bg-[#fbfcff] p-4"><p className="flex items-center gap-1.5 text-caption font-bold uppercase tracking-[0.12em] text-muted"><KeyRound className="size-4" /> Temporary password</p><p className="mt-1 font-mono text-[18px] font-bold tracking-[0.1em] text-ink">{state.tempPassword}</p><button onClick={async () => { await navigator.clipboard.writeText(state.tempPassword ?? ""); setCopied(true); toast.success("Password copied"); }} className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-line bg-white px-2.5 py-1.5 text-caption font-semibold text-ink-soft">{copied ? <Check className="size-4 text-mint-600" /> : <Copy className="size-4" />} {copied ? "Copied" : "Copy password"}</button></div>
             <Button className="mt-4 w-full" onClick={() => setOpen(false)}>Done</Button>
           </div>
         ) : (
@@ -29,8 +29,8 @@ export function AddResidentDialog({ units }: { units: { id: string; number: stri
             <Field label="Home"><Select name="unitId" required defaultValue=""><option value="" disabled>Select a vacant home</option>{units.map((u) => <option key={u.id} value={u.id}>{u.number}</option>)}</Select></Field>
             <div className="grid gap-3 sm:grid-cols-2"><Field label="Full name"><Input name="name" required placeholder="Aarav Mehta" /></Field><Field label="Residency"><Select name="role"><option value="owner">Owner</option><option value="tenant">Tenant</option><option value="committee">Owner & committee</option></Select></Field></div>
             <div className="grid gap-3 sm:grid-cols-2"><Field label="Email"><Input name="email" type="email" required placeholder="name@example.com" /></Field><Field label="Phone"><Input name="phone" type="tel" required placeholder="+91…" /></Field></div>
-            <div className="rounded-xl bg-canvas px-3 py-2 text-[9.5px] leading-relaxed text-muted">A temporary password will be generated. The resident is not notified until you share it. Only add owners or tenants; family members are managed from the resident app.</div>
-            {state.error ? <p className="text-[11px] text-[#c43d4d]">{state.error}</p> : null}
+            <div className="rounded-xl bg-canvas px-3 py-2 text-caption leading-relaxed text-muted">A temporary password will be generated. The resident is not notified until you share it. Only add owners or tenants; family members are managed from the resident app.</div>
+            {state.error ? <p className="text-caption text-[#c43d4d]">{state.error}</p> : null}
             <Button type="submit" className="w-full" disabled={pending}>{pending ? "Creating account…" : "Create resident account"}</Button>
           </form>
         )}

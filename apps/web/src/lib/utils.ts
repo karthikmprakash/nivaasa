@@ -1,8 +1,21 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+const mergeClasses = extendTailwindMerge({
+  extend: { classGroups: { "font-size": [{ text: ["caption", "body", "section", "title"] }] } },
+});
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+  return mergeClasses(clsx(inputs));
+}
+
+export function avatarForeground(background: string) {
+  const hex = background.replace("#", "");
+  if (!/^[0-9a-f]{6}$/i.test(hex)) return "#ffffff";
+  const rgb = [0, 2, 4].map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255)
+    .map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+  const luminance = rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+  return luminance > 0.179 ? "#131a2a" : "#ffffff";
 }
 
 export function formatINR(paise: number, compact = false): string {
@@ -42,12 +55,12 @@ export function timeAgo(date: Date | number | string | null | undefined) {
 
 export function formatDate(date: Date | number | string | null | undefined, opts?: Intl.DateTimeFormatOptions) {
   if (!date) return "—";
-  return new Date(date).toLocaleDateString("en-IN", opts ?? { day: "numeric", month: "short", year: "numeric" });
+  return new Date(date).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", ...(opts ?? { day: "numeric", month: "short", year: "numeric" }) });
 }
 
 export function formatTime(date: Date | number | string | null | undefined) {
   if (!date) return "—";
-  return new Date(date).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
+  return new Date(date).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 export function formatDateTime(date: Date | number | string | null | undefined) {
@@ -57,8 +70,8 @@ export function formatDateTime(date: Date | number | string | null | undefined) 
 
 export function todayISO(offsetDays = 0) {
   const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  d.setUTCDate(d.getUTCDate() + offsetDays);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
 }
 
 export function startOfDay(date = new Date()) {

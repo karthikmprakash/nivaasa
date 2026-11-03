@@ -18,5 +18,5 @@ const styles = StyleSheet.create({
   container: { flex: 1, alignItems: "center", justifyContent: "center", padding: 20, backgroundColor: colors.canvas },
   title: { fontFamily: fonts.semibold, fontSize: 18, color: colors.ink },
   link: { marginTop: 14, paddingVertical: 12 },
-  linkText: { fontFamily: fonts.semibold, fontSize: 12, color: colors.brand600 },
+  linkText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.brand600 },
 });

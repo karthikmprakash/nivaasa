@@ -5,7 +5,7 @@ import { todayISO } from "@/lib/utils";
 import { db } from "@/db";
 import {
   amenities, amenityBookings, events, expenses, helpdeskTickets, invoices, notices, notifications,
-  payments, polls, pollVotes, units, visitors, deliveries,
+  payments, polls, pollVotes, units, visitors, deliveries, familyMembers, vehicles, pets,
 } from "@/db/schema";
 import { getSession, isAdminRole, type AuthContext } from "./auth";
 
@@ -86,7 +86,7 @@ export async function getResidentHomeData(ctx: ResidentContext) {
   const societyId = ctx.society.id;
   const userId = ctx.user.id;
   const now = new Date();
-  const [dues, pendingVisitors, noticesRows, eventsRows, activePolls, openTickets, upcomingBookings, deliveriesRows, recentPayments, pollVotesRows] = await Promise.all([
+  const [dues, pendingVisitors, noticesRows, eventsRows, activePolls, openTickets, upcomingBookings, deliveriesRows, recentPayments, pollVotesRows, familyCount, vehicleCount, petCount] = await Promise.all([
     getDuesSummary(unitId, societyId),
     db.select().from(visitors).where(and(eq(visitors.unitId, unitId), eq(visitors.status, "pending"))).orderBy(desc(visitors.createdAt)),
     db.select().from(notices).where(and(eq(notices.societyId, societyId), or(eq(notices.audience, "all"), eq(notices.audience, "owners")))).orderBy(desc(notices.pinned), desc(notices.publishedAt)).limit(4),
@@ -97,9 +97,14 @@ export async function getResidentHomeData(ctx: ResidentContext) {
     db.select().from(deliveries).where(and(eq(deliveries.unitId, unitId), inArray(deliveries.status, ["arrived", "left_at_gate"]))).orderBy(desc(deliveries.createdAt)),
     db.select().from(payments).where(and(eq(payments.unitId, unitId), eq(payments.status, "success"))).orderBy(desc(payments.paidAt)).limit(3),
     db.select().from(pollVotes).where(eq(pollVotes.userId, userId)),
+    db.select({ count: sql<number>`count(*)` }).from(familyMembers).where(eq(familyMembers.membershipId, ctx.membership.id)),
+    db.select({ count: sql<number>`count(*)` }).from(vehicles).where(and(eq(vehicles.unitId, unitId), eq(vehicles.societyId, societyId))),
+    db.select({ count: sql<number>`count(*)` }).from(pets).where(and(eq(pets.unitId, unitId), eq(pets.societyId, societyId))),
   ]);
   const votedPollIds = new Set(pollVotesRows.map((v) => v.pollId));
-  return { dues, pendingVisitors, notices: noticesRows, events: eventsRows, polls: activePolls, votedPollIds, openTickets, upcomingBookings, deliveries: deliveriesRows, recentPayments };
+  return { dues, pendingVisitors, notices: noticesRows, events: eventsRows, polls: activePolls, votedPollIds, openTickets, upcomingBookings, deliveries: deliveriesRows, recentPayments,
+    household: { family: (familyCount[0]?.count ?? 0) + 1, vehicles: vehicleCount[0]?.count ?? 0, pets: petCount[0]?.count ?? 0 },
+  };
 }
 
 export async function getNotifications(userId: string, societyId: string, limit = 30) {

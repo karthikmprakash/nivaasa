@@ -1,3 +1,4 @@
+import { QueryTabs } from "@/components/ui/query-tabs";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { and, count, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
@@ -74,35 +75,29 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
         eyebrow="Your community"
         title="Community"
         description={`The private, moderated space for ${ctx.society.name}. Notices from the committee, conversations with neighbours, polls and everything coming up.`}
-        actions={<Link href="/app/community/discussions/new" className="inline-flex h-10 items-center gap-1.5 rounded-full bg-brand-600 px-4 text-[12px] font-semibold text-white hover:bg-brand-700"><Plus className="size-4" /> Start a discussion</Link>}
+        actions={<Link href="/app/community/discussions/new" className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-control bg-brand-600 px-4 text-body font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 sm:w-auto"><Plus aria-hidden="true" className="size-4" /> <span>Start a discussion</span></Link>}
       />
 
       {params.submitted ? (
         <div className={`mt-5 flex items-start gap-3 rounded-2xl border p-4 ${params.submitted === "moderation" ? "border-amber-ink/20 bg-amber-soft" : "border-mint-600/20 bg-mint-50"}`}>
           {params.submitted === "moderation" ? <Clock3 className="mt-0.5 size-4 text-amber-ink" /> : <CheckCircle2 className="mt-0.5 size-4 text-mint-600" />}
-          <div><p className="text-[12px] font-semibold text-ink">{params.submitted === "moderation" ? "Your post is with the committee for review" : "Your discussion is live"}</p><p className="mt-0.5 text-[10.5px] text-ink-soft">{params.submitted === "moderation" ? "We'll publish it once a moderator approves it. You'll find it under your posts below." : "Your neighbours can now read and reply to it."}</p></div>
+          <div><p className="text-body font-semibold text-ink">{params.submitted === "moderation" ? "Your post is with the committee for review" : "Your discussion is live"}</p><p className="mt-0.5 text-caption text-ink-soft">{params.submitted === "moderation" ? "We'll publish it once a moderator approves it. You'll find it under your posts below." : "Your neighbours can now read and reply to it."}</p></div>
         </div>
       ) : null}
 
-      <div className="mt-5 flex flex-wrap items-center gap-1.5">
-        {tabs.map((t) => (
-          <Link key={t.value} href={`/app/community?tab=${t.value}`} className={`rounded-full border px-3.5 py-2 text-[11.5px] font-semibold transition-colors ${tab === t.value ? "border-brand-600 bg-brand-600 text-white" : "border-line bg-white text-ink-soft hover:border-brand-200"}`}>{t.label}</Link>
-        ))}
-      </div>
+      <QueryTabs className="mt-5" label="Community sections" basePath="/app/community" value={tab} items={tabs} />
 
       {tab === "all" && featured ? (
         <Link href={`/app/community/notices/${featured.notice.id}`} className="group mt-5 block overflow-hidden rounded-[22px] border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-blush-50 p-5 transition-shadow hover:shadow-lift sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-4">
-              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white text-brand-600 shadow-sm"><Megaphone className="size-5" /></span>
-              <div>
-                <div className="flex flex-wrap items-center gap-1.5"><Badge variant={categories[featured.notice.category]?.variant ?? "blue"}>{categories[featured.notice.category]?.label ?? "Notice"}</Badge>{featured.notice.pinned ? <Badge variant="pink"><Pin className="size-2.5" /> Pinned</Badge> : null}<span className="text-[9.5px] text-muted">{timeAgo(featured.notice.publishedAt)}</span></div>
-                <h2 className="mt-1.5 text-[17px] font-semibold leading-snug tracking-[-0.02em] text-ink group-hover:text-brand-700">{featured.notice.title}</h2>
-                <p className="mt-1 line-clamp-2 max-w-2xl text-[11px] leading-relaxed text-ink-soft">{featured.notice.body.replace(/\n/g, " ")}</p>
-                <p className="mt-2 text-[9.5px] font-medium text-muted">By {featured.author?.name ?? "Committee"} · {featured.notice.views} views</p>
-              </div>
+          <div className="flex items-start gap-4">
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white text-brand-600 shadow-sm"><Megaphone className="size-5" /></span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5"><Badge variant={categories[featured.notice.category]?.variant ?? "blue"}>{categories[featured.notice.category]?.label ?? "Notice"}</Badge>{featured.notice.pinned ? <Badge variant="pink"><Pin className="size-4" /> Pinned</Badge> : null}<span className="text-caption text-muted">{timeAgo(featured.notice.publishedAt)}</span></div>
+              <h2 className="mt-1.5 text-body font-semibold leading-snug text-ink group-hover:text-brand-700">{featured.notice.title}</h2>
+              <p className="mt-0.5 line-clamp-2 text-caption leading-relaxed text-muted">{featured.notice.body.replace(/\n/g, " ")}</p>
+              <p className="mt-1.5 text-caption text-muted">By {featured.author?.name ?? "Committee"} · {featured.notice.views} views</p>
             </div>
-            <span className="hidden size-9 shrink-0 place-items-center rounded-full bg-white text-brand-600 shadow-sm sm:grid"><ArrowRight className="size-4" /></span>
+            <span className="ml-auto hidden size-9 shrink-0 place-items-center rounded-full bg-white text-brand-600 shadow-sm sm:grid"><ArrowRight className="size-4" /></span>
           </div>
         </Link>
       ) : null}
@@ -111,28 +106,28 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
         <div className="min-w-0 space-y-5">
           {(tab === "all" || tab === "discussions") ? (
             <Card>
-              <CardHeader title="Neighbourhood conversations" description="Questions, suggestions and the small things that build a community" icon={<MessageSquare className="size-4" />} action={<Link href="/app/community/discussions/new" className="text-[10.5px] font-semibold text-brand-600">Start a post</Link>} />
+              <CardHeader title="Neighbourhood conversations" description="Questions, suggestions and the small things that build a community" icon={<MessageSquare className="size-4" />} action={<Link href="/app/community/discussions/new" className="text-caption font-semibold text-brand-600">Start a post</Link>} />
               <div className="border-t border-line">
                 {discussionRows.slice(0, tab === "all" ? 3 : 10).map(({ discussion: d, author }) => (
                   <Link key={d.id} href={`/app/community/discussions/${d.id}`} className="group flex items-start gap-3 border-b border-line/70 px-5 py-4 last:border-0 hover:bg-[#fbfcff]">
                     <Avatar name={author.name} color={author.avatarColor} size="sm" />
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5"><p className="text-[10.5px] font-semibold text-ink">{author.name}</p><span className="text-[9px] text-muted">· {timeAgo(d.createdAt)}</span>{d.pinned ? <Pin className="size-2.5 text-blush-500" /> : null}</div>
-                      <p className="mt-1 text-[12px] font-semibold leading-snug text-ink group-hover:text-brand-700">{d.title}</p>
-                      <p className="mt-0.5 line-clamp-1 text-[10px] leading-relaxed text-muted">{d.body}</p>
-                      <div className="mt-1.5 flex items-center gap-3 text-[9px] text-muted">
-                        <span className="inline-flex items-center gap-1"><MessageCircle className="size-2.5" /> {commentsBy.get(d.id) ?? 0} replies</span>
-                        <span className="inline-flex items-center gap-1"><Heart className="size-2.5" /> {d.likes}</span>
-                        <Badge variant="outline" className="px-1.5 py-0.5 text-[8px]">{d.category.replace("_", " ")}</Badge>
+                      <div className="flex items-center gap-1.5"><p className="text-caption font-semibold text-ink">{author.name}</p><span className="text-caption text-muted">· {timeAgo(d.createdAt)}</span>{d.pinned ? <Pin className="size-4 text-blush-500" /> : null}</div>
+                      <p className="mt-1 text-body font-semibold leading-snug text-ink group-hover:text-brand-700">{d.title}</p>
+                      <p className="mt-0.5 line-clamp-1 text-caption leading-relaxed text-muted">{d.body}</p>
+                      <div className="mt-1.5 flex items-center gap-3 text-caption text-muted">
+                        <span className="inline-flex items-center gap-1"><MessageCircle className="size-4" /> {commentsBy.get(d.id) ?? 0} replies</span>
+                        <span className="inline-flex items-center gap-1"><Heart className="size-4" /> {d.likes}</span>
+                        <Badge variant="outline" className="px-1.5 py-0.5 text-caption">{d.category.replace("_", " ")}</Badge>
                       </div>
                     </div>
-                    <ChevronRight className="mt-2 size-3.5 shrink-0 text-[#c2c8d5]" />
+                    <ChevronRight className="mt-2 size-4 shrink-0 text-[#c2c8d5]" />
                   </Link>
                 ))}
                 {pendingMine.length > 0 && tab === "discussions" ? pendingMine.map(({ discussion: d }) => (
                   <div key={d.id} className="flex items-start gap-3 border-b border-line/70 bg-amber-soft/30 px-5 py-4 last:border-0">
-                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-amber-soft text-amber-ink"><Clock3 className="size-3.5" /></span>
-                    <div className="flex-1"><div className="flex items-center gap-2"><p className="text-[10.5px] font-semibold text-ink">Your post</p><Badge variant="warning">In review</Badge></div><p className="mt-1 text-[12px] font-semibold text-ink">{d.title}</p><p className="mt-0.5 text-[9.5px] text-muted">Waiting for a moderator · {timeAgo(d.createdAt)}</p></div>
+                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-amber-soft text-amber-ink"><Clock3 className="size-4" /></span>
+                    <div className="flex-1"><div className="flex items-center gap-2"><p className="text-caption font-semibold text-ink">Your post</p><Badge variant="warning">In review</Badge></div><p className="mt-1 text-body font-semibold text-ink">{d.title}</p><p className="mt-0.5 text-caption text-muted">Waiting for a moderator · {timeAgo(d.createdAt)}</p></div>
                   </div>
                 )) : null}
               </div>
@@ -147,10 +142,10 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
                   const cat = categories[n.category] ?? categories.general;
                   return (
                     <Link key={n.id} href={`/app/community/notices/${n.id}`} className="group block border-b border-line/70 px-5 py-4 last:border-0 hover:bg-[#fbfcff]">
-                      <div className="flex items-center gap-1.5"><Badge variant={cat.variant}>{cat.label}</Badge>{n.pinned ? <span className="text-[8.5px] font-bold uppercase tracking-wide text-blush-500">Pinned</span> : null}<span className="text-[9px] text-muted">{formatDate(n.publishedAt)}</span></div>
-                      <p className="mt-1.5 text-[12.5px] font-semibold leading-snug text-ink group-hover:text-brand-700">{n.title}</p>
-                      <p className="mt-1 line-clamp-2 text-[10.5px] leading-relaxed text-muted">{n.body.replace(/\n/g, " ")}</p>
-                      <p className="mt-1.5 text-[9px] text-muted">By {author?.name ?? "Committee"} · {n.views} views</p>
+                      <div className="flex items-center gap-1.5"><Badge variant={cat.variant}>{cat.label}</Badge>{n.pinned ? <span className="text-caption font-bold uppercase tracking-wide text-blush-500">Pinned</span> : null}<span className="text-caption text-muted">{formatDate(n.publishedAt)}</span></div>
+                      <p className="mt-1.5 text-body font-semibold leading-snug text-ink group-hover:text-brand-700">{n.title}</p>
+                      <p className="mt-1 line-clamp-2 text-caption leading-relaxed text-muted">{n.body.replace(/\n/g, " ")}</p>
+                      <p className="mt-1.5 text-caption text-muted">By {author?.name ?? "Committee"} · {n.views} views</p>
                     </Link>
                   );
                 })}
@@ -160,7 +155,7 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
 
           {(tab === "all" || tab === "polls") ? (
             <div>
-              <div className="mb-2.5 flex items-center justify-between"><h2 className="text-[15px] font-semibold text-ink">Polls</h2><span className="text-[10px] text-muted">{activePolls.length} open</span></div>
+              <div className="mb-2.5 flex items-center justify-between"><h2 className="text-base font-semibold text-ink">Polls</h2><span className="text-caption text-muted">{activePolls.length} open</span></div>
               <div className="space-y-3">
                 {pollRows.filter((p) => tab === "all" ? p.status === "active" : true).map((p) => {
                   const canVote = p.status === "active" && (p.audience !== "owners" || isOwner);
@@ -184,16 +179,16 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
                   <div key={e.id} className="border-b border-line/70 p-4 last:border-0">
                     <div className="flex gap-3">
                       <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-blush-50 text-center">
-                        <span className="text-[7.5px] font-bold uppercase text-blush-500">{formatDate(e.startAt, { month: "short" })}</span>
-                        <span className="text-[15px] font-bold leading-none text-ink">{new Date(e.startAt).getDate()}</span>
+                        <span className="text-caption font-bold uppercase text-blush-500">{formatDate(e.startAt, { month: "short" })}</span>
+                        <span className="text-base font-bold leading-none text-ink">{new Date(e.startAt).getDate()}</span>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[11.5px] font-semibold leading-snug text-ink">{e.title}</p>
-                        <p className="mt-0.5 flex items-center gap-1 text-[9px] text-muted"><Clock3 className="size-2.5" /> {formatDate(e.startAt)} · {formatTime(e.startAt)}</p>
-                        <p className="mt-0.5 flex items-center gap-1 text-[9px] text-muted"><MapPin className="size-2.5" /> {e.location}</p>
+                        <p className="text-caption font-semibold leading-snug text-ink">{e.title}</p>
+                        <p className="mt-0.5 flex items-center gap-1 text-caption text-muted"><Clock3 className="size-4" /> {formatDate(e.startAt)} · {formatTime(e.startAt)}</p>
+                        <p className="mt-0.5 flex items-center gap-1 text-caption text-muted"><MapPin className="size-4" /> {e.location}</p>
                         <div className="mt-2 flex items-center justify-between gap-2">
-                          <span className="text-[8.5px] text-muted">{going?.count ?? 0} going{going ? ` · ${going.guests + (going.count ?? 0)} people` : ""}</span>
-                          <form action={toggleEventRsvp}><input type="hidden" name="eventId" value={e.id} /><button className={`rounded-full px-2.5 py-1 text-[9px] font-semibold ${mine ? "bg-mint-50 text-mint-600" : "bg-brand-600 text-white"}`}>{mine ? "Going ✓" : "RSVP"}</button></form>
+                          <span className="text-caption text-muted">{going?.count ?? 0} going{going ? ` · ${going.guests + (going.count ?? 0)} people` : ""}</span>
+                          <form action={toggleEventRsvp}><input type="hidden" name="eventId" value={e.id} /><button className={`rounded-full px-2.5 py-1 text-caption font-semibold ${mine ? "bg-mint-50 text-mint-600" : "bg-brand-600 text-white"}`}>{mine ? "Going ✓" : "RSVP"}</button></form>
                         </div>
                       </div>
                     </div>
@@ -204,15 +199,15 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
           </Card>
 
           <div className="rounded-[18px] border border-line bg-[#fbfcff] p-5">
-            <div className="flex items-center gap-2"><Sparkles className="size-4 text-blush-500" /><p className="text-[12px] font-semibold text-ink">A kind community</p></div>
-            <p className="mt-2 text-[10.5px] leading-relaxed text-muted">Keep conversations respectful and useful. Personal disputes and commercial promotions belong in a private message or a classified, not the community feed.</p>
-            <p className="mt-2 text-[9px] text-muted">Posts may be reviewed by the committee before publishing.</p>
+            <div className="flex items-center gap-2"><Sparkles className="size-4 text-blush-500" /><p className="text-body font-semibold text-ink">A kind community</p></div>
+            <p className="mt-2 text-caption leading-relaxed text-muted">Keep conversations respectful and useful. Personal disputes and commercial promotions belong in a private message or a classified, not the community feed.</p>
+            <p className="mt-2 text-caption text-muted">Posts may be reviewed by the committee before publishing.</p>
           </div>
 
           <div className="rounded-[18px] bg-gradient-to-br from-brand-600 to-brand-800 p-5 text-white">
-            <p className="text-[11px] font-semibold">Have something to sell?</p>
-            <p className="mt-1 text-[10px] leading-relaxed text-white/55">List it in the community marketplace and reach every verified neighbour.</p>
-            <Link href="/app/classifieds" className="mt-3 inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-[9.5px] font-bold text-brand-700">Open Buy & Sell <ArrowRight className="size-3" /></Link>
+            <p className="text-caption font-semibold">Have something to sell?</p>
+            <p className="mt-1 text-caption leading-relaxed text-white/80">List it in the community marketplace and reach every verified neighbour.</p>
+            <Link href="/app/classifieds" className="mt-3 inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-caption font-bold text-brand-700">Open Buy & Sell <ArrowRight className="size-4" /></Link>
           </div>
         </aside>
       </div>

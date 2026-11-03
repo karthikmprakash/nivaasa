@@ -21,18 +21,18 @@ export function CreateListingDialog() {
   }, [state, router]);
   return (
     <>
-      <Button size="sm" onClick={() => setOpen(true)}><Plus className="size-3.5" /> New listing</Button>
+      <Button size="sm" onClick={() => setOpen(true)}><Plus className="size-4" /> New listing</Button>
       <Dialog open={open} onOpenChange={setOpen} title="List something for sale" description="Reach verified neighbours in your community. Keep it honest and local.">
         <form action={action} className="space-y-4">
           <Field label="What are you selling?"><Input name="title" required placeholder="e.g. IKEA coffee table — oak veneer" /></Field>
           <fieldset>
-            <legend className="mb-1.5 text-[12px] font-semibold text-ink-soft">Category</legend>
+            <legend className="mb-1.5 text-body font-semibold text-ink-soft">Category</legend>
             <Select name="category"><option value="furniture">Furniture</option><option value="electronics">Electronics</option><option value="vehicles">Vehicles</option><option value="kids">Kids</option><option value="home">Home & décor</option><option value="services">Services</option><option value="other">Other</option></Select>
           </fieldset>
           <div className="grid gap-3 sm:grid-cols-2"><Field label="Price (₹)"><Input name="price" type="number" min={0} required placeholder="4500" /></Field><Field label="Condition"><Select name="condition"><option value="new">New</option><option value="like_new">Like new</option><option value="good">Good</option><option value="used">Used</option></Select></Field></div>
           <Field label="Description"><Textarea name="description" required rows={3} placeholder="Size, age, condition, pickup details…" /></Field>
           <Field label="Image URL (optional)"><Input name="imageUrl" type="url" placeholder="https://…" /></Field>
-          {state.error ? <p className="text-[11px] text-[#c43d4d]">{state.error}</p> : null}
+          {state.error ? <p className="text-caption text-[#c43d4d]">{state.error}</p> : null}
           <Button type="submit" className="w-full" disabled={pending}>{pending ? "Publishing…" : "Publish listing"}</Button>
         </form>
       </Dialog>

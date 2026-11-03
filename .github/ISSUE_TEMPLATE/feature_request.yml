@@ -1,0 +1,56 @@
+name: Feature request
+description: Suggest an improvement or a new capability.
+title: "[feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tell us about the problem first. The best feature requests describe a real workflow, not only a UI change.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Who runs into it, and how often?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should Nivaasa do? Include the workflow and the expected outcome.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Current workarounds, other products, or simpler options.
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which surface?
+      options:
+        - Web — resident
+        - Web — admin
+        - Web — guard
+        - Web — login / onboarding
+        - Mobile — resident / guard
+        - Self-hosting / deployment
+        - Brand / design system
+        - API / integrations
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Mockups, links, related issues or community requirements.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Contribution
+      options:
+        - label: I am willing to help implement or test this.
+          required: false

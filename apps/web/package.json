@@ -8,7 +8,8 @@
     "start": "next start --port 3000",
     "typecheck": "tsc --noEmit",
     "db:seed": "tsx src/db/seed.ts",
-    "db:push": "drizzle-kit push --force"
+    "db:push": "drizzle-kit push --force",
+    "test:ui": "tsx --test src/lib/ui-regressions.test.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

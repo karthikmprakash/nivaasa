@@ -19,9 +19,9 @@ export function CopyCode({ code, className }: { code: string; className?: string
           toast.error("Could not copy — note it down instead.");
         }
       }}
-      className={className ?? "inline-flex items-center gap-1.5 rounded-lg border border-line bg-white px-2.5 py-1.5 text-[10px] font-semibold text-ink-soft hover:border-brand-200 hover:text-brand-700"}
+      className={className ?? "inline-flex items-center gap-1.5 rounded-lg border border-line bg-white px-2.5 py-1.5 text-caption font-semibold text-ink-soft hover:border-brand-200 hover:text-brand-700"}
     >
-      {copied ? <Check className="size-3 text-mint-600" /> : <Copy className="size-3" />} {copied ? "Copied" : "Copy"}
+      {copied ? <Check className="size-4 text-mint-600" /> : <Copy className="size-4" />} {copied ? "Copied" : "Copy"}
     </button>
   );
 }

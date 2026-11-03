@@ -1,0 +1,87 @@
+{
+  "swiggy": {
+    "file": "swiggy.svg",
+    "source": "https://cdn.simpleicons.org/swiggy/FF5200",
+    "bytes": 767
+  },
+  "zomato": {
+    "file": "zomato.png",
+    "source": "https://b.zmtcdn.com/data/o2_assets/31e648cbaa2ca2fb5fbec1e76710f3821785325659.png",
+    "bytes": 944
+  },
+  "blinkit": {
+    "file": "blinkit.png",
+    "source": "https://www.google.com/s2/favicons?domain=blinkit.com&sz=128",
+    "bytes": 974
+  },
+  "zepto": {
+    "file": "zepto.svg",
+    "source": "https://cdn.zeptonow.com/web-static-assets-prod/artifacts/15.12.0/images/header/primary-logo.svg",
+    "bytes": 2305
+  },
+  "bigbasket": {
+    "file": "bigbasket.png",
+    "source": "https://www.google.com/s2/favicons?domain=bigbasket.com&sz=128",
+    "bytes": 548
+  },
+  "amazon": {
+    "file": "amazon.ico",
+    "source": "https://www.amazon.in/favicon.ico",
+    "bytes": 15086
+  },
+  "flipkart": {
+    "file": "flipkart.png",
+    "source": "https://static-assets-web.flixcart.com/apex-static/images/fk-lite-assets/app-icons/app-icon_192x192.png",
+    "bytes": 12550
+  },
+  "meesho": {
+    "file": "meesho.ico",
+    "source": "https://www.meesho.com/favicon.ico",
+    "bytes": 4286
+  },
+  "myntra": {
+    "file": "myntra.png",
+    "source": "https://constant.myntassets.com/pwa/assets/img/Icon-App-60x60@3x_2021.png",
+    "bytes": 11552
+  },
+  "delhivery": {
+    "file": "delhivery.png",
+    "source": "https://www.delhivery.com/favicon.png",
+    "bytes": 833
+  },
+  "bluedart": {
+    "file": "bluedart.png",
+    "source": "https://www.google.com/s2/favicons?domain=bluedart.com&sz=128",
+    "bytes": 598
+  },
+  "dtdc": {
+    "file": "dtdc.png",
+    "source": "https://www.dtdc.com/wp-content/uploads/2025/08/favicon.png",
+    "bytes": 1585
+  },
+  "uber": {
+    "file": "uber.svg",
+    "source": "https://cdn.simpleicons.org/uber/000000",
+    "bytes": 948
+  },
+  "ola": {
+    "file": "ola.png",
+    "source": "https://www.olacabs.com/static/frontend/Ola/Cabs/en_US/Magento_Theme/favicon_logo.png",
+    "bytes": 1168
+  },
+  "rapido": {
+    "file": "rapido.png",
+    "source": "https://rapido.bike/favicon.ico",
+    "bytes": 44583
+  },
+  "nammayatri": {
+    "file": "nammayatri.svg",
+    "source": "https://nammayatri.in/WebsiteIcon.svg",
+    "bytes": 1401
+  },
+  "instamart": {
+    "file": "instamart.png",
+    "source": "https://media-assets.swiggy.com/IM-PD-Assets/Instamart-App-Logo/IM%20Icon%20Light%20192%20x%20192.png",
+    "bytes": 4461
+  }
+}

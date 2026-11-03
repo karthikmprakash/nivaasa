@@ -1,3 +1,4 @@
+import { QueryTabs } from "@/components/ui/query-tabs";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { and, desc, eq, inArray } from "drizzle-orm";
@@ -39,6 +40,8 @@ export default async function HelpdeskPage({ searchParams }: { searchParams: Pro
   const resolved = rows.filter((r) => ["resolved", "closed"].includes(r.ticket.status));
   const rated = rows.filter((r) => r.ticket.rating);
   const avg = rated.length ? (rated.reduce((s, r) => s + (r.ticket.rating ?? 0), 0) / rated.length).toFixed(1) : "—";
+  const closedWithTime = resolved.filter(({ ticket }) => ticket.resolvedAt);
+  const averageClosure = closedWithTime.length ? closedWithTime.reduce((total, { ticket }) => total + (ticket.resolvedAt!.getTime() - ticket.createdAt.getTime()) / 3600000, 0) / closedWithTime.length : null;
   const filters = [
     { v: "all", l: "All", c: rows.length },
     { v: "in_progress", l: "In progress", c: rows.filter((r) => r.ticket.status === "in_progress").length },
@@ -49,20 +52,18 @@ export default async function HelpdeskPage({ searchParams }: { searchParams: Pro
 
   return (
     <div>
-      <PageHeader eyebrow="Here to help" title="Helpdesk" description="Raise a request, follow its progress and know exactly who is working on it. No more chasing WhatsApp groups." actions={<Link href="/app/helpdesk/new" className="inline-flex h-10 items-center gap-1.5 rounded-full bg-brand-600 px-4 text-[12px] font-semibold text-white shadow-[0_8px_20px_-10px_rgba(49,85,216,0.6)] hover:bg-brand-700"><Plus className="size-4" /> Raise a request</Link>} />
+      <PageHeader eyebrow="Here to help" title="Helpdesk" description="Raise a request, follow its progress and know exactly who is working on it. No more chasing WhatsApp groups." actions={<Link href="/app/helpdesk/new" className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-control bg-brand-600 px-4 text-body font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 sm:w-auto"><Plus aria-hidden="true" className="size-4" /> <span>Raise a request</span></Link>} />
 
       <div className="mt-5 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         <Stat label="Open requests" value={open.length} hint={open.length ? "Being worked on" : "All clear"} tone={open.length ? "blue" : "green"} icon={<Wrench className="size-4" />} />
         <Stat label="Resolved" value={resolved.length} hint="All time" tone="green" icon={<CheckCircle2 className="size-4" />} />
-        <Stat label="Average response" value="3.8h" hint="Within your 24h SLA" icon={<Clock3 className="size-4" />} />
+        <Stat label="Average resolution" value={averageClosure === null ? "—" : `${averageClosure.toFixed(1)}h`} hint={closedWithTime.length ? `Across ${closedWithTime.length} resolved requests` : "No resolved requests yet"} icon={<Clock3 className="size-4" />} />
         <Stat label="Satisfaction" value={avg} hint={`${rated.length} ratings`} tone="pink" icon={<Star className="size-4" />} />
       </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.6fr_1fr]">
-        <div>
-          <div className="mb-3 flex flex-wrap items-center gap-1.5">
-            {filters.map((f) => <Link key={f.v} href={`/app/helpdesk${f.v === "all" ? "" : `?status=${f.v}`}`} className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[11px] font-semibold ${filter === f.v ? "border-brand-600 bg-brand-600 text-white" : "border-line bg-white text-ink-soft hover:border-brand-200"}`}>{f.l}<span className={`rounded-full px-1.5 py-0.5 text-[8.5px] ${filter === f.v ? "bg-white/20" : "bg-canvas"}`}>{f.c}</span></Link>)}
-          </div>
+        <div className="min-w-0">
+          <QueryTabs className="mb-4" label="Request status" basePath="/app/helpdesk" param="status" value={filter} items={filters.map((f) => ({ value: f.v, label: f.l, count: f.c }))} />
           <div className="space-y-2.5">
             {filtered.map(({ ticket: t, assignee }) => {
               const Icon = icons[t.category] ?? Wrench;
@@ -73,38 +74,38 @@ export default async function HelpdeskPage({ searchParams }: { searchParams: Pro
                   <div className="flex items-start gap-3">
                     <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${t.status === "resolved" || t.status === "closed" ? "bg-mint-50 text-mint-600" : t.priority === "urgent" ? "bg-[#fdeced] text-[#c43d4d]" : "bg-brand-50 text-brand-600"}`}><Icon className="size-4" /></span>
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-1.5"><Badge variant={meta.variant}>{meta.label}</Badge>{t.priority === "high" || t.priority === "urgent" ? <Badge variant={t.priority === "urgent" ? "danger" : "warning"}><AlertTriangle className="size-2.5" />{t.priority}</Badge> : null}<span className="text-[9px] text-muted">#{t.id.slice(0, 6).toUpperCase()}</span></div>
-                      <p className="mt-1.5 text-[12.5px] font-semibold leading-snug text-ink group-hover:text-brand-700">{t.subject}</p>
-                      <p className="mt-0.5 line-clamp-1 text-[10px] text-muted">{t.description}</p>
-                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] text-muted">
+                      <div className="flex flex-wrap items-center gap-1.5"><Badge variant={meta.variant}>{meta.label}</Badge>{t.priority === "high" || t.priority === "urgent" ? <Badge variant={t.priority === "urgent" ? "danger" : "warning"}><AlertTriangle className="size-4" />{t.priority}</Badge> : null}<span className="text-caption text-muted">#{t.id.slice(0, 6).toUpperCase()}</span></div>
+                      <p className="mt-1.5 text-body font-semibold leading-snug text-ink group-hover:text-brand-700">{t.subject}</p>
+                      <p className="mt-0.5 line-clamp-1 text-caption text-muted">{t.description}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-muted">
                         <span>{t.category} · {t.scope === "personal" ? "My home" : "Common area"}</span>
                         <span>Updated {timeAgo(t.updatedAt)}</span>
-                        {assignee ? <span className="inline-flex items-center gap-1"><Avatar name={assignee.name} color={assignee.avatarColor} size="xs" className="!size-4 !text-[6px]" /> {assignee.name}</span> : null}
+                        {assignee ? <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-canvas px-2 py-1 font-medium text-ink-soft"><Avatar name={assignee.name} color={assignee.avatarColor} size="xs" className="!size-5 !text-caption" /><span className="truncate">{assignee.name}</span></span> : null}
                         {overdue ? <span className="font-semibold text-[#c43d4d]">SLA overdue</span> : null}
                       </div>
                     </div>
-                    <ChevronRight className="mt-2 size-3.5 shrink-0 text-[#c2c8d5] group-hover:text-brand-500" />
+                    <ChevronRight className="mt-2 size-4 shrink-0 text-[#c2c8d5] group-hover:text-brand-500" />
                   </div>
                 </Link>
               );
             })}
-            {!filtered.length ? <Card><EmptyState icon={<CheckCircle2 className="size-6" />} title={filter === "all" ? "No requests yet" : "Nothing here"} description={filter === "all" ? "When something needs fixing, raise a request and the team will take it from there." : "No requests with this status right now."} action={<Link href="/app/helpdesk/new" className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-4 py-2.5 text-[11.5px] font-semibold text-white">Raise a request</Link>} /></Card> : null}
+            {!filtered.length ? <Card><EmptyState icon={<CheckCircle2 className="size-6" />} title={filter === "all" ? "No requests yet" : "Nothing here"} description={filter === "all" ? "When something needs fixing, raise a request and the team will take it from there." : "No requests with this status right now."} action={<Link href="/app/helpdesk/new" className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-4 py-2.5 text-caption font-semibold text-white">Raise a request</Link>} /></Card> : null}
           </div>
         </div>
         <aside className="space-y-4">
           <Card>
             <CardHeader title="Your service promise" description="How we respond" icon={<ShieldCheck className="size-4" />} />
             <div className="border-t border-line px-5 py-4">
-              {[["Urgent", "4 hours"], ["High", "8 hours"], ["Normal", "24 hours"], ["Low", "48 hours"]].map(([p, s]) => <div key={p} className="flex items-center justify-between border-b border-line/60 py-2 last:border-0"><span className="text-[10.5px] font-medium text-ink-soft">{p}</span><span className="rounded-full bg-canvas px-2 py-0.5 text-[9px] font-semibold text-ink">{s}</span></div>)}
-              <p className="mt-2 text-[9px] leading-relaxed text-muted">Requests escalate automatically when the SLA is breached — to the helpdesk manager, then the community manager.</p>
+              {[["Urgent", "4 hours"], ["High", "8 hours"], ["Normal", "24 hours"], ["Low", "48 hours"]].map(([p, s]) => <div key={p} className="flex items-center justify-between border-b border-line/60 py-2 last:border-0"><span className="text-caption font-medium text-ink-soft">{p}</span><span className="rounded-full bg-canvas px-2 py-0.5 text-caption font-semibold text-ink">{s}</span></div>)}
+              <p className="mt-2 text-caption leading-relaxed text-muted">Requests escalate automatically when the SLA is breached — to the helpdesk manager, then the community manager.</p>
             </div>
           </Card>
           <div className="rounded-[18px] bg-gradient-to-br from-blush-50 to-brand-50 p-5">
-            <p className="text-[12px] font-semibold text-ink">Help us improve</p>
-            <p className="mt-1.5 text-[10.5px] leading-relaxed text-ink-soft">After a request is resolved, rate the experience. It helps the committee hold vendors accountable and recognise good work.</p>
-            <div className="mt-3 flex items-center gap-1 text-amber-ink">{"★★★★★".split("").map((s, i) => <span key={i} className="text-[13px]">{s}</span>)}</div>
+            <p className="text-body font-semibold text-ink">Help us improve</p>
+            <p className="mt-1.5 text-caption leading-relaxed text-ink-soft">After a request is resolved, rate the experience. It helps the committee hold vendors accountable and recognise good work.</p>
+            <div className="mt-3 flex items-center gap-1 text-amber-ink">{"★★★★★".split("").map((s, i) => <span key={i} className="text-body">{s}</span>)}</div>
           </div>
-          <Link href="/app/emergency" className="flex items-center justify-between rounded-[18px] border border-[#f3d0d4] bg-[#fdf1f3] p-4"><div><p className="text-[11px] font-semibold text-[#a82f3e]">Emergency?</p><p className="mt-0.5 text-[9.5px] text-[#c0606c]">Alert the guard and community team now.</p></div><ArrowRight className="size-4 text-[#c43d4d]" /></Link>
+          <Link href="/app/emergency" className="flex items-center justify-between rounded-[18px] border border-[#f3d0d4] bg-[#fdf1f3] p-4"><div><p className="text-caption font-semibold text-[#a82f3e]">Emergency?</p><p className="mt-0.5 text-caption text-[#c0606c]">Alert the guard and community team now.</p></div><ArrowRight className="size-4 text-[#c43d4d]" /></Link>
         </aside>
       </div>
     </div>

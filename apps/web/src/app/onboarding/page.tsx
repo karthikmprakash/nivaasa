@@ -13,25 +13,25 @@ export default function OnboardingPage() {
         <div className="absolute inset-0 grid-paper opacity-[0.07]" />
         <div className="absolute -left-24 bottom-0 size-[380px] rounded-full bg-blush-400/15 blur-[100px]" />
         <div className="relative">
-          <Link href="/" className="inline-flex items-center gap-1.5 text-[10px] text-white/45 hover:text-white"><ArrowLeft className="size-3" /> Back to Nivaasa</Link>
+          <Link href="/" className="inline-flex items-center gap-1.5 text-caption text-white/80 hover:text-white"><ArrowLeft className="size-4" /> Back to Nivaasa</Link>
           <div className="mt-12"><Logo variant="light" size={38} showTagline /></div>
-          <h1 className="mt-10 max-w-md text-[42px] font-semibold leading-[1.02] tracking-[-0.05em]">A new home for your community.</h1>
-          <p className="mt-4 max-w-sm text-[13px] leading-relaxed text-white/50">Set up your community on Nivaasa in minutes. Open source, self-hosted, and yours to shape.</p>
+          <p className="mt-10 max-w-md text-[42px] font-semibold leading-[1.02] tracking-[-0.035em]">A new home for your community.</p>
+          <p className="mt-4 max-w-sm text-body leading-relaxed text-white/50">Set up your community on Nivaasa in minutes. Open source, self-hosted, and yours to shape.</p>
           <div className="mt-8 space-y-3">
-            {[{ i: BuildingIcon, t: "Towers and homes, created for you" }, { i: Users, t: "Roles for committee, managers and guards" }, { i: Wallet, t: "Billing heads and UPI payments ready" }, { i: ShieldCheck, t: "Audit trail and resident privacy by default" }].map((f) => <div key={f.t} className="flex items-center gap-2.5 text-[11px] text-white/60"><span className="grid size-7 place-items-center rounded-lg bg-white/10"><f.i className="size-3.5 text-blush-300" /></span>{f.t}</div>)}
+            {[{ i: BuildingIcon, t: "Towers and homes, created for you" }, { i: Users, t: "Roles for committee, managers and guards" }, { i: Wallet, t: "Billing heads and UPI payments ready" }, { i: ShieldCheck, t: "Audit trail and resident privacy by default" }].map((f) => <div key={f.t} className="flex items-center gap-2.5 text-caption text-white/80"><span className="grid size-7 place-items-center rounded-lg bg-white/10"><f.i className="size-3.5 text-blush-300" /></span>{f.t}</div>)}
           </div>
         </div>
-        <div className="relative rounded-2xl border border-white/10 bg-white/[0.04] p-4"><p className="flex items-center gap-1.5 text-[10px] font-semibold"><Sparkles className="size-3.5 text-blush-300" /> Self-managed, not vendor-managed</p><p className="mt-1 text-[9.5px] leading-relaxed text-white/40">Your community data lives on infrastructure you control. Export everything, any time.</p></div>
+        <div className="relative rounded-2xl border border-white/10 bg-white/[0.04] p-4"><p className="flex items-center gap-1.5 text-caption font-semibold"><Sparkles className="size-4 text-blush-300" /> Self-managed, not vendor-managed</p><p className="mt-1 text-caption leading-relaxed text-white/80">Your community data lives on infrastructure you control. Export everything, any time.</p></div>
       </aside>
       <main className="relative flex min-h-dvh flex-col justify-center px-5 py-10 sm:px-10">
         <div className="absolute inset-0 blush-wash opacity-50" />
         <div className="relative mx-auto w-full max-w-[480px]">
-          <div className="mb-6 flex items-center justify-between lg:hidden"><Logo size={32} /><Link href="/" className="text-[10px] text-muted">Home</Link></div>
+          <div className="mb-6 flex items-center justify-between lg:hidden"><Logo size={32} /><Link href="/" className="text-caption text-muted">Home</Link></div>
           <div className="rounded-[24px] border border-white/80 bg-white/90 p-5 shadow-[0_30px_70px_-35px_rgba(19,26,42,0.35)] backdrop-blur sm:p-7">
-            <div className="mb-5 flex items-center gap-2"><LogoMark size={28} /><div><p className="text-[12px] font-semibold text-ink">Bring your community onto Nivaasa</p><p className="text-[9px] text-muted">Free to self-host · set up in under 3 minutes</p></div></div>
+            <div className="mb-5 flex items-center gap-2"><LogoMark size={28} /><div><p className="text-body font-semibold text-ink">Bring your community onto Nivaasa</p><p className="text-caption text-muted">Free to self-host · set up in under 3 minutes</p></div></div>
             <OnboardingForm />
           </div>
-          <p className="mt-4 text-center text-[9.5px] text-muted">Already have a community? <Link href="/login" className="font-semibold text-brand-600">Sign in</Link></p>
+          <p className="mt-4 text-center text-caption text-muted">Already have a community? <Link href="/login" className="font-semibold text-brand-600">Sign in</Link></p>
         </div>
       </main>
     </div>

@@ -17,13 +17,13 @@ export default function DocumentsScreen() {
     try { const res = await api<any>("/api/mobile/more", { token }); setData(res.documents); } finally { setRefreshing(false); }
   }, [token]);
   useFocusEffect(useCallback(() => { load(); }, [load]));
-  if (!data) return <Screen scroll={false}><Loading /></Screen>;
+  if (!data) return <Screen scroll={false} padded={false}><Loading /></Screen>;
   return (
-    <Screen scroll={false}>
+    <Screen scroll={false} padded={false}>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 30 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} tintColor={colors.brand600} />}>
         <BackButton />
-        <View style={{ marginTop: 8 }}><Text style={{ fontFamily: fonts.bold, fontSize: 9.5, letterSpacing: 1.3, textTransform: "uppercase", color: colors.brand600 }}>The society archive</Text><Text style={{ fontFamily: fonts.serif, fontSize: 31, color: colors.ink, marginTop: 2 }}>Documents</Text></View>
-        {data.map((d) => <Pressable key={d.id} onPress={() => Linking.openURL(`${API_URL}${d.fileUrl}`)}><Card style={{ marginTop: 8 }}><View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}><View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: colors.brand50, alignItems: "center", justifyContent: "center" }}><FileText size={16} color={colors.brand600} /></View><View style={{ flex: 1 }}><Text style={{ fontFamily: fonts.semibold, fontSize: 11.5, color: colors.ink }}>{d.title}</Text><Text style={{ fontFamily: fonts.regular, fontSize: 9, color: colors.muted }}>{d.category} · {dateLabel(d.createdAt)}</Text></View><ArrowDownToLine size={15} color={colors.muted} /></View></Card></Pressable>)}
+        <View style={{ marginTop: 8 }}><Text style={{ fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1.3, textTransform: "uppercase", color: colors.brand600 }}>The society archive</Text><Text accessibilityRole="header" style={{ fontFamily: fonts.semibold, fontSize: 28, color: colors.ink, marginTop: 2 }}>Documents</Text></View>
+        {data.map((d) => <Pressable accessibilityRole="button" key={d.id} onPress={() => Linking.openURL(`${API_URL}${d.fileUrl}`)}><Card style={{ marginTop: 8 }}><View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}><View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: colors.brand50, alignItems: "center", justifyContent: "center" }}><FileText size={16} color={colors.brand600} /></View><View style={{ flex: 1 }}><Text style={{ fontFamily: fonts.semibold, fontSize: 14, color: colors.ink }}>{d.title}</Text><Text style={{ fontFamily: fonts.regular, fontSize: 12, color: colors.muted }}>{d.category} · {dateLabel(d.createdAt)}</Text></View><ArrowDownToLine size={15} color={colors.muted} /></View></Card></Pressable>)}
         {!data.length ? <Empty title="No documents yet" /> : null}
       </ScrollView>
     </Screen>

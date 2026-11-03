@@ -1,3 +1,4 @@
+import { QueryTabs } from "@/components/ui/query-tabs";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { and, desc, eq, gte, inArray, or } from "drizzle-orm";
@@ -41,7 +42,7 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
         eyebrow="Gate & security"
         title="Visitors"
         description="Approve people at the gate, create passes for expected guests, and see every entry linked to your home."
-        actions={<Link href="/app/visitors/new" className="inline-flex h-10 items-center gap-1.5 rounded-full bg-brand-600 px-4 text-[12px] font-semibold text-white shadow-[0_8px_20px_-10px_rgba(49,85,216,0.6)] hover:bg-brand-700"><UserRoundPlus className="size-4" /> Pre-approve</Link>}
+        actions={<Link href="/app/visitors/new" className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-control bg-brand-600 px-4 text-body font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 sm:w-auto"><UserRoundPlus aria-hidden="true" className="size-4" /> <span>Pre-approve</span></Link>}
       />
 
       {params.created ? (
@@ -50,16 +51,16 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
             <div className="flex items-start gap-3">
               <span className="grid size-10 shrink-0 place-items-center rounded-full bg-mint-50 text-mint-600"><CheckCircle2 className="size-5" /></span>
               <div>
-                <p className="text-[13px] font-semibold text-ink">Pass created for {params.name ?? "your visitor"}</p>
-                <p className="mt-0.5 text-[11px] text-ink-soft">Share this 6-digit code with them. The guard will verify it at the gate.</p>
+                <p className="text-body font-semibold text-ink">Pass created for {params.name ?? "your visitor"}</p>
+                <p className="mt-0.5 text-caption text-ink-soft">Share this 6-digit code with them. The guard will verify it at the gate.</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <div className="rounded-xl border border-brand-200 bg-white px-4 py-2.5 text-center">
-                <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-muted">Entry code</p>
+                <p className="text-caption font-bold uppercase tracking-[0.14em] text-muted">Entry code</p>
                 <p className="mt-0.5 font-mono text-[19px] font-bold tracking-[0.2em] text-brand-700">{params.created}</p>
               </div>
-              <Link href="/app/visitors?tab=upcoming" className="rounded-full bg-brand-600 px-4 py-2.5 text-[11px] font-semibold text-white">View pass</Link>
+              <Link href="/app/visitors?tab=upcoming" className="rounded-full bg-brand-600 px-4 py-2.5 text-caption font-semibold text-white">View pass</Link>
             </div>
           </div>
         </div>
@@ -72,16 +73,7 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
         <Stat label="Daily help today" value={dailyHelp.length} hint={dailyHelp.map((d) => d.person.name.split(" ")[0]).join(", ") || "No arrivals yet"} tone="green" icon={<Users className="size-4" />} />
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-1.5">
-        {tabs.map((t) => {
-          const count = t.value === "pending" ? pending.length : t.value === "upcoming" ? upcoming.length : history.length;
-          return (
-            <Link key={t.value} href={`/app/visitors?tab=${t.value}`} className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[11.5px] font-semibold transition-colors ${tab === t.value ? "border-brand-600 bg-brand-600 text-white" : "border-line bg-white text-ink-soft hover:border-brand-200"}`}>
-              {t.label} <span className={`rounded-full px-1.5 py-0.5 text-[9px] ${tab === t.value ? "bg-white/20" : "bg-canvas"}`}>{count}</span>
-            </Link>
-          );
-        })}
-      </div>
+      <QueryTabs className="mt-5" label="Visitor views" basePath="/app/visitors" value={tab} items={tabs.map((t) => ({ ...t, count: t.value === "pending" ? pending.length : t.value === "upcoming" ? upcoming.length : history.length }))} />
 
       {tab === "pending" ? (
         pending.length ? (
@@ -89,7 +81,7 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
             {pending.map((v) => <VisitorApprovalCard key={v.id} visitor={v} />)}
           </div>
         ) : (
-          <Card className="mt-4"><EmptyState icon={<ShieldCheck className="size-6" />} title="The gate is quiet" description="Nobody is waiting for your approval right now. We'll notify you the moment someone arrives." action={<Link href="/app/visitors/new" className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-4 py-2.5 text-[11.5px] font-semibold text-white">Pre-approve a visitor <ArrowRight className="size-3.5" /></Link>} /></Card>
+          <Card className="mt-4"><EmptyState icon={<ShieldCheck className="size-6" />} title="The gate is quiet" description="Nobody is waiting for your approval right now. We'll notify you the moment someone arrives." action={<Link href="/app/visitors/new" className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-4 py-2.5 text-caption font-semibold text-white">Pre-approve a visitor <ArrowRight className="size-4" /></Link>} /></Card>
         )
       ) : null}
 
@@ -102,24 +94,24 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2.5">
                     <Avatar name={v.name} color={v.photoColor} size="md" />
-                    <div><p className="text-[13px] font-semibold text-ink">{v.name}</p><p className="text-[10.5px] text-muted">{v.company ? `${v.company} · ` : ""}{v.purpose ?? v.type.replace("_", " ")}</p></div>
+                    <div><p className="text-body font-semibold text-ink">{v.name}</p><p className="text-caption text-muted">{v.company ? `${v.company} · ` : ""}{v.purpose ?? v.type.replace("_", " ")}</p></div>
                   </div>
                   <Badge variant={v.leaveAtGate ? "warning" : "success"}>{v.leaveAtGate ? "Leave at gate" : "Pre-approved"}</Badge>
                 </div>
                 <div className="mt-3 flex items-center gap-2 rounded-xl bg-canvas px-3 py-2">
-                  <KeyRound className="size-3.5 text-brand-600" />
-                  <div className="flex-1"><p className="text-[8.5px] font-semibold uppercase tracking-wide text-muted">Entry code</p><p className="font-mono text-[14px] font-bold tracking-[0.18em] text-ink">{v.code}</p></div>
-                  <div className="text-right"><p className="text-[8.5px] font-semibold uppercase tracking-wide text-muted">Valid</p><p className="text-[10px] font-semibold text-ink">{formatDate(v.validFrom)} – {formatDate(v.validTo)}</p></div>
+                  <KeyRound className="size-4 text-brand-600" />
+                  <div className="flex-1"><p className="text-caption font-semibold uppercase tracking-wide text-muted">Entry code</p><p className="font-mono text-base font-bold tracking-[0.18em] text-ink">{v.code}</p></div>
+                  <div className="text-right"><p className="text-caption font-semibold uppercase tracking-wide text-muted">Valid</p><p className="text-caption font-semibold text-ink">{formatDate(v.validFrom)} – {formatDate(v.validTo)}</p></div>
                 </div>
                 <div className="mt-3 flex items-center justify-between">
-                  <p className="flex items-center gap-1 text-[9.5px] text-muted"><CalendarDays className="size-3" /> Created {timeAgo(v.createdAt)}</p>
-                  <form action={cancelPreApproval}><input type="hidden" name="visitorId" value={v.id} /><button className="rounded-lg px-2.5 py-1.5 text-[10px] font-semibold text-[#c43d4d] hover:bg-[#fdeced]">Cancel pass</button></form>
+                  <p className="flex items-center gap-1 text-caption text-muted"><CalendarDays className="size-4" /> Created {timeAgo(v.createdAt)}</p>
+                  <form action={cancelPreApproval}><input type="hidden" name="visitorId" value={v.id} /><button className="rounded-lg px-2.5 py-1.5 text-caption font-semibold text-[#c43d4d] hover:bg-[#fdeced]">Cancel pass</button></form>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <Card className="mt-4"><EmptyState icon={<KeyRound className="size-6" />} title="No active passes" description="Pre-approve a guest or regular visitor and they can walk straight in with their code." action={<Link href="/app/visitors/new" className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-4 py-2.5 text-[11.5px] font-semibold text-white">Create a pass</Link>} /></Card>
+          <Card className="mt-4"><EmptyState icon={<KeyRound className="size-6" />} title="No active passes" description="Pre-approve a guest or regular visitor and they can walk straight in with their code." action={<Link href="/app/visitors/new" className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-4 py-2.5 text-caption font-semibold text-white">Create a pass</Link>} /></Card>
         )
       ) : null}
 
@@ -131,8 +123,8 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
                 <div key={v.id} className="flex items-center gap-3 border-b border-line px-4 py-3 last:border-0 sm:px-5">
                   <Avatar name={v.name} color={v.photoColor} size="sm" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[12px] font-semibold text-ink">{v.name}</p>
-                    <p className="text-[9.5px] text-muted">{v.company ? `${v.company} · ` : ""}{v.type.replace("_", " ")} · {formatDate(v.createdAt)} {v.enteredAt ? `· in ${formatTime(v.enteredAt)}` : ""}{v.exitedAt ? ` · out ${formatTime(v.exitedAt)}` : ""}</p>
+                    <p className="truncate text-body font-semibold text-ink">{v.name}</p>
+                    <p className="text-caption text-muted">{v.company ? `${v.company} · ` : ""}{v.type.replace("_", " ")} · {formatDate(v.createdAt)} {v.enteredAt ? `· in ${formatTime(v.enteredAt)}` : ""}{v.exitedAt ? ` · out ${formatTime(v.exitedAt)}` : ""}</p>
                   </div>
                   {v.status === "denied" ? <Badge variant="danger">Denied</Badge> : v.status === "expired" ? <Badge variant="neutral">Expired</Badge> : v.status === "entered" ? <Badge variant="pink">Inside</Badge> : <Badge variant="success">Exited</Badge>}
                 </div>
@@ -146,24 +138,24 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
         <Card>
           <div className="flex items-start gap-3 p-5">
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600"><Users className="size-4" /></span>
-            <div className="flex-1"><p className="text-[12.5px] font-semibold text-ink">Daily help attendance</p><p className="mt-0.5 text-[10.5px] text-muted">Today&apos;s check-ins for your household staff</p></div>
-            <Link href="/app/my-home#help" className="text-[10.5px] font-semibold text-brand-600">Manage</Link>
+            <div className="flex-1"><p className="text-body font-semibold text-ink">Daily help attendance</p><p className="mt-0.5 text-caption text-muted">Today&apos;s check-ins for your household staff</p></div>
+            <Link href="/app/my-home#help" className="text-caption font-semibold text-brand-600">Manage</Link>
           </div>
           <div className="border-t border-line">
             {dailyHelp.length ? dailyHelp.map((d) => (
               <div key={d.attendance.id} className="flex items-center gap-2.5 border-b border-line/60 px-5 py-2.5 last:border-0">
                 <Avatar name={d.person.name} color={d.person.photoColor} size="sm" />
-                <div className="flex-1"><p className="text-[11px] font-semibold text-ink">{d.person.name}</p><p className="text-[9px] text-muted">{d.person.role}</p></div>
-                <span className="text-[9.5px] font-medium text-mint-600">In at {formatTime(d.attendance.checkInAt)}</span>
+                <div className="flex-1"><p className="text-caption font-semibold text-ink">{d.person.name}</p><p className="text-caption text-muted">{d.person.role}</p></div>
+                <span className="text-caption font-medium text-mint-600">In at {formatTime(d.attendance.checkInAt)}</span>
               </div>
-            )) : <p className="px-5 py-5 text-[10.5px] text-muted">No one has checked in yet today.</p>}
+            )) : <p className="px-5 py-5 text-caption text-muted">No one has checked in yet today.</p>}
           </div>
         </Card>
         <Card className="bg-gradient-to-br from-[#fbfcff] to-white">
           <div className="p-5">
-            <div className="flex items-center gap-2"><RefreshCcw className="size-4 text-brand-600" /><p className="text-[12.5px] font-semibold text-ink">Frequent visitors</p></div>
-            <p className="mt-1 text-[10.5px] leading-relaxed text-muted">Add your parents, a regular cab driver or a physiotherapist as a recurring pass so they never wait at the gate.</p>
-            <Link href="/app/visitors/new" className="mt-3 inline-flex items-center gap-1 text-[10.5px] font-semibold text-brand-600">Create a recurring pass <ChevronRight className="size-3" /></Link>
+            <div className="flex items-center gap-2"><RefreshCcw className="size-4 text-brand-600" /><p className="text-body font-semibold text-ink">Frequent visitors</p></div>
+            <p className="mt-1 text-caption leading-relaxed text-muted">Add your parents, a regular cab driver or a physiotherapist as a recurring pass so they never wait at the gate.</p>
+            <Link href="/app/visitors/new" className="mt-3 inline-flex items-center gap-1 text-caption font-semibold text-brand-600">Create a recurring pass <ChevronRight className="size-4" /></Link>
           </div>
         </Card>
       </div>

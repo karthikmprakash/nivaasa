@@ -1,265 +1,97 @@
 import Link from "next/link";
-import {
-  ArrowRight, ArrowUpRight, CalendarDays, CheckCircle2, ChevronRight, CircleDot, Clock3,
-  FileText, HelpCircle, MapPin, MessageSquare, Package, Plus, ShieldAlert, Sparkles,
-  TicketCheck, UserRoundPlus, Users, Vote, Wallet, Wrench, CalendarHeart, BellRing,
-} from "lucide-react";
-import { Avatar, Badge, Card, CardHeader, EmptyState, PageHeader, ProgressBar } from "@/components/ui/primitives";
+import { ArrowRight, CalendarDays, CalendarHeart, CheckCircle2, ChevronRight, Clock3, FileText, House, Package, ShieldAlert, UserRoundPlus, Users, Vote, Wallet, Wrench } from "lucide-react";
+import { Badge, Card, CardHeader, EmptyState, buttonClass, type BadgeVariant } from "@/components/ui/primitives";
 import { VisitorApprovalCard } from "@/components/app/visitor-approval-card";
 import { getResidentHomeData, requireResident } from "@/lib/queries";
 import { formatDate, formatINR, formatTime, timeAgo } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-const categoryStyle: Record<string, { label: string; variant: "blue" | "pink" | "success" | "warning" | "neutral" | "purple" }> = {
-  general: { label: "General", variant: "blue" },
-  maintenance: { label: "Maintenance", variant: "warning" },
-  security: { label: "Security", variant: "purple" },
-  event: { label: "Event", variant: "pink" },
-  finance: { label: "Finance", variant: "success" },
-  emergency: { label: "Emergency", variant: "danger" as never },
-};
-
-const quickActions = [
-  { href: "/app/visitors/new", label: "Pre-approve", icon: UserRoundPlus, tone: "bg-brand-50 text-brand-600" },
-  { href: "/app/helpdesk/new", label: "Helpdesk", icon: Wrench, tone: "bg-blush-50 text-blush-500" },
-  { href: "/app/amenities", label: "Amenities", icon: CalendarHeart, tone: "bg-[#f2effc] text-[#6a54c8]" },
-  { href: "/app/payments", label: "Payments", icon: Wallet, tone: "bg-mint-50 text-mint-600" },
-  { href: "/app/directory", label: "Directory", icon: Users, tone: "bg-[#f7f2e8] text-[#8a6a32]" },
-  { href: "/app/documents", label: "Documents", icon: FileText, tone: "bg-[#eef3f8] text-[#4b6a8a]" },
+const categoryTone: Record<string, BadgeVariant> = { general: "neutral", maintenance: "warning", security: "blue", event: "pink", finance: "success", emergency: "danger" };
+const services = [
+  { href: "/app/helpdesk/new", label: "Raise a request", icon: Wrench },
+  { href: "/app/amenities", label: "Book an amenity", icon: CalendarHeart },
+  { href: "/app/payments", label: "Payments", icon: Wallet },
+  { href: "/app/directory", label: "Directory", icon: Users },
+  { href: "/app/documents", label: "Documents", icon: FileText },
+  { href: "/app/my-home", label: "My household", icon: House },
 ];
 
 export default async function ResidentHomePage() {
   const ctx = await requireResident();
   const data = await getResidentHomeData(ctx);
-  const hour = Number(new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", hour12: false }));
+  const now = new Date();
+  const hour = Number(now.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", hour12: false }));
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
-  const firstName = ctx.user.name.split(" ")[0];
-  const activePoll = data.polls[0];
+  const activePoll = data.polls.find((poll) => !poll.endsAt || new Date(poll.endsAt) > now);
+  const hasDues = data.dues.total > 0;
 
-  return (
-    <div>
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="flex items-center gap-2 text-[11px] font-medium text-muted"><span className="inline-flex size-1.5 rounded-full bg-blush-400" /> {today} · {ctx.society.name}</p>
-          <h1 className="mt-1.5 font-display text-[34px] leading-none text-ink sm:text-[40px]">{greeting}, {firstName}.</h1>
-          <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">
-            {data.pendingVisitors.length > 0
-              ? `${data.pendingVisitors.length === 1 ? "Someone is" : `${data.pendingVisitors.length} people are`} waiting at the gate for you.`
-              : "The gate is quiet, the community is well. Here's what's happening today."}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link href="/app/visitors/new" className="inline-flex h-10 items-center gap-1.5 rounded-full bg-brand-600 px-4 text-[12px] font-semibold text-white shadow-[0_8px_20px_-10px_rgba(49,85,216,0.6)] hover:bg-brand-700">
-            <UserRoundPlus className="size-4" /> Pre-approve a visitor
-          </Link>
-          <Link href="/app/emergency" className="inline-flex h-10 items-center gap-1.5 rounded-full border border-[#f3d0d4] bg-[#fdf1f3] px-3.5 text-[12px] font-semibold text-[#c43d4d] hover:bg-[#fbe6e9]">
-            <ShieldAlert className="size-4" /> Emergency
-          </Link>
-        </div>
+  return <div>
+    <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+      <div>
+        <h1 className="text-title font-semibold tracking-[-0.03em] sm:text-[30px]">{greeting}, {ctx.user.name.split(" ")[0]}.</h1>
+        <p className="mt-2 text-body text-muted">{now.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", weekday: "long", day: "numeric", month: "long" })}<span className="mx-2 text-line-strong">/</span>Home {ctx.unit.number}</p>
       </div>
+      <Link href="/app/visitors/new" className={buttonClass("primary")}><UserRoundPlus aria-hidden="true" className="size-[18px]" /> Pre-approve a visitor</Link>
+    </div>
 
-      {data.dues.overdue > 0 ? (
-        <div className="mt-5 flex flex-col items-start justify-between gap-3 rounded-2xl border border-[#f0d6bd] bg-[#fff8ef] px-4 py-3 sm:flex-row sm:items-center">
-          <div className="flex items-start gap-2.5">
-            <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-[#fbe8d2] text-amber-ink"><BellRing className="size-3.5" /></span>
-            <div><p className="text-[12px] font-semibold text-ink">One invoice is overdue</p><p className="text-[10.5px] text-ink-soft">Settle {formatINR(data.dues.total)} across {data.dues.count} {data.dues.count === 1 ? "invoice" : "invoices"} to avoid a late fee.</p></div>
-          </div>
-          <Link href="/app/payments" className="text-[11px] font-semibold text-amber-ink hover:underline">Review payments →</Link>
+    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_336px]">
+      <section aria-labelledby="gate-heading" className="min-w-0">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2"><h2 id="gate-heading" className="text-section font-semibold">At your gate</h2>{data.pendingVisitors.length ? <Badge variant="warning" dot>{data.pendingVisitors.length} waiting</Badge> : null}</div>
+          <Link href="/app/visitors" className="inline-flex min-h-9 items-center gap-1 text-caption font-semibold text-brand-700">All visitors <ChevronRight className="size-4" /></Link>
         </div>
-      ) : null}
+        {data.pendingVisitors.length ? <div className="grid gap-3 2xl:grid-cols-2">{data.pendingVisitors.map((v) => <VisitorApprovalCard key={v.id} visitor={v} />)}</div> :
+          <div className="flex items-center gap-3 rounded-panel border border-line bg-white p-5"><CheckCircle2 className="size-6 shrink-0 text-mint-600" /><div><p className="text-body font-semibold">No visitors waiting</p><p className="mt-1 text-caption text-muted">Approval requests will appear here when someone arrives.</p></div></div>}
+      </section>
 
-      <div className="mt-6 grid gap-5 lg:grid-cols-[1.6fr_1fr]">
-        <div className="min-w-0 space-y-5">
-          {/* Quick actions */}
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-            {quickActions.map((a) => (
-              <Link key={a.href} href={a.href} className="group flex flex-col items-center gap-2 rounded-2xl border border-line bg-white px-2 py-3.5 text-center shadow-[0_1px_2px_rgba(19,26,42,0.03)] transition-all hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-soft">
-                <span className={`grid size-9 place-items-center rounded-xl ${a.tone} transition-transform group-hover:scale-105`}><a.icon className="size-[18px]" /></span>
-                <span className="text-[10.5px] font-semibold text-ink-soft">{a.label}</span>
-              </Link>
-            ))}
-          </div>
-
-          {/* Pending gate */}
-          <section>
-            <div className="mb-2.5 flex items-center justify-between px-0.5">
-              <div className="flex items-center gap-2">
-                <h2 className="text-[15px] font-semibold text-ink">At your gate</h2>
-                {data.pendingVisitors.length ? <span className="rounded-full bg-blush-100 px-2 py-0.5 text-[9.5px] font-bold text-blush-600">{data.pendingVisitors.length} waiting</span> : null}
-              </div>
-              <Link href="/app/visitors" className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-600 hover:text-brand-700">All visitors <ChevronRight className="size-3" /></Link>
-            </div>
-            {data.pendingVisitors.length ? (
-              <div className="grid gap-2.5 sm:grid-cols-2">
-                {data.pendingVisitors.map((v) => <VisitorApprovalCard key={v.id} visitor={{ ...v, createdAt: v.createdAt }} />)}
-              </div>
-            ) : (
-              <div className="flex items-center gap-3 rounded-2xl border border-line bg-white px-4 py-3.5">
-                <span className="grid size-9 place-items-center rounded-full bg-mint-50 text-mint-600"><CheckCircle2 className="size-4" /></span>
-                <div className="flex-1"><p className="text-[12px] font-semibold text-ink">You&apos;re all caught up</p><p className="text-[10.5px] text-muted">Approvals will appear here the moment someone arrives.</p></div>
-                <Link href="/app/visitors/new" className="text-[10.5px] font-semibold text-brand-600">Pre-approve</Link>
-              </div>
-            )}
-          </section>
-
-          {/* Notices */}
-          <Card>
-            <CardHeader
-              title="From your community"
-              description="Official notices and updates from the committee"
-              icon={<MessageSquare className="size-4" />}
-              action={<Link href="/app/community" className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-600">View all <ArrowRight className="size-3" /></Link>}
-            />
-            <div className="divide-y divide-line border-t border-line">
-              {data.notices.map((n) => {
-                const cat = categoryStyle[n.category] ?? categoryStyle.general;
-                return (
-                  <Link key={n.id} href={`/app/community/notices/${n.id}`} className="group flex items-start gap-3 px-5 py-3.5 transition-colors hover:bg-[#fbfcff] sm:px-6">
-                    <span className={`mt-1 size-2 shrink-0 rounded-full ${n.pinned ? "bg-blush-400" : "bg-brand-200"}`} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <Badge variant={cat.variant}>{cat.label}</Badge>
-                        {n.pinned ? <span className="text-[9px] font-bold uppercase tracking-wide text-blush-500">Pinned</span> : null}
-                        <span className="text-[9.5px] text-muted">{timeAgo(n.publishedAt)}</span>
-                      </div>
-                      <p className="mt-1.5 text-[12.5px] font-semibold leading-snug text-ink group-hover:text-brand-700">{n.title}</p>
-                      <p className="mt-0.5 line-clamp-1 text-[10.5px] leading-relaxed text-muted">{n.body.replace(/\n/g, " ")}</p>
-                    </div>
-                    <ChevronRight className="mt-2 size-3.5 shrink-0 text-[#c2c8d5] group-hover:text-brand-500" />
-                  </Link>
-                );
-              })}
-            </div>
-          </Card>
-
-          {/* Helpdesk + events */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Card>
-              <CardHeader title="Your requests" description="Open helpdesk tickets" icon={<Wrench className="size-4" />} action={<Link href="/app/helpdesk" className="text-[10.5px] font-semibold text-brand-600">All</Link>} />
-              <div className="border-t border-line">
-                {data.openTickets.length ? data.openTickets.map((t) => (
-                  <Link key={t.id} href={`/app/helpdesk/${t.id}`} className="flex items-center gap-3 border-b border-line/70 px-5 py-3 last:border-0 hover:bg-[#fbfcff]">
-                    <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-canvas text-brand-600"><TicketCheck className="size-3.5" /></span>
-                    <div className="min-w-0 flex-1"><p className="truncate text-[11.5px] font-semibold text-ink">{t.subject}</p><p className="text-[9.5px] text-muted">{t.category} · updated {timeAgo(t.updatedAt)}</p></div>
-                    <Badge variant={t.status === "in_progress" || t.status === "reopened" ? "blue" : "warning"}>{t.status.replace("_", " ")}</Badge>
-                  </Link>
-                )) : <EmptyState title="No open requests" description="Something need fixing? Raise a request and we'll track it." className="py-8" />}
-              </div>
-            </Card>
-
-            <Card>
-              <CardHeader title="Coming up" description="Events and bookings" icon={<CalendarDays className="size-4" />} action={<Link href="/app/community?tab=events" className="text-[10.5px] font-semibold text-brand-600">Calendar</Link>} />
-              <div className="border-t border-line">
-                {data.events.slice(0, 2).map((e) => (
-                  <Link key={e.id} href={`/app/community?tab=events`} className="flex gap-3 border-b border-line/70 px-5 py-3 last:border-0 hover:bg-[#fbfcff]">
-                    <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-blush-50 text-center">
-                      <span className="text-[7px] font-bold uppercase text-blush-500">{formatDate(e.startAt, { month: "short" })}</span>
-                      <span className="text-[13px] font-bold leading-none text-ink">{new Date(e.startAt).getDate()}</span>
-                    </div>
-                    <div className="min-w-0 flex-1"><p className="truncate text-[11.5px] font-semibold text-ink">{e.title}</p><p className="mt-0.5 flex items-center gap-1 text-[9.5px] text-muted"><Clock3 className="size-2.5" /> {formatTime(e.startAt)} · {e.location}</p></div>
-                    <ChevronRight className="mt-2 size-3.5 text-[#c2c8d5]" />
-                  </Link>
-                ))}
-                {data.upcomingBookings.map(({ booking, amenity }) => (
-                  <Link key={booking.id} href="/app/amenities" className="flex gap-3 border-b border-line/70 px-5 py-3 last:border-0 hover:bg-[#fbfcff]">
-                    <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600"><CalendarHeart className="size-4" /></div>
-                    <div className="min-w-0 flex-1"><p className="truncate text-[11.5px] font-semibold text-ink">{amenity.name}</p><p className="mt-0.5 text-[9.5px] text-muted">{formatDate(booking.date)} · {booking.startTime}–{booking.endTime}</p></div>
-                    <Badge variant="success">Confirmed</Badge>
-                  </Link>
-                ))}
-              </div>
-            </Card>
-          </div>
-
-          {/* Poll */}
-          {activePoll ? (
-            <div className="relative overflow-hidden rounded-[20px] border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-blush-50 p-5">
-              <div className="absolute -right-10 -top-10 size-32 rounded-full bg-blush-200/40 blur-2xl" />
-              <div className="relative flex items-start gap-3">
-                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white text-brand-600 shadow-sm"><Vote className="size-4" /></span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-brand-600">Your voice · {activePoll.audience === "owners" ? "Owners" : "All residents"}</p>
-                  <p className="mt-1 text-[13px] font-semibold leading-snug text-ink">{activePoll.question}</p>
-                  <p className="mt-1 text-[10px] text-muted">{activePoll.endsAt ? `Closes ${formatDate(activePoll.endsAt)}` : "Open poll"} · {activePoll.options.length} choices</p>
-                  <Link href="/app/community?tab=polls" className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-3.5 py-1.5 text-[10.5px] font-semibold text-white">{data.votedPollIds.has(activePoll.id) ? "See results" : "Cast your vote"} <ArrowRight className="size-3" /></Link>
-                </div>
-              </div>
-            </div>
-          ) : null}
+      <aside className="contents xl:col-start-2 xl:row-span-2 xl:block xl:space-y-5" aria-label="Your home summary">
+        <div className="order-1 rounded-panel border border-brand-200 bg-brand-50/70 p-5 xl:order-none">
+          <div className="flex items-center justify-between gap-2"><h2 className="text-body font-medium text-ink-soft">Maintenance & dues</h2><Wallet aria-hidden="true" className="size-[18px] text-brand-600" /></div>
+          <p className="mt-3 text-[36px] font-semibold leading-tight tracking-[-0.03em] tabular-nums text-ink">{formatINR(data.dues.total)}</p>
+          <p className="mt-1 text-caption text-ink-soft">{hasDues ? `${data.dues.count} open ${data.dues.count === 1 ? "invoice" : "invoices"}` : "All paid. You're up to date."}</p>
+          {data.dues.overdue > 0 ? <p className="mt-3 inline-flex items-center gap-1.5 text-caption font-medium text-amber-ink"><Clock3 className="size-4" /> {data.dues.overdue} {data.dues.overdue === 1 ? "invoice is" : "invoices are"} overdue</p> : null}
+          <Link href="/app/payments" className={`${buttonClass(hasDues ? "primary" : "outline")} mt-4 w-full`}>{hasDues ? "Review & pay" : "View payments"}<ArrowRight className="size-4" /></Link>
+          <Link href="/app/payments?tab=history" className="mt-3 flex min-h-9 items-center justify-center text-caption font-medium text-brand-700 hover:underline">Payment history & receipts</Link>
         </div>
-
-        {/* Right rail */}
-        <aside className="space-y-4">
-          <div className="relative overflow-hidden rounded-[20px] bg-gradient-to-br from-brand-600 via-brand-700 to-brand-800 p-5 text-white shadow-[0_24px_50px_-24px_rgba(49,85,216,0.7)]">
-            <div className="absolute -right-12 -top-12 size-36 rounded-full border-[18px] border-white/5" />
-            <div className="relative">
-              <div className="flex items-start justify-between">
-                <p className="text-[10px] font-medium text-white/60">Total due</p>
-                <Link href="/app/payments" className="text-[9.5px] font-semibold text-white/70 hover:text-white">Statement →</Link>
-              </div>
-              <p className="mt-1.5 text-[32px] font-semibold tracking-[-0.04em]">{formatINR(data.dues.total)}</p>
-              <p className="mt-1 text-[10px] text-white/55">{data.dues.count} {data.dues.count === 1 ? "invoice" : "invoices"}{data.dues.overdue ? ` · ${data.dues.overdue} overdue` : ""}</p>
-              <div className="mt-4 flex items-center gap-2">
-                <Link href="/app/payments" className="rounded-full bg-white px-4 py-2 text-[11px] font-bold text-brand-700 transition-transform hover:scale-[1.02]">Pay now</Link>
-                <Link href="/app/payments?tab=history" className="rounded-full border border-white/20 px-3 py-2 text-[10.5px] font-semibold text-white/80 hover:bg-white/10">Receipts</Link>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-2 border-t border-white/10 pt-3">
-                <div><p className="text-[8.5px] font-medium uppercase tracking-wide text-white/40">Advance</p><p className="mt-0.5 text-[12px] font-semibold">{formatINR(0)}</p></div>
-                <div><p className="text-[8.5px] font-medium uppercase tracking-wide text-white/40">Deposit</p><p className="mt-0.5 text-[12px] font-semibold">{formatINR(0)}</p></div>
-              </div>
-            </div>
+        <Card className="order-3 xl:order-none">
+          <CardHeader title={`Home ${ctx.unit.number}`} description={`${ctx.unit.unitType} · ${ctx.unit.areaSqft} sq ft`} action={<Link href="/app/my-home" className="text-caption font-semibold text-brand-700">Manage</Link>} />
+          <div className="grid grid-cols-3 divide-x divide-line border-t border-line py-4">
+            {[{ label: "Family", count: data.household.family, hash: "family" }, { label: "Vehicles", count: data.household.vehicles, hash: "vehicles" }, { label: "Pets", count: data.household.pets, hash: "pets" }].map((item) => <Link key={item.hash} href={`/app/my-home#${item.hash}`} className="text-center hover:text-brand-700"><p className="text-xl font-semibold tabular-nums">{item.count}</p><p className="mt-1 text-caption text-muted">{item.label}</p></Link>)}
           </div>
+        </Card>
+        <Card className="order-4 xl:order-none">
+          <CardHeader title="Deliveries" action={<Link href="/app/deliveries" className="text-caption font-semibold text-brand-700">View all</Link>} />
+          <div className="divide-y divide-line border-t border-line">
+            {data.deliveries.length ? data.deliveries.slice(0, 3).map((d) => <Link key={d.id} href="/app/deliveries" className="flex items-start gap-3 px-5 py-4 hover:bg-canvas/50"><Package aria-hidden="true" className="mt-0.5 size-[18px] shrink-0 text-muted" /><div className="min-w-0 flex-1"><p className="text-body font-semibold">{d.company}</p><p className="mt-1 text-caption text-muted">{d.status === "left_at_gate" ? "Ready to collect at the gate" : "Waiting at the gate"}</p>{d.otp ? <p className="mt-1 text-caption text-ink-soft">Pickup code <span className="font-semibold tabular-nums tracking-wider">{d.otp}</span></p> : null}</div><ChevronRight className="mt-1 size-4 shrink-0 text-muted" /></Link>) : <p className="px-5 py-5 text-body text-muted">No deliveries waiting.</p>}
+          </div>
+        </Card>
+        <Link href="/app/emergency" className="order-5 group flex min-h-16 items-center gap-3 rounded-xl border border-line bg-white px-4 py-3 hover:border-[#d5a8b0]"><ShieldAlert className="size-5 shrink-0 text-[#b83244]" /><div className="flex-1"><p className="text-body font-semibold">Emergency & safety</p><p className="text-caption text-muted">Alert the guard or find a contact</p></div><ChevronRight className="size-4 text-muted" /></Link>
+      </aside>
 
+      <div className="order-2 min-w-0 space-y-6 xl:order-none xl:col-start-1">
+        <section aria-label="Everyday services" className="grid grid-cols-2 gap-2 rounded-panel border border-line bg-white p-3 sm:grid-cols-3 sm:gap-2.5 sm:p-4">
+          {services.map((service) => <Link key={service.href} href={service.href} className="group flex min-h-12 min-w-0 items-center gap-2 rounded-control border border-transparent bg-canvas/70 px-2.5 text-body font-medium text-ink-soft transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 sm:gap-2.5 sm:px-3"><service.icon aria-hidden="true" className="size-[18px] shrink-0 text-muted group-hover:text-brand-600" /><span className="min-w-0 leading-tight">{service.label}</span></Link>)}
+        </section>
+        <Card>
+          <CardHeader title="Community updates" description="Notices from your committee" action={<Link href="/app/community" className="inline-flex items-center gap-1 text-caption font-semibold text-brand-700">View all <ArrowRight className="size-4" /></Link>} />
+          <div className="divide-y divide-line border-t border-line">
+            {data.notices.map((notice) => <Link key={notice.id} href={`/app/community/notices/${notice.id}`} className="group block px-5 py-4 transition-colors hover:bg-canvas/50 sm:px-6"><div className="flex flex-wrap items-center gap-2"><Badge variant={categoryTone[notice.category] ?? "neutral"}><span className="capitalize">{notice.category}</span></Badge>{notice.pinned ? <span className="text-caption font-medium text-ink-soft">Pinned</span> : null}<span className="ml-auto text-caption text-muted">{timeAgo(notice.publishedAt)}</span></div><h3 className="mt-2 text-body font-semibold leading-relaxed group-hover:text-brand-700">{notice.title}</h3><p className="mt-1 line-clamp-2 text-body leading-relaxed text-muted">{notice.body.replace(/\n/g, " ")}</p></Link>)}
+            {!data.notices.length ? <EmptyState title="No notices yet" description="Updates from your committee will appear here." /> : null}
+          </div>
+        </Card>
+        <div className="grid items-start gap-5 2xl:grid-cols-2">
           <Card>
-            <CardHeader title="Your home" description={`${ctx.unit.number} · ${ctx.unit.unitType} · ${ctx.unit.areaSqft} sq ft`} action={<Link href="/app/my-home" className="text-[10.5px] font-semibold text-brand-600">Manage</Link>} />
-            <div className="grid grid-cols-3 gap-px border-t border-line bg-line">
-              {[
-                { l: "Family", v: 3, href: "/app/my-home#family" },
-                { l: "Vehicles", v: 2, href: "/app/my-home#vehicles" },
-                { l: "Pets", v: 1, href: "/app/my-home#pets" },
-              ].map((s) => (
-                <Link key={s.l} href={s.href} className="bg-white px-3 py-3.5 text-center hover:bg-[#fbfcff]">
-                  <p className="text-[17px] font-semibold text-ink">{s.v}</p>
-                  <p className="text-[9.5px] text-muted">{s.l}</p>
-                </Link>
-              ))}
-            </div>
+            <CardHeader title="Your requests" action={<Link href="/app/helpdesk" className="text-caption font-semibold text-brand-700">View all</Link>} />
+            <div className="divide-y divide-line border-t border-line">{data.openTickets.length ? data.openTickets.map((ticket) => <Link key={ticket.id} href={`/app/helpdesk/${ticket.id}`} className="block px-5 py-4 hover:bg-canvas/50"><p className="text-body font-semibold">{ticket.subject}</p><div className="mt-2 flex flex-wrap items-center justify-between gap-2"><span className="text-caption text-muted">{ticket.category} · {timeAgo(ticket.updatedAt)}</span><Badge variant="neutral"><span className="capitalize">{ticket.status.replaceAll("_", " ")}</span></Badge></div></Link>) : <EmptyState title="No open requests" description="Need something fixed? Raise a request to the community team." action={<Link href="/app/helpdesk/new" className={buttonClass("outline", "sm")}>Raise a request</Link>} className="py-7" />}</div>
           </Card>
-
           <Card>
-            <CardHeader title="Deliveries" description="At the gate or left for you" icon={<Package className="size-4" />} action={<Link href="/app/deliveries" className="text-[10.5px] font-semibold text-brand-600">All</Link>} />
-            <div className="border-t border-line">
-              {data.deliveries.length ? data.deliveries.slice(0, 3).map((d) => (
-                <div key={d.id} className="flex items-center gap-2.5 border-b border-line/70 px-5 py-3 last:border-0">
-                  <span className={`size-1.5 rounded-full ${d.status === "arrived" ? "bg-blush-400" : "bg-amber-ink"}`} />
-                  <div className="min-w-0 flex-1"><p className="truncate text-[11px] font-semibold text-ink">{d.company} {d.status === "left_at_gate" ? "· kept at gate" : "· at the gate"}</p><p className="text-[9px] text-muted">{timeAgo(d.createdAt)} {d.otp ? `· OTP ${d.otp}` : ""}</p></div>
-                  <Badge variant={d.status === "arrived" ? "pink" : "warning"}>{d.status === "arrived" ? "Waiting" : "Collect"}</Badge>
-                </div>
-              )) : <p className="px-5 py-6 text-center text-[10.5px] text-muted">No deliveries at the gate.</p>}
-            </div>
+            <CardHeader title="Coming up" action={<Link href="/app/community?tab=events" className="text-caption font-semibold text-brand-700">All events</Link>} />
+            <div className="divide-y divide-line border-t border-line">{data.events.slice(0, 2).map((event) => <Link key={event.id} href="/app/community?tab=events" className="flex items-start gap-3 px-5 py-4 hover:bg-canvas/50"><div className="w-10 shrink-0 rounded-lg border border-line py-1 text-center"><p className="text-caption text-muted">{formatDate(event.startAt, { month: "short" })}</p><p className="text-lg font-semibold tabular-nums">{new Date(event.startAt).getDate()}</p></div><div className="min-w-0"><p className="text-body font-semibold">{event.title}</p><p className="mt-1 text-caption text-muted">{formatTime(event.startAt)} · {event.location}</p></div></Link>)}{data.upcomingBookings.map(({ booking, amenity }) => <Link key={booking.id} href="/app/amenities#bookings" className="flex items-start gap-3 px-5 py-4 hover:bg-canvas/50"><CalendarDays className="mt-1 size-5 shrink-0 text-muted" /><div><p className="text-body font-semibold">{amenity.name}</p><p className="mt-1 text-caption text-muted">{formatDate(booking.date)} · {booking.startTime}–{booking.endTime}</p></div></Link>)}{!data.events.length && !data.upcomingBookings.length ? <p className="px-5 py-6 text-body text-muted">No events or bookings coming up.</p> : null}</div>
           </Card>
-
-          <div className="rounded-[18px] border border-line bg-white p-4">
-            <div className="flex items-center gap-2.5">
-              <span className="relative grid size-8 place-items-center rounded-full bg-blush-50 text-blush-500"><ShieldAlert className="size-4" /><span className="absolute inset-0 rounded-full pulse-ring" /></span>
-              <div className="min-w-0 flex-1"><p className="text-[11px] font-semibold text-ink">Emergency & safety</p><p className="text-[9.5px] text-muted">Guard alert, contacts, medical info</p></div>
-              <Link href="/app/emergency" className="rounded-lg bg-[#fdf1f3] px-2.5 py-1.5 text-[9.5px] font-bold text-[#c43d4d]">Open</Link>
-            </div>
-          </div>
-
-          <div className="rounded-[18px] border border-line bg-[#fbfcff] p-4">
-            <div className="flex items-center justify-between"><p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">This month</p><CircleDot className="size-3 text-brand-300" /></div>
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <div><p className="text-[17px] font-semibold text-ink">184</p><p className="text-[9px] text-muted">gate entries</p></div>
-              <div><p className="text-[17px] font-semibold text-ink">12</p><p className="text-[9px] text-muted">visitor passes</p></div>
-            </div>
-            <ProgressBar value={84} tone="blue" className="mt-3" />
-            <p className="mt-1.5 text-[9px] text-muted">84% of this month&apos;s dues collected</p>
-          </div>
-        </aside>
+        </div>
+        {activePoll ? <section className="flex items-start gap-4 rounded-panel border border-line bg-white p-5"><Vote className="mt-1 size-5 shrink-0 text-muted" /><div><h2 className="text-section font-semibold">Have your say</h2><p className="mt-2 text-body text-ink-soft">{activePoll.question}</p><p className="mt-2 text-caption text-muted">{activePoll.endsAt ? `Closes ${formatDate(activePoll.endsAt)}` : "Voting is open"} · {activePoll.audience === "owners" ? "Owners" : "Residents"}</p><Link href="/app/community?tab=polls" className="mt-3 inline-flex min-h-9 items-center gap-2 text-body font-semibold text-brand-700">{data.votedPollIds.has(activePoll.id) ? "View results" : "Cast your vote"}<ArrowRight className="size-4" /></Link></div></section> : null}
       </div>
     </div>
-  );
+  </div>;
 }

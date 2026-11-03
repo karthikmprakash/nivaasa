@@ -1,11 +1,11 @@
 export const colors = {
-  canvas: "#f6f7fb",
+  canvas: "#f5f6f8",
   surface: "#ffffff",
   ink: "#131a2a",
   inkSoft: "#4b566c",
-  muted: "#7b859b",
-  line: "#e8eaf2",
-  lineStrong: "#d8dcea",
+  muted: "#626e82",
+  line: "#e3e7ee",
+  lineStrong: "#cbd2df",
   brand50: "#f2f5ff",
   brand100: "#e7edff",
   brand200: "#cfdbff",
@@ -22,9 +22,9 @@ export const colors = {
   blush500: "#e55d8b",
   blush600: "#cc3d71",
   mint50: "#eefaf4",
-  mint600: "#1f8a5b",
+  mint600: "#18764e",
   amberSoft: "#fff6e2",
-  amberInk: "#a66a12",
+  amberInk: "#87530e",
   danger: "#d94a5a",
   dangerSoft: "#fdeced",
 };
@@ -46,3 +46,14 @@ export const shadow = {
   shadowOffset: { width: 0, height: 8 },
   elevation: 3,
 };
+
+export const typeScale = { caption: 13, body: 15, section: 17, title: 29 } as const;
+export const radii = { control: 10, card: 16, overlay: 20 } as const;
+
+export function avatarTextColor(background: string) {
+  const hex = background.replace("#", "");
+  if (!/^[0-9a-f]{6}$/i.test(hex)) return "#ffffff";
+  const values = [0, 2, 4].map((index) => parseInt(hex.slice(index, index + 2), 16) / 255)
+    .map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+  return values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722 > 0.179 ? colors.ink : "#ffffff";
+}

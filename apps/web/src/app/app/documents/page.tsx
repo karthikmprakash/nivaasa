@@ -36,7 +36,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
   const list = visible.filter((d) => (cat === "all" || d.category === cat) && (!q || d.title.toLowerCase().includes(q)));
   return (
     <div>
-      <PageHeader eyebrow="The society archive" title="Documents" description="Bye-laws, AGM minutes, audited accounts and the forms you actually need — in one place, with the right access." actions={<div className="flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-2 text-[10px] font-medium text-muted"><ShieldCheck className="size-3.5 text-mint-600" /> Access-controlled</div>} />
+      <PageHeader eyebrow="The society archive" title="Documents" description="Bye-laws, AGM minutes, audited accounts and the forms you actually need — in one place, with the right access." actions={<div className="flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-2 text-caption font-medium text-muted"><ShieldCheck className="size-4 text-mint-600" /> Access-controlled</div>} />
       <div className="mt-5 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         <Stat label="Documents" value={visible.length} hint="Available to you" tone="blue" icon={<FolderOpen className="size-4" />} />
         <Stat label="Categories" value={Object.keys(meta).length} hint="Organised and searchable" icon={<BookOpenCheck className="size-4" />} />
@@ -46,12 +46,12 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
 
       <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
-          {categories.map((c) => <Link key={c} href={`/app/documents?cat=${c}`} className={`shrink-0 rounded-full border px-3.5 py-2 text-[11px] font-semibold ${cat === c ? "border-brand-600 bg-brand-600 text-white" : "border-line bg-white text-ink-soft hover:border-brand-200"}`}>{c === "all" ? "All documents" : meta[c]?.label ?? c}</Link>)}
+          {categories.map((c) => <Link key={c} href={`/app/documents?cat=${c}`} className={`shrink-0 rounded-full border px-3.5 py-2 text-caption font-semibold ${cat === c ? "border-brand-600 bg-brand-600 text-white" : "border-line bg-white text-ink-soft hover:border-brand-200"}`}>{c === "all" ? "All documents" : meta[c]?.label ?? c}</Link>)}
         </div>
         <form action="/app/documents" className="flex h-9 items-center gap-2 rounded-full border border-line bg-white px-3 lg:w-64">
           <input type="hidden" name="cat" value={cat} />
-          <Search className="size-3.5 text-muted" />
-          <input name="q" defaultValue={params.q} placeholder="Search documents…" className="w-full bg-transparent text-[11px] outline-none placeholder:text-muted" />
+          <Search className="size-4 text-muted" />
+          <input name="q" aria-label="Search" enterKeyHint="search" defaultValue={params.q} placeholder="Search documents…" className="w-full bg-transparent text-caption outline-none placeholder:text-muted" />
         </form>
       </div>
 
@@ -65,10 +65,10 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
                 <div key={d.id} className="flex items-center gap-3 px-5 py-4">
                   <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${m.tone}`}><Icon className="size-4" /></span>
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5"><p className="text-[12px] font-semibold text-ink">{d.title}</p>{d.visibility !== "all" ? <Badge variant="outline">{d.visibility === "owners" ? "Owners" : "Committee"}</Badge> : null}</div>
-                    <p className="mt-0.5 text-[9.5px] text-muted">{m.label} · {sizeLabel(d.fileSize)} · Uploaded {formatDate(d.createdAt)}</p>
+                    <div className="flex flex-wrap items-center gap-1.5"><p className="text-body font-semibold text-ink">{d.title}</p>{d.visibility !== "all" ? <Badge variant="outline">{d.visibility === "owners" ? "Owners" : "Committee"}</Badge> : null}</div>
+                    <p className="mt-0.5 text-caption text-muted">{m.label} · {sizeLabel(d.fileSize)} · Uploaded {formatDate(d.createdAt)}</p>
                   </div>
-                  <a href={d.fileUrl} target="_blank" download className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-[9.5px] font-semibold text-ink-soft hover:border-brand-200 hover:text-brand-700"><ArrowDownToLine className="size-3" /> Download</a>
+                  <a href={d.fileUrl} target="_blank" download className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-caption font-semibold text-ink-soft hover:border-brand-200 hover:text-brand-700"><ArrowDownToLine className="size-4" /> Download</a>
                 </div>
               );
             })}
@@ -77,19 +77,19 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
         </Card>
         <aside className="space-y-4">
           <div className="rounded-[20px] bg-gradient-to-br from-brand-600 to-brand-800 p-5 text-white">
-            <p className="flex items-center gap-2 text-[11px] font-semibold"><FolderOpen className="size-4 text-blush-200" /> Looking for something?</p>
-            <p className="mt-2 text-[10px] leading-relaxed text-white/55">If you need a document that isn&apos;t here — an NOC, a past AGM minute or an auditor&apos;s letter — ask the community office.</p>
-            <Link href="/app/helpdesk/new" className="mt-3 inline-flex rounded-full bg-white px-3 py-1.5 text-[9.5px] font-bold text-brand-700">Request a document</Link>
+            <p className="flex items-center gap-2 text-caption font-semibold"><FolderOpen className="size-4 text-blush-200" /> Looking for something?</p>
+            <p className="mt-2 text-caption leading-relaxed text-white/80">If you need a document that isn&apos;t here — an NOC, a past AGM minute or an auditor&apos;s letter — ask the community office.</p>
+            <Link href="/app/helpdesk/new" className="mt-3 inline-flex rounded-full bg-white px-3 py-1.5 text-caption font-bold text-brand-700">Request a document</Link>
           </div>
           <div className="rounded-[20px] border border-line bg-white p-4">
-            <p className="text-[11px] font-semibold text-ink">Access levels</p>
+            <p className="text-caption font-semibold text-ink">Access levels</p>
             <div className="mt-2 space-y-2">
-              {[["All residents", "General documents, forms and circulars"], ["Owners", "Financial statements and owner-only notices"], ["Committee", "Sensitive governance records"]].map(([l, d]) => <div key={l}><p className="text-[9.5px] font-semibold text-ink">{l}</p><p className="text-[8.5px] text-muted">{d}</p></div>)}
+              {[["All residents", "General documents, forms and circulars"], ["Owners", "Financial statements and owner-only notices"], ["Committee", "Sensitive governance records"]].map(([l, d]) => <div key={l}><p className="text-caption font-semibold text-ink">{l}</p><p className="text-caption text-muted">{d}</p></div>)}
             </div>
           </div>
           <div className="rounded-[20px] border border-line bg-[#fbfcff] p-4">
-            <p className="text-[11px] font-semibold text-ink">Document retention</p>
-            <p className="mt-1 text-[9.5px] leading-relaxed text-muted">Financial records are retained for 8 years, AGM minutes permanently, and operational circulars for 3 years.</p>
+            <p className="text-caption font-semibold text-ink">Document retention</p>
+            <p className="mt-1 text-caption leading-relaxed text-muted">Financial records are retained for 8 years, AGM minutes permanently, and operational circulars for 3 years.</p>
           </div>
         </aside>
       </div>

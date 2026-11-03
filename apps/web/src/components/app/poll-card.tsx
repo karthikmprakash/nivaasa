@@ -56,13 +56,13 @@ export function PollCard({ pollId, question, description, options, counts, total
   return (
     <div className={cn("rounded-2xl border border-line bg-white", compact ? "p-4" : "p-5 shadow-[0_1px_2px_rgba(19,26,42,0.03)]")}>
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600"><Vote className="size-3.5" /></span>
+        <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600"><Vote className="size-4" /></span>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-600">{closed ? "Poll closed" : "Open poll"} · {audience === "owners" ? "Owners" : "All residents"}</p>
-          <p className="mt-1 text-[13px] font-semibold leading-snug text-ink">{question}</p>
-          {description ? <p className="mt-1 text-[10.5px] leading-relaxed text-muted">{description}</p> : null}
+          <p className="text-caption font-semibold uppercase tracking-[0.1em] text-brand-600">{closed ? "Poll closed" : "Open poll"} · {audience === "owners" ? "Owners" : "All residents"}</p>
+          <p className="mt-1 text-body font-semibold leading-snug text-ink">{question}</p>
+          {description ? <p className="mt-1 text-caption leading-relaxed text-muted">{description}</p> : null}
         </div>
-        {secret ? <span className="inline-flex items-center gap-1 rounded-full bg-[#f1f3f9] px-2 py-1 text-[8px] font-semibold text-muted"><LockKeyhole className="size-2.5" /> Secret</span> : null}
+        {secret ? <span className="inline-flex items-center gap-1 rounded-full bg-[#f1f3f9] px-2 py-1 text-caption font-semibold text-muted"><LockKeyhole className="size-4" /> Secret</span> : null}
       </div>
 
       <div className="mt-3 space-y-1.5">
@@ -85,21 +85,21 @@ export function PollCard({ pollId, question, description, options, counts, total
               {resultsVisible ? <span className={cn("absolute inset-y-0 left-0 rounded-r-lg", isSelected ? "bg-brand-100/80" : "bg-[#f4f6fb]")} style={{ width: `${pct}%` }} /> : null}
               <span className="relative flex items-center gap-2">
                 <span className={cn("grid size-4 shrink-0 place-items-center rounded-full border", isSelected ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong bg-white")}>
-                  {isSelected ? <Check className="size-2.5" strokeWidth={3} /> : null}
+                  {isSelected ? <Check className="size-4" strokeWidth={3} /> : null}
                 </span>
-                <span className="flex-1 text-[11px] font-medium text-ink">{o.label}</span>
-                {resultsVisible ? <span className="text-[10px] font-semibold text-ink-soft">{pct}%</span> : null}
+                <span className="flex-1 text-caption font-medium text-ink">{o.label}</span>
+                {resultsVisible ? <span className="text-caption font-semibold text-ink-soft">{pct}%</span> : null}
                 {busy === o.id ? <span className="size-3 animate-spin rounded-full border-2 border-brand-400 border-t-transparent" /> : null}
               </span>
             </button>
           );
         })}
       </div>
-      <div className="mt-2.5 flex items-center justify-between text-[9px] text-muted">
-        <span className="inline-flex items-center gap-1"><Users className="size-2.5" /> {localTotal} {localTotal === 1 ? "vote" : "votes"}{selected ? " · you voted" : ""}</span>
+      <div className="mt-2.5 flex items-center justify-between text-caption text-muted">
+        <span className="inline-flex items-center gap-1"><Users className="size-4" /> {localTotal} {localTotal === 1 ? "vote" : "votes"}{selected ? " · you voted" : ""}</span>
         <span>{endsLabel}</span>
       </div>
-      {!canVote && !selected ? <p className="mt-2 rounded-lg bg-canvas px-2.5 py-1.5 text-[9px] text-muted">Only owners can vote in this poll.</p> : null}
+      {!canVote && !selected ? <p className="mt-2 rounded-lg bg-canvas px-2.5 py-1.5 text-caption text-muted">Only owners can vote in this poll.</p> : null}
       {hideResults && !selected && !closed ? null : null}
     </div>
   );

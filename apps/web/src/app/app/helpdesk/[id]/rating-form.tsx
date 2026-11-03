@@ -19,7 +19,7 @@ export function RatingForm({ ticketId }: { ticketId: string }) {
           </button>
         ))}
       </div>
-      <textarea name="feedback" rows={2} placeholder="Anything we should know? (optional)" className="mt-2 w-full rounded-xl border border-line-strong px-3 py-2 text-[11px] focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-100" />
+      <textarea name="feedback" rows={2} placeholder="Anything we should know? (optional)" className="mt-2 w-full rounded-xl border border-line-strong px-3 py-2 text-caption focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-100" />
       <SubmitButton size="sm" className="mt-2" disabled={!rating}>Submit feedback</SubmitButton>
     </form>
   );

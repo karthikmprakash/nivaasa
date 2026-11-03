@@ -1,14 +1,22 @@
 services:
   nivaasa:
     build: .
+    init: true
     ports:
       - "3000:3000"
     environment:
       DATABASE_PATH: /app/data/nivaasa.db
-      SESSION_SECRET: ${SESSION_SECRET:-change-me-to-a-long-random-string}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-true}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
       SEED_DEMO: ${SEED_DEMO:-true}
     volumes:
       - ./data:/app/data
       - ./apps/web/public/uploads:/app/apps/web/public/uploads
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s

@@ -9,6 +9,8 @@ import { invoices, memberships, moveRequests, towers, units, users } from "@/db/
 import { handleMoveRequest } from "@/lib/actions/admin";
 import { formatDate, formatINR } from "@/lib/utils";
 
+export const metadata = { title: "Residents & homes" };
+
 export const dynamic = "force-dynamic";
 
 export default async function AdminResidentsPage({ searchParams }: { searchParams: Promise<{ q?: string; tower?: string; status?: string }> }) {
@@ -43,7 +45,7 @@ export default async function AdminResidentsPage({ searchParams }: { searchParam
     <div>
       <PageHeader eyebrow="Community" title="Residents & homes" description="Every home, every resident and every move — with the financial context that matters." actions={<>
         {canAdd ? <AddResidentDialog units={vacant.map((v) => ({ id: v.unit.id, number: v.unit.number }))} /> : null}
-        <a href="/api/admin/export?type=residents" className="inline-flex h-9 items-center gap-1.5 rounded-full border border-line-strong bg-white px-3.5 text-[11px] font-semibold text-ink-soft hover:bg-canvas"><ArrowDownToLine className="size-3.5" /> Export</a>
+        <a href="/api/admin/export?type=residents" className="inline-flex h-9 items-center gap-1.5 rounded-full border border-line-strong bg-white px-3.5 text-caption font-semibold text-ink-soft hover:bg-canvas"><ArrowDownToLine className="size-4" /> Export</a>
       </>} />
       <div className="mt-5 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         <Stat label="Homes" value={unitRows.length} hint={`${towerRows.length} towers`} tone="blue" icon={<Building2 className="size-4" />} />
@@ -58,8 +60,8 @@ export default async function AdminResidentsPage({ searchParams }: { searchParam
           <div className="border-t border-line">
             {moves.map((m) => (
               <div key={m.request.id} className="flex flex-col gap-2 border-b border-line/70 px-5 py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-start gap-3"><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-amber-soft text-amber-ink"><MoveRight className="size-3.5" /></span><div><p className="text-[11px] font-semibold capitalize text-ink">{m.request.type.replace("_", " ")} · Home {m.unit} · {m.user}</p><p className="text-[9.5px] text-muted">{formatDate(m.request.date)} · {m.request.notes ?? "No notes"}</p></div></div>
-                <div className="flex items-center gap-2"><form action={handleMoveRequest}><input type="hidden" name="id" value={m.request.id} /><input type="hidden" name="decision" value="reject" /><button className="rounded-full border border-line px-2.5 py-1.5 text-[9px] font-semibold text-ink-soft">Reject</button></form><form action={handleMoveRequest}><input type="hidden" name="id" value={m.request.id} /><input type="hidden" name="decision" value="approve" /><button className="rounded-full bg-mint-600 px-2.5 py-1.5 text-[9px] font-semibold text-white">Approve</button></form></div>
+                <div className="flex items-start gap-3"><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-amber-soft text-amber-ink"><MoveRight className="size-4" /></span><div><p className="text-caption font-semibold capitalize text-ink">{m.request.type.replace("_", " ")} · Home {m.unit} · {m.user}</p><p className="text-caption text-muted">{formatDate(m.request.date)} · {m.request.notes ?? "No notes"}</p></div></div>
+                <div className="flex items-center gap-2"><form action={handleMoveRequest}><input type="hidden" name="id" value={m.request.id} /><input type="hidden" name="decision" value="reject" /><button className="rounded-full border border-line px-2.5 py-1.5 text-caption font-semibold text-ink-soft">Reject</button></form><form action={handleMoveRequest}><input type="hidden" name="id" value={m.request.id} /><input type="hidden" name="decision" value="approve" /><button className="rounded-full bg-mint-600 px-2.5 py-1.5 text-caption font-semibold text-white">Approve</button></form></div>
               </div>
             ))}
           </div>
@@ -68,25 +70,25 @@ export default async function AdminResidentsPage({ searchParams }: { searchParam
 
       <Card className="mt-4 overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-line p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap gap-1.5">{[{ v: "all", l: "All homes" }, { v: "occupied", l: "Occupied" }, { v: "vacant", l: "Vacant" }].map((f) => <Link key={f.v} href={`/admin/residents?status=${f.v}`} className={`rounded-full px-3 py-1.5 text-[10px] font-semibold ${statusFilter === f.v ? "bg-brand-600 text-white" : "bg-canvas text-ink-soft"}`}>{f.l}</Link>)}{towerRows.map((t) => <Link key={t.id} href={`/admin/residents?tower=${t.id}`} className={`rounded-full px-3 py-1.5 text-[10px] font-semibold ${towerFilter === t.id ? "bg-brand-600 text-white" : "bg-canvas text-ink-soft"}`}>Tower {t.code}</Link>)}</div>
-          <form action="/admin/residents" className="flex h-8 items-center gap-2 rounded-full border border-line bg-white px-3 sm:w-60"><Search className="size-3 text-muted" /><input name="q" defaultValue={params.q} placeholder="Search home or resident…" className="w-full bg-transparent text-[10px] outline-none placeholder:text-muted" /></form>
+          <div className="flex flex-wrap gap-1.5"><Link href="/admin/residents" className="inline-flex items-center rounded-lg px-2 text-caption font-medium text-brand-700">Reset filters</Link>{[{ v: "all", l: "All homes" }, { v: "occupied", l: "Occupied" }, { v: "vacant", l: "Vacant" }].map((f) => <Link key={f.v} href={`/admin/residents?${new URLSearchParams({ status: f.v, tower: towerFilter, q: params.q ?? "" })}`} aria-current={statusFilter === f.v ? "page" : undefined} className={`rounded-full px-3 py-1.5 text-caption font-semibold ${statusFilter === f.v ? "bg-brand-600 text-white" : "bg-canvas text-ink-soft"}`}>{f.l}</Link>)}{towerRows.map((t) => <Link key={t.id} href={`/admin/residents?${new URLSearchParams({ tower: t.id, status: statusFilter, q: params.q ?? "" })}`} aria-current={towerFilter === t.id ? "page" : undefined} className={`rounded-full px-3 py-1.5 text-caption font-semibold ${towerFilter === t.id ? "bg-brand-600 text-white" : "bg-canvas text-ink-soft"}`}>Tower {t.code}</Link>)}</div>
+          <form action="/admin/residents" className="flex min-h-11 items-center gap-2 rounded-full border border-line bg-white px-3 sm:w-72"><Search className="size-4 text-muted" /><input type="hidden" name="status" value={statusFilter} /><input type="hidden" name="tower" value={towerFilter} /><input name="q" aria-label="Search homes or residents" autoFocus={!!params.q} defaultValue={params.q} placeholder="Search home or resident…" className="w-full bg-transparent text-caption outline-none placeholder:text-muted" /></form>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-left">
-            <thead><tr className="bg-[#fbfcff]">{["Home", "Resident", "Role", "Type / area", "Outstanding", "Status", ""].map((h) => <th key={h} className="border-b border-line px-4 py-2.5 text-[8.5px] font-bold uppercase tracking-[0.1em] text-muted">{h}</th>)}</tr></thead>
+            <thead><tr className="bg-[#fbfcff]">{["Home", "Resident", "Role", "Type / area", "Outstanding", "Status", ""].map((h) => <th key={h} className="border-b border-line px-4 py-2.5 text-caption font-bold uppercase tracking-[0.1em] text-muted">{h}</th>)}</tr></thead>
             <tbody>
               {filtered.map(({ unit, tower }) => {
                 const resident = memberByUnit.get(unit.id);
                 const dues = duesByUnit.get(unit.id) ?? 0;
                 return (
                   <tr key={unit.id} className="group border-b border-line/70 last:border-0 hover:bg-[#fbfcff]">
-                    <td className="px-4 py-3"><Link href={`/admin/residents/${unit.id}`} className="text-[11px] font-semibold text-ink group-hover:text-brand-700">{unit.number}</Link><p className="text-[8.5px] text-muted">{tower.name} · Floor {unit.floor}</p></td>
-                    <td className="px-4 py-3">{resident ? <div className="flex items-center gap-2"><Avatar name={resident.user.name} color={resident.user.avatarColor} size="xs" /><div><p className="text-[10px] font-semibold text-ink">{resident.user.name}</p><p className="text-[8px] text-muted">{resident.user.phone}</p></div></div> : <span className="text-[9px] text-muted">Vacant</span>}</td>
-                    <td className="px-4 py-3">{resident ? <Badge variant={resident.membership.role === "tenant" ? "outline" : "blue"}>{resident.membership.role === "committee" ? "Committee" : resident.membership.role}</Badge> : <span className="text-[9px] text-muted">—</span>}</td>
-                    <td className="px-4 py-3"><p className="text-[9.5px] text-ink-soft">{unit.unitType}</p><p className="text-[8px] text-muted">{unit.areaSqft} sq ft</p></td>
-                    <td className="px-4 py-3"><span className={`text-[10px] font-semibold ${dues ? "text-[#c43d4d]" : "text-mint-600"}`}>{dues ? formatINR(dues) : "Clear"}</span></td>
+                    <td className="px-4 py-3"><Link href={`/admin/residents/${unit.id}`} className="text-caption font-semibold text-ink group-hover:text-brand-700">{unit.number}</Link><p className="text-caption text-muted">{tower.name} · Floor {unit.floor}</p></td>
+                    <td className="px-4 py-3">{resident ? <div className="flex items-center gap-2"><Avatar name={resident.user.name} color={resident.user.avatarColor} size="xs" /><div><p className="text-caption font-semibold text-ink">{resident.user.name}</p><p className="text-caption text-muted">{resident.user.phone}</p></div></div> : <span className="text-caption text-muted">Vacant</span>}</td>
+                    <td className="px-4 py-3">{resident ? <Badge variant={resident.membership.role === "tenant" ? "outline" : "blue"}>{resident.membership.role === "committee" ? "Committee" : resident.membership.role}</Badge> : <span className="text-caption text-muted">—</span>}</td>
+                    <td className="px-4 py-3"><p className="text-caption text-ink-soft">{unit.unitType}</p><p className="text-caption text-muted">{unit.areaSqft} sq ft</p></td>
+                    <td className="px-4 py-3"><span className={`text-caption font-semibold ${dues ? "text-[#c43d4d]" : "text-mint-600"}`}>{dues ? formatINR(dues) : "Clear"}</span></td>
                     <td className="px-4 py-3"><Badge variant={resident ? "success" : "neutral"}>{resident ? "Occupied" : "Vacant"}</Badge></td>
-                    <td className="px-4 py-3 text-right"><Link href={`/admin/residents/${unit.id}`} className="inline-flex size-6 items-center justify-center rounded-full text-muted hover:bg-brand-50 hover:text-brand-600"><ChevronRight className="size-3.5" /></Link></td>
+                    <td className="px-4 py-3 text-right"><Link href={`/admin/residents/${unit.id}`} aria-label={`View home ${unit.number}`} className="inline-flex size-10 items-center justify-center rounded-full text-muted hover:bg-brand-50 hover:text-brand-600"><ChevronRight className="size-4" /></Link></td>
                   </tr>
                 );
               })}
