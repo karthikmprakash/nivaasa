@@ -9,9 +9,6 @@ on:
       - Dockerfile
       - .dockerignore
       - docker/**
-      - apps/**
-      - package.json
-      - package-lock.json
       - .github/workflows/docker.yml
   workflow_dispatch:
 
@@ -60,7 +57,8 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
+          # The Dokploy VPS is amd64. Add linux/arm64 here if you deploy on ARM.
+          platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
