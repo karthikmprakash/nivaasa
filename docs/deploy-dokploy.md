@@ -12,10 +12,9 @@ This is the production runbook for **nivaasa.karthikmprakash.online**. The image
 
 ## 1. Make the image available
 
-The package is private by default. Either:
+The published `karthikmprakash/nivaasa` package is **public**, so Dokploy can pull it without credentials.
 
-- **Public package (simple):** GitHub → your profile → Packages → `nivaasa` → Package settings → Change visibility → Public.
-- **Private package:** create a GitHub PAT (classic) with `read:packages`, then add it in Dokploy under **Settings → Registries** (registry `ghcr.io`, username `karthikmprakash`, token = PAT).
+If you fork the repository and keep your package private, either make it public (GitHub → your profile → Packages → `nivaasa` → Package settings → Change visibility) or create a GitHub PAT (classic) with `read:packages` and add it in Dokploy under **Settings → Registries** (registry `ghcr.io`, username your GitHub username, token = PAT).
 
 ## 2. Create the Dokploy application
 

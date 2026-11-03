@@ -10,7 +10,7 @@ Nivaasa is a self-hosted, multi-tenant community platform for resident welfare a
 [![CI](https://github.com/karthikmprakash/nivaasa/actions/workflows/ci.yml/badge.svg)](https://github.com/karthikmprakash/nivaasa/actions/workflows/ci.yml)
 [![Container](https://github.com/karthikmprakash/nivaasa/actions/workflows/docker.yml/badge.svg)](https://github.com/karthikmprakash/nivaasa/actions/workflows/docker.yml)
 [![Release](https://img.shields.io/github/v/release/karthikmprakash/nivaasa?color=3155d8)](https://github.com/karthikmprakash/nivaasa/releases)
-[![GHCR](https://img.shields.io/badge/ghcr.io-nivaasa-3155d8)](https://github.com/karthikmprakash/nivaasa/pkgs/container/nivaasa)
+[![GHCR](https://img.shields.io/badge/ghcr.io-nivaasa-3155d8)](https://github.com/users/karthikmprakash/packages/container/package/nivaasa)
 [![License: MIT](https://img.shields.io/badge/license-MIT-3155d8.svg)](LICENSE)
 
 ![Nivaasa landing page](docs/screenshots/landing.jpg)
