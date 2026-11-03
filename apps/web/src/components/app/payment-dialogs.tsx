@@ -177,7 +177,7 @@ export function AdvanceButton({ advance }: { advance: number }) {
           <div className="space-y-4">
             <Field label="Amount (₹)"><Input type="number" min={1} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="5000" /></Field>
             <div className="grid grid-cols-3 gap-2">{methods.map((m) => <button key={m.id} onClick={() => setMethod(m.id)} className={`flex flex-col items-center gap-1 rounded-xl border py-2.5 ${method === m.id ? "border-brand-600 bg-brand-50" : "border-line"}`}><m.icon className="size-4 text-brand-600" /><span className="text-[9.5px] font-semibold">{m.label}</span></button>)}</div>
-            <p className="rounded-lg bg-canvas px-3 py-2 text-[9.5px] text-muted">Advance is used against future invoices. Demo gateway — no money moves.</p>
+            <p className="rounded-lg bg-canvas px-3 py-2 text-[9.5px] text-muted">Your advance is held on account and adjusted by the accounts team. Demo gateway — no money moves.</p>
             <Button className="w-full" onClick={pay} disabled={busy}>{busy ? "Processing…" : `Add ${amount ? formatINR(Math.round(Number(amount) * 100)) : "advance"}`}</Button>
           </div>
         )}

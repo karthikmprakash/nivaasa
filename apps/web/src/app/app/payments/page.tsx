@@ -145,7 +145,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
             </div>
             <div className="rounded-[18px] bg-gradient-to-br from-blush-50 to-brand-50 p-4">
               <p className="text-[11px] font-semibold text-ink">Advance keeps it simple</p>
-              <p className="mt-1 text-[9.5px] leading-relaxed text-ink-soft">Add money to your advance and we&apos;ll settle future invoices automatically. No last-minute payments, no late fees.</p>
+              <p className="mt-1 text-[9.5px] leading-relaxed text-ink-soft">Add money to your advance and the accounts team can adjust it against future invoices. Your balance never expires.</p>
               <div className="mt-3"><AdvanceButton advance={advance} /></div>
             </div>
           </aside>
