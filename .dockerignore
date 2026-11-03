@@ -6,6 +6,8 @@ data
 research
 docs
 brand
+**/.env
+**/.env.*
 apps/web/public/uploads
 *.db
 *.db-wal
