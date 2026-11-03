@@ -1,0 +1,21 @@
+{
+  "name": "my-community",
+  "private": true,
+  "version": "1.0.0",
+  "description": "MyCommunity \u2014 open-source community operating system for gated societies",
+  "license": "MIT",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @mycommunity/web",
+    "build": "npm run build --workspace @mycommunity/web",
+    "start": "npm run start --workspace @mycommunity/web",
+    "db:seed": "npm run db:seed --workspace @mycommunity/web",
+    "typecheck": "npm run typecheck --workspace @mycommunity/web",
+    "mobile": "npm run start --workspace @mycommunity/mobile",
+    "setup": "npm install && npm run db:push && npm run db:seed",
+    "db:push": "npm run db:push --workspace @mycommunity/web",
+    "check": "npm run typecheck && npm run typecheck --workspace @mycommunity/mobile"
+  }
+}

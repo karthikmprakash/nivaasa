@@ -1,0 +1,14 @@
+services:
+  nivaasa:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_PATH: /app/data/nivaasa.db
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-to-a-long-random-string}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      SEED_DEMO: ${SEED_DEMO:-true}
+    volumes:
+      - ./data:/app/data
+      - ./apps/web/public/uploads:/app/apps/web/public/uploads
+    restart: unless-stopped

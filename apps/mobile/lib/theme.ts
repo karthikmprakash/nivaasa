@@ -1,0 +1,48 @@
+export const colors = {
+  canvas: "#f6f7fb",
+  surface: "#ffffff",
+  ink: "#131a2a",
+  inkSoft: "#4b566c",
+  muted: "#7b859b",
+  line: "#e8eaf2",
+  lineStrong: "#d8dcea",
+  brand50: "#f2f5ff",
+  brand100: "#e7edff",
+  brand200: "#cfdbff",
+  brand400: "#7795f7",
+  brand500: "#4f70e8",
+  brand600: "#3155d8",
+  brand700: "#2643b8",
+  brand800: "#223b94",
+  blush50: "#fff5f8",
+  blush100: "#fdeaf0",
+  blush200: "#fbd2df",
+  blush300: "#f6abc4",
+  blush400: "#ef7fa4",
+  blush500: "#e55d8b",
+  blush600: "#cc3d71",
+  mint50: "#eefaf4",
+  mint600: "#1f8a5b",
+  amberSoft: "#fff6e2",
+  amberInk: "#a66a12",
+  danger: "#d94a5a",
+  dangerSoft: "#fdeced",
+};
+
+export const fonts = {
+  regular: "PlusJakartaSans_400Regular",
+  medium: "PlusJakartaSans_500Medium",
+  semibold: "PlusJakartaSans_600SemiBold",
+  bold: "PlusJakartaSans_700Bold",
+  extraBold: "PlusJakartaSans_800ExtraBold",
+  serif: "InstrumentSerif_400Regular",
+  serifItalic: "InstrumentSerif_400Regular_Italic",
+};
+
+export const shadow = {
+  shadowColor: "#131a2a",
+  shadowOpacity: 0.06,
+  shadowRadius: 18,
+  shadowOffset: { width: 0, height: 8 },
+  elevation: 3,
+};

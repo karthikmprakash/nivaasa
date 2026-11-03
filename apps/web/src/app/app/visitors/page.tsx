@@ -1,0 +1,172 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { and, desc, eq, gte, inArray, or } from "drizzle-orm";
+import {
+  ArrowRight, CalendarDays, CheckCircle2, ChevronRight, Clock3, KeyRound, ShieldCheck,
+  UserRoundPlus, Users, XCircle, Package, RefreshCcw, History,
+} from "lucide-react";
+import { Avatar, Badge, Card, EmptyState, PageHeader, Stat } from "@/components/ui/primitives";
+import { VisitorApprovalCard } from "@/components/app/visitor-approval-card";
+import { requireResident } from "@/lib/queries";
+import { db } from "@/db";
+import { staff, staffAttendance, visitors } from "@/db/schema";
+import { cancelPreApproval } from "@/lib/actions/visitors";
+import { formatDate, formatTime, timeAgo, todayISO } from "@/lib/utils";
+
+export const metadata: Metadata = { title: "Visitors" };
+
+export const dynamic = "force-dynamic";
+
+const tabs = [
+  { value: "pending", label: "Waiting" },
+  { value: "upcoming", label: "Pre-approved" },
+  { value: "history", label: "History" },
+];
+
+export default async function VisitorsPage({ searchParams }: { searchParams: Promise<{ tab?: string; created?: string; name?: string }> }) {
+  const ctx = await requireResident();
+  const params = await searchParams;
+  const tab = params.tab ?? "pending";
+  const now = new Date();
+  const all = await db.select().from(visitors).where(eq(visitors.unitId, ctx.unit.id)).orderBy(desc(visitors.createdAt));
+  const pending = all.filter((v) => v.status === "pending");
+  const upcoming = all.filter((v) => v.preApproved && ["approved", "pending"].includes(v.status) && (!v.validTo || v.validTo >= now));
+  const history = all.filter((v) => ["entered", "exited", "denied", "expired"].includes(v.status) || (v.validTo && v.validTo < now));
+  const entriesThisMonth = all.filter((v) => v.enteredAt && v.enteredAt.getMonth() === now.getMonth() && v.enteredAt.getFullYear() === now.getFullYear()).length;
+  const dailyHelp = await db.select({ attendance: staffAttendance, person: staff }).from(staffAttendance).innerJoin(staff, eq(staffAttendance.staffId, staff.id)).where(and(eq(staffAttendance.unitId, ctx.unit.id), eq(staffAttendance.date, todayISO())));
+
+  return (
+    <div>
+      <PageHeader
+        eyebrow="Gate & security"
+        title="Visitors"
+        description="Approve people at the gate, create passes for expected guests, and see every entry linked to your home."
+        actions={<Link href="/app/visitors/new" className="inline-flex h-10 items-center gap-1.5 rounded-full bg-brand-600 px-4 text-[12px] font-semibold text-white shadow-[0_8px_20px_-10px_rgba(49,85,216,0.6)] hover:bg-brand-700"><UserRoundPlus className="size-4" /> Pre-approve</Link>}
+      />
+
+      {params.created ? (
+        <div className="mt-5 overflow-hidden rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-50 via-white to-blush-50 p-4 sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-mint-50 text-mint-600"><CheckCircle2 className="size-5" /></span>
+              <div>
+                <p className="text-[13px] font-semibold text-ink">Pass created for {params.name ?? "your visitor"}</p>
+                <p className="mt-0.5 text-[11px] text-ink-soft">Share this 6-digit code with them. The guard will verify it at the gate.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="rounded-xl border border-brand-200 bg-white px-4 py-2.5 text-center">
+                <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-muted">Entry code</p>
+                <p className="mt-0.5 font-mono text-[19px] font-bold tracking-[0.2em] text-brand-700">{params.created}</p>
+              </div>
+              <Link href="/app/visitors?tab=upcoming" className="rounded-full bg-brand-600 px-4 py-2.5 text-[11px] font-semibold text-white">View pass</Link>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mt-5 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+        <Stat label="Waiting at gate" value={pending.length} hint={pending.length ? "Needs your response" : "All clear"} tone="pink" icon={<Clock3 className="size-4" />} />
+        <Stat label="Active passes" value={upcoming.length} hint="Pre-approved visitors" tone="blue" icon={<KeyRound className="size-4" />} />
+        <Stat label="Entries this month" value={entriesThisMonth} hint="Linked to your home" icon={<ShieldCheck className="size-4" />} />
+        <Stat label="Daily help today" value={dailyHelp.length} hint={dailyHelp.map((d) => d.person.name.split(" ")[0]).join(", ") || "No arrivals yet"} tone="green" icon={<Users className="size-4" />} />
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-center gap-1.5">
+        {tabs.map((t) => {
+          const count = t.value === "pending" ? pending.length : t.value === "upcoming" ? upcoming.length : history.length;
+          return (
+            <Link key={t.value} href={`/app/visitors?tab=${t.value}`} className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[11.5px] font-semibold transition-colors ${tab === t.value ? "border-brand-600 bg-brand-600 text-white" : "border-line bg-white text-ink-soft hover:border-brand-200"}`}>
+              {t.label} <span className={`rounded-full px-1.5 py-0.5 text-[9px] ${tab === t.value ? "bg-white/20" : "bg-canvas"}`}>{count}</span>
+            </Link>
+          );
+        })}
+      </div>
+
+      {tab === "pending" ? (
+        pending.length ? (
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {pending.map((v) => <VisitorApprovalCard key={v.id} visitor={v} />)}
+          </div>
+        ) : (
+          <Card className="mt-4"><EmptyState icon={<ShieldCheck className="size-6" />} title="The gate is quiet" description="Nobody is waiting for your approval right now. We'll notify you the moment someone arrives." action={<Link href="/app/visitors/new" className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-4 py-2.5 text-[11.5px] font-semibold text-white">Pre-approve a visitor <ArrowRight className="size-3.5" /></Link>} /></Card>
+        )
+      ) : null}
+
+      {tab === "upcoming" ? (
+        upcoming.length ? (
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {upcoming.map((v) => (
+              <div key={v.id} className="relative overflow-hidden rounded-2xl border border-line bg-white p-4 shadow-[0_1px_2px_rgba(19,26,42,0.03)]">
+                <div className="absolute inset-y-0 left-0 w-[3px] bg-brand-500" />
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <Avatar name={v.name} color={v.photoColor} size="md" />
+                    <div><p className="text-[13px] font-semibold text-ink">{v.name}</p><p className="text-[10.5px] text-muted">{v.company ? `${v.company} · ` : ""}{v.purpose ?? v.type.replace("_", " ")}</p></div>
+                  </div>
+                  <Badge variant={v.leaveAtGate ? "warning" : "success"}>{v.leaveAtGate ? "Leave at gate" : "Pre-approved"}</Badge>
+                </div>
+                <div className="mt-3 flex items-center gap-2 rounded-xl bg-canvas px-3 py-2">
+                  <KeyRound className="size-3.5 text-brand-600" />
+                  <div className="flex-1"><p className="text-[8.5px] font-semibold uppercase tracking-wide text-muted">Entry code</p><p className="font-mono text-[14px] font-bold tracking-[0.18em] text-ink">{v.code}</p></div>
+                  <div className="text-right"><p className="text-[8.5px] font-semibold uppercase tracking-wide text-muted">Valid</p><p className="text-[10px] font-semibold text-ink">{formatDate(v.validFrom)} – {formatDate(v.validTo)}</p></div>
+                </div>
+                <div className="mt-3 flex items-center justify-between">
+                  <p className="flex items-center gap-1 text-[9.5px] text-muted"><CalendarDays className="size-3" /> Created {timeAgo(v.createdAt)}</p>
+                  <form action={cancelPreApproval}><input type="hidden" name="visitorId" value={v.id} /><button className="rounded-lg px-2.5 py-1.5 text-[10px] font-semibold text-[#c43d4d] hover:bg-[#fdeced]">Cancel pass</button></form>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Card className="mt-4"><EmptyState icon={<KeyRound className="size-6" />} title="No active passes" description="Pre-approve a guest or regular visitor and they can walk straight in with their code." action={<Link href="/app/visitors/new" className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-4 py-2.5 text-[11.5px] font-semibold text-white">Create a pass</Link>} /></Card>
+        )
+      ) : null}
+
+      {tab === "history" ? (
+        <Card className="mt-4 overflow-hidden">
+          {history.length ? (
+            <div>
+              {history.map((v) => (
+                <div key={v.id} className="flex items-center gap-3 border-b border-line px-4 py-3 last:border-0 sm:px-5">
+                  <Avatar name={v.name} color={v.photoColor} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[12px] font-semibold text-ink">{v.name}</p>
+                    <p className="text-[9.5px] text-muted">{v.company ? `${v.company} · ` : ""}{v.type.replace("_", " ")} · {formatDate(v.createdAt)} {v.enteredAt ? `· in ${formatTime(v.enteredAt)}` : ""}{v.exitedAt ? ` · out ${formatTime(v.exitedAt)}` : ""}</p>
+                  </div>
+                  {v.status === "denied" ? <Badge variant="danger">Denied</Badge> : v.status === "expired" ? <Badge variant="neutral">Expired</Badge> : v.status === "entered" ? <Badge variant="pink">Inside</Badge> : <Badge variant="success">Exited</Badge>}
+                </div>
+              ))}
+            </div>
+          ) : <EmptyState icon={<History className="size-6" />} title="No visitor history yet" description="Once visitors enter or exit, the full log will appear here." />}
+        </Card>
+      ) : null}
+
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <Card>
+          <div className="flex items-start gap-3 p-5">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600"><Users className="size-4" /></span>
+            <div className="flex-1"><p className="text-[12.5px] font-semibold text-ink">Daily help attendance</p><p className="mt-0.5 text-[10.5px] text-muted">Today&apos;s check-ins for your household staff</p></div>
+            <Link href="/app/my-home#help" className="text-[10.5px] font-semibold text-brand-600">Manage</Link>
+          </div>
+          <div className="border-t border-line">
+            {dailyHelp.length ? dailyHelp.map((d) => (
+              <div key={d.attendance.id} className="flex items-center gap-2.5 border-b border-line/60 px-5 py-2.5 last:border-0">
+                <Avatar name={d.person.name} color={d.person.photoColor} size="sm" />
+                <div className="flex-1"><p className="text-[11px] font-semibold text-ink">{d.person.name}</p><p className="text-[9px] text-muted">{d.person.role}</p></div>
+                <span className="text-[9.5px] font-medium text-mint-600">In at {formatTime(d.attendance.checkInAt)}</span>
+              </div>
+            )) : <p className="px-5 py-5 text-[10.5px] text-muted">No one has checked in yet today.</p>}
+          </div>
+        </Card>
+        <Card className="bg-gradient-to-br from-[#fbfcff] to-white">
+          <div className="p-5">
+            <div className="flex items-center gap-2"><RefreshCcw className="size-4 text-brand-600" /><p className="text-[12.5px] font-semibold text-ink">Frequent visitors</p></div>
+            <p className="mt-1 text-[10.5px] leading-relaxed text-muted">Add your parents, a regular cab driver or a physiotherapist as a recurring pass so they never wait at the gate.</p>
+            <Link href="/app/visitors/new" className="mt-3 inline-flex items-center gap-1 text-[10.5px] font-semibold text-brand-600">Create a recurring pass <ChevronRight className="size-3" /></Link>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
