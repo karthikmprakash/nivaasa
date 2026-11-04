@@ -95,7 +95,9 @@ The seed creates **Verdant Heights** (Bengaluru, 72 homes) and **Lakeview Reside
 
 The sign-in page also has one-click demo buttons.
 
-### Mobile / native apps
+### Mobile apps
+
+See [Native iOS and Android apps](docs/native-apps.md) for the SwiftUI and Jetpack Compose projects. The Expo client is also available.
 
 ```bash
 cd apps/mobile
