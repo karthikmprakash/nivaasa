@@ -314,7 +314,7 @@ private fun VisitorCard(visitor: JSONObject, sending: Boolean, respond: (String)
                 }
                 Column {
                     Text(name, color = NK.ink, style = MaterialTheme.typography.titleMedium)
-                    Text(visitor.str("company", visitor.str("type").replace('_', ' ').replaceFirstChar { it.uppercaseChar() }), color = NK.muted, style = MaterialTheme.typography.bodyMedium)
+                    Text(listOf(visitor.str("company"), visitor.str("purpose", visitor.str("type").replace('_', ' ').replaceFirstChar { it.uppercaseChar() })).filter { it.isNotBlank() }.joinToString(" · "), color = NK.muted, style = MaterialTheme.typography.bodyMedium)
                 }
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {

@@ -74,9 +74,9 @@ extension Font {
     static let nivaasaBodyMedium = jakarta(15, .medium)
     static let nivaasaBodySemibold = jakarta(15, .semibold)
     static let nivaasaSection = jakarta(17, .semibold)
-    static let nivaasaTitle = jakarta(29, .bold)
-    static let nivaasaPageTitle = jakarta(26, .bold)
-    static let nivaasaDisplay = jakarta(42, .bold)
+    static let nivaasaTitle = jakarta(29, .semibold)
+    static let nivaasaPageTitle = jakarta(26, .semibold)
+    static let nivaasaDisplay = jakarta(42, .semibold)
 }
 
 func eyebrowStyle(_ text: String) -> some View {
@@ -173,7 +173,7 @@ struct AppWash: View {
 
 struct NivaasaCard<Content: View>: View {
     var tinted = false
-    var padding: CGFloat = 16
+    var padding: CGFloat = 20
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -485,12 +485,12 @@ struct NivaasaTopBar: View {
             Image("NivaasaMark").resizable().frame(width: 32, height: 32).accessibilityLabel("Nivaasa")
             Spacer(minLength: 0)
             Button(action: onSearch) {
-                Image(systemName: "magnifyingglass").font(.system(size: 19, weight: .regular)).frame(width: 40, height: 44)
+                Image(systemName: "magnifyingglass").font(.system(size: 20, weight: .regular)).frame(width: 40, height: 44)
             }
             .accessibilityLabel("Search community")
             Button(action: onNotifications) {
                 ZStack(alignment: .topTrailing) {
-                    Image(systemName: "bell").font(.system(size: 19, weight: .regular)).frame(width: 40, height: 44)
+                    Image(systemName: "bell").font(.system(size: 20, weight: .regular)).frame(width: 40, height: 44)
                     if unread > 0 {
                         Text(unread > 9 ? "9+" : "\(unread)")
                             .font(.jakarta(10, .bold)).foregroundStyle(.white)
@@ -501,12 +501,12 @@ struct NivaasaTopBar: View {
                 }
             }
             .accessibilityLabel(unread > 0 ? "Notifications, \(unread) unread" : "Notifications")
-            Button(action: onAccount) { NivaasaAvatar(name: userName, color: NK.brand600, size: 32) }
+            Button(action: onAccount) { NivaasaAvatar(name: userName, color: NK.brand600, size: 36) }
                 .accessibilityLabel("Account menu")
         }
         .foregroundStyle(NK.inkSoft)
-        .padding(.horizontal, 12)
-        .frame(height: 64)
+        .padding(.horizontal, 16)
+        .frame(height: 76)
         .background(NK.surface)
         .overlay(alignment: .bottom) { Rectangle().fill(NK.line).frame(height: 1) }
     }
@@ -539,7 +539,7 @@ struct NivaasaBottomBar: View {
                         }
                         Text(label).font(.jakarta(11, active ? .semibold : .medium))
                     }
-                    .frame(maxWidth: .infinity, minHeight: 58)
+                    .frame(maxWidth: .infinity, minHeight: 64)
                     .foregroundStyle(active ? NK.brand700 : NK.muted)
                 }
                 .buttonStyle(.plain)
@@ -605,7 +605,7 @@ struct NivaasaStaffBottomBar: View {
                         Image(systemName: icon(title)).font(.system(size: 20, weight: active ? .semibold : .regular))
                         Text(title).font(.jakarta(11, active ? .semibold : .medium))
                     }
-                    .frame(maxWidth: .infinity, minHeight: 58)
+                    .frame(maxWidth: .infinity, minHeight: 64)
                     .foregroundStyle(active ? NK.brand700 : NK.muted)
                 }
                 .buttonStyle(.plain)

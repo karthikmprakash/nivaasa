@@ -48,7 +48,8 @@ internal fun ResidentShell(account: JSONObject, onSignOut: () -> Unit) {
     var unread by remember { mutableStateOf(0) }
     val token = account.getString("token")
 
-    Column(Modifier.fillMaxSize().background(NK.canvas).statusBarsPadding()) {
+    AppWash {
+    Column(Modifier.fillMaxSize().statusBarsPadding()) {
         NivaasaTopBar(
             unread = unread,
             userName = account.getJSONObject("user").getString("name"),
@@ -78,6 +79,7 @@ internal fun ResidentShell(account: JSONObject, onSignOut: () -> Unit) {
                 selection = tab,
             ) { tab = it }
         }
+    }
     }
 
     if (showServices) {

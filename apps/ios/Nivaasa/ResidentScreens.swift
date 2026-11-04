@@ -105,7 +105,10 @@ struct ResidentHomeView: View {
     private func visitorCard(_ visitor: [String: Any]) -> some View {
         let id = string(visitor, "id")
         let name = string(visitor, "name", fallback: "Visitor")
-        let company = string(visitor, "company", fallback: string(visitor, "type").replacingOccurrences(of: "_", with: " ").capitalized)
+        let type = string(visitor, "type").replacingOccurrences(of: "_", with: " ").capitalized
+        let company = string(visitor, "company")
+        let purpose = string(visitor, "purpose", fallback: type)
+        let subtitle = company.isEmpty ? purpose : "\(company) · \(purpose)"
         let sending = pending.contains(id)
         return NivaasaCard {
             VStack(alignment: .leading, spacing: 10) {
@@ -115,7 +118,7 @@ struct ResidentHomeView: View {
                         .frame(width: 42, height: 42).background(NK.blush100, in: Circle())
                     VStack(alignment: .leading, spacing: 2) {
                         Text(name).font(.nivaasaBodySemibold).foregroundStyle(NK.ink)
-                        Text(company).font(.nivaasaCaption).foregroundStyle(NK.muted)
+                        Text(subtitle).font(.nivaasaCaption).foregroundStyle(NK.muted)
                     }
                     Spacer(minLength: 0)
                     VStack(alignment: .trailing, spacing: 4) {

@@ -67,8 +67,8 @@ val Jakarta = FontFamily(
 )
 
 val NivaasaTypography = Typography(
-    headlineLarge = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Bold, fontSize = 29.sp, lineHeight = 34.sp, letterSpacing = (-0.8).sp),
-    headlineMedium = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 31.sp, letterSpacing = (-0.6).sp),
+    headlineLarge = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.SemiBold, fontSize = 29.sp, lineHeight = 34.sp, letterSpacing = (-0.8).sp),
+    headlineMedium = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.SemiBold, fontSize = 26.sp, lineHeight = 31.sp, letterSpacing = (-0.6).sp),
     titleLarge = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, lineHeight = 24.sp),
     titleMedium = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, lineHeight = 21.sp),
     bodyLarge = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 23.sp),
@@ -139,7 +139,7 @@ fun NivaasaCard(
         Column(
             Modifier.background(
                 if (tinted) Brush.linearGradient(listOf(NK.brand50, NK.surface, NK.blush50)) else Brush.linearGradient(listOf(NK.surface, NK.surface))
-            ).padding(16.dp),
+            ).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(9.dp),
             content = content,
         )
@@ -260,7 +260,7 @@ fun NivaasaTopBar(
     onAccount: () -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().height(64.dp).background(NK.surface).padding(horizontal = 10.dp),
+        Modifier.fillMaxWidth().height(76.dp).background(NK.surface).padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -276,7 +276,7 @@ fun NivaasaTopBar(
                 }
             }
         }
-        IconButton(onClick = onAccount) { NivaasaAvatar(userName, size = 32) }
+        IconButton(onClick = onAccount) { NivaasaAvatar(userName, size = 36) }
     }
     HorizontalDivider(color = NK.line, thickness = 1.dp)
 }
@@ -287,7 +287,7 @@ fun NivaasaBottomBar(tabs: List<Triple<String, ImageVector, String>>, selection:
         tabs.forEach { (title, icon, label) ->
             val active = selection == title
             Column(
-                Modifier.weight(1f).heightIn(min = 58.dp).clickable { onSelect(title) }.padding(vertical = 7.dp),
+                Modifier.weight(1f).heightIn(min = 64.dp).clickable { onSelect(title) }.padding(vertical = 7.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
