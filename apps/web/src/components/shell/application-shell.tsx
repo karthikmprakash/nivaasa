@@ -115,15 +115,15 @@ export function ApplicationShell({ children, variant, user, society, societies =
                   if (current || switchingSociety) return;
                   startSocietySwitch(() => { void switchSocietyAction(option.slug, stableSwitchPath(pathname)); });
                 }} className={cn(current && "bg-brand-50/70")}>
-                  <Building2 className="size-4 shrink-0 text-muted" />
+                  <Building2 className="size-4 shrink-0" />
                   <span className="min-w-0 flex-1 truncate">{option.name}</span>
                   {current ? <Check className="size-4 shrink-0 text-brand-600" /> : null}
                 </DropdownItem>;
               })}
               <DropdownSeparator />
             </> : null}
-            {variant === "resident" ? <><DropdownItem href="/app/my-home"><House className="size-4" /> My home</DropdownItem><DropdownItem href="/app/settings"><SettingsIcon /> Settings</DropdownItem><DropdownItem href="/app/emergency"><ShieldAlert className="size-4" /> Emergency</DropdownItem></> : <>
-              {items.some((i) => i.href === "/admin/settings") ? <DropdownItem href="/admin/settings"><SettingsIcon /> Society settings</DropdownItem> : null}
+            {variant === "resident" ? <><DropdownItem href="/app/my-home"><House className="size-4" /> My home</DropdownItem><DropdownItem href="/app/settings"><SettingsIcon className="size-4" /> Settings</DropdownItem><DropdownItem href="/app/emergency"><ShieldAlert className="size-4" /> Emergency</DropdownItem></> : <>
+              {items.some((i) => i.href === "/admin/settings") ? <DropdownItem href="/admin/settings"><SettingsIcon className="size-4" /> Society settings</DropdownItem> : null}
               {hasUnit ? <DropdownItem href="/app"><House className="size-4" /> Resident app</DropdownItem> : null}
               {isSuper ? <DropdownItem href="/portfolio"><LayoutGrid className="size-4" /> Portfolio</DropdownItem> : null}
             </>}
