@@ -122,11 +122,11 @@ export default async function LandingPage() {
                 <div className="mt-6 grid grid-cols-1 gap-3 min-[860px]:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
                   <div className="rounded-2xl border border-line bg-[#fbfcff] p-4">
                     <div className="flex items-center justify-between">
-                      <span className="rounded-full bg-blush-100 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-blush-600">At the gate</span>
+                      <span className="rounded-full bg-blush-100 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-blush-700">At the gate</span>
                       <span className="text-xs text-muted">2 min ago</span>
                     </div>
                     <div className="mt-3 flex items-center gap-2.5">
-                      <span className="grid size-10 place-items-center rounded-full bg-blush-100 text-xs font-bold text-blush-600">YS</span>
+                      <span className="grid size-10 place-items-center rounded-full bg-blush-100 text-xs font-bold text-blush-700">YS</span>
                       <div>
                         <p className="text-sm font-semibold text-ink">Yash Sharma</p>
                         <p className="text-xs text-muted">Swiggy · Delivery · A-402</p>
@@ -227,7 +227,7 @@ export default async function LandingPage() {
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {["6:00", "7:00", "8:00", "9:00"].map((t, i) => (
-                    <span key={t} className={`rounded-lg px-2 py-1 text-xs font-semibold ${i === 1 ? "bg-brand-600 text-white" : i === 2 ? "bg-blush-100 text-blush-600" : "bg-canvas text-muted"}`}>{t}</span>
+                    <span key={t} className={`rounded-lg px-2 py-1 text-xs font-semibold ${i === 1 ? "bg-brand-600 text-white" : i === 2 ? "bg-blush-100 text-blush-700" : "bg-canvas text-muted"}`}>{t}</span>
                   ))}
                 </div>
               </div>
@@ -242,7 +242,7 @@ export default async function LandingPage() {
                 <h3 className="mt-4 text-[20px] font-semibold tracking-[-0.02em] text-ink">Accounting an auditor would enjoy</h3>
                 <p className="mt-2 max-w-lg text-sm leading-relaxed text-ink-soft">Billing heads, per-sq-ft runs, GST, penalties, expenses, vendors, budgets and reports. Every action leaves a trail.</p>
                 <div className="mt-5 grid grid-cols-1 gap-2 min-[480px]:grid-cols-3">
-                  {[{ l: "Collections", v: "₹18.6L", c: "text-mint-600" }, { l: "Expenses", v: "₹9.8L", c: "text-blush-600" }, { l: "Balance", v: "₹8.8L", c: "text-brand-700" }].map((s) => (
+                  {[{ l: "Collections", v: "₹18.6L", c: "text-mint-600" }, { l: "Expenses", v: "₹9.8L", c: "text-blush-700" }, { l: "Balance", v: "₹8.8L", c: "text-brand-700" }].map((s) => (
                     <div key={s.l} className="rounded-xl border border-line bg-white px-3 py-2.5">
                       <p className="text-xs font-semibold uppercase tracking-wide text-muted">{s.l}</p>
                       <p className={`mt-1 text-[15px] font-bold ${s.c}`}>{s.v}</p>
@@ -261,7 +261,7 @@ export default async function LandingPage() {
                 <h3 className="mt-4 text-[20px] font-semibold tracking-[-0.02em] text-ink">A home for the conversations that matter</h3>
                 <p className="mt-2 max-w-lg text-sm leading-relaxed text-ink-soft">Official notices, resident discussions, classifieds, documents and events — searchable, moderated and retained.</p>
                 <div className="mt-5 flex items-center gap-3 rounded-xl border border-line px-3 py-2.5">
-                  <span className="grid size-8 place-items-center rounded-full bg-blush-100 text-xs font-bold text-blush-600">RS</span>
+                  <span className="grid size-8 place-items-center rounded-full bg-blush-100 text-xs font-bold text-blush-700">RS</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-semibold text-ink">Looking for a reliable cook for weekday dinners</p>
                     <p className="text-xs text-muted">Riya Sen · C-101 · awaiting moderation</p>
@@ -417,7 +417,7 @@ export default async function LandingPage() {
             <div className="mt-8 grid gap-4 md:grid-cols-3">
               {[
                 { q: "I used to chase the guard for delivery updates. Now I approve from a meeting and get on with my day.", n: "Aarav Mehta", r: "Resident · A-402", c: "AM", bg: "bg-brand-100 text-brand-700" },
-                { q: "The audit pack that used to take a week is a report now. Every rupee has a trail, and the committee can see it live.", n: "Priya Nair", r: "Community Manager", c: "PN", bg: "bg-blush-100 text-blush-600" },
+                { q: "The audit pack that used to take a week is a report now. Every rupee has a trail, and the committee can see it live.", n: "Priya Nair", r: "Community Manager", c: "PN", bg: "bg-blush-100 text-blush-700" },
                 { q: "The gate console is faster than our register — and I can see a resident's approval without calling them twice.", n: "Ramesh Yadav", r: "Head Security · Gate 1", c: "RY", bg: "bg-mint-50 text-mint-600" },
               ].map((t, i) => (
                 <Reveal key={t.n} delay={i * 0.05}>
@@ -576,11 +576,11 @@ function HeroMock() {
 
       <div className="relative mt-3 w-full rounded-2xl sm:absolute sm:-bottom-5 sm:mt-0 sm:w-[210px] border border-line bg-white p-3 shadow-[0_24px_50px_-20px_rgba(19,26,42,0.3)] sm:-left-8">
         <div className="flex items-center justify-between">
-          <span className="rounded-full bg-blush-100 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-blush-600">Visitor approval</span>
+          <span className="rounded-full bg-blush-100 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-blush-700">Visitor approval</span>
           <span className="text-xs text-muted">Now</span>
         </div>
         <div className="mt-2 flex items-center gap-2">
-          <span className="grid size-8 place-items-center rounded-full bg-[#fdf1f5] text-xs font-bold text-blush-600">YS</span>
+          <span className="grid size-8 place-items-center rounded-full bg-[#fdf1f5] text-xs font-bold text-blush-700">YS</span>
           <div><p className="text-xs font-semibold text-ink">Yash Sharma</p><p className="text-xs text-muted">Swiggy · A-402</p></div>
         </div>
         <div className="mt-2 grid grid-cols-[auto_1fr_1fr] gap-1">

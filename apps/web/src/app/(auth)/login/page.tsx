@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Sign in", description: "Sign in to y
 
 const demoPeople = [
   { email: "resident@nivaasa.app", name: "Aarav Mehta", role: "Resident", detail: "Verdant Heights · A-402", initials: "AM", color: "bg-brand-100 text-brand-700", icon: Users },
-  { email: "admin@nivaasa.app", name: "Priya Nair", role: "Community admin", detail: "Verdant Heights", initials: "PN", color: "bg-blush-100 text-blush-600", icon: Sparkles },
+  { email: "admin@nivaasa.app", name: "Priya Nair", role: "Community admin", detail: "Verdant Heights", initials: "PN", color: "bg-blush-100 text-blush-700", icon: Sparkles },
   { email: "guard@nivaasa.app", name: "Ramesh Yadav", role: "Security guard", detail: "Gate 1 · Morning shift", initials: "RY", color: "bg-mint-50 text-mint-600", icon: ShieldCheck },
   { email: "accountant@nivaasa.app", name: "Sanjay Rao", role: "Accountant", detail: "Billing & reports", initials: "SR", color: "bg-[#f7f1e7] text-[#7a5c3e]", icon: Wallet },
 ];

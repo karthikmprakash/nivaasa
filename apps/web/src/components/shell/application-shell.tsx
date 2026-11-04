@@ -67,7 +67,7 @@ export function ApplicationShell({ children, variant, user, society, societies =
           <div className="space-y-1">{g.items.map((item) => {
             const active = isNavigationActive(pathname, item.href, root);
             return <Link key={item.href} href={item.href} onClick={close} aria-current={active ? "page" : undefined}
-              className={cn("group flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-body font-medium transition-colors", active ? "bg-brand-50 text-brand-700" : "text-ink-soft hover:bg-canvas hover:text-ink")}>
+              className={cn("group flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-body font-medium transition-colors", active ? "bg-gradient-to-r from-brand-50 via-white to-blush-50 text-brand-700" : "text-ink-soft hover:bg-canvas hover:text-ink")}>
               <item.icon aria-hidden="true" className={cn("size-[18px] shrink-0", active ? "text-brand-600" : "text-muted")} strokeWidth={1.8} />
               <span className="flex-1">{item.label}</span>
               {item.count ? <span className="min-w-5 rounded-md bg-brand-100 px-1.5 text-center text-caption font-semibold tabular-nums text-brand-700">{item.count}</span> : null}
@@ -83,7 +83,7 @@ export function ApplicationShell({ children, variant, user, society, societies =
     </>;
   }
 
-  return <div className="min-h-dvh bg-canvas [--shell-gutter:1rem] sm:[--shell-gutter:1.5rem] lg:[--shell-gutter:2rem]" data-app-shell>
+  return <div className="app-wash min-h-dvh [--shell-gutter:1rem] sm:[--shell-gutter:1.5rem] lg:[--shell-gutter:2rem]" data-app-shell>
     <a href="#main-content" className="fixed left-4 top-3 z-[100] -translate-y-24 rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white focus:translate-y-0">Skip to content</a>
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-[256px] flex-col border-r border-line bg-white lg:flex">
       <div className="flex h-[76px] shrink-0 items-center px-6"><Link href={root} aria-label="Nivaasa home"><Logo size={32} /></Link></div>
@@ -114,10 +114,10 @@ export function ApplicationShell({ children, variant, user, society, societies =
                 return <DropdownItem key={option.id} onClick={() => {
                   if (current || switchingSociety) return;
                   startSocietySwitch(() => { void switchSocietyAction(option.slug, stableSwitchPath(pathname)); });
-                }} className={cn(current && "bg-brand-50/70")}>
+                }} className={cn(current && "bg-gradient-to-r from-brand-50 via-white to-blush-50")}>
                   <Building2 className="size-4 shrink-0" />
                   <span className="min-w-0 flex-1 truncate">{option.name}</span>
-                  {current ? <Check className="size-4 shrink-0 text-brand-600" /> : null}
+                  {current ? <Check className="size-4 shrink-0 text-blush-700" /> : null}
                 </DropdownItem>;
               })}
               <DropdownSeparator />

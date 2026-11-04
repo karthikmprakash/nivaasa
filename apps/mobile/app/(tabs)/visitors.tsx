@@ -45,7 +45,7 @@ export default function VisitorsScreen() {
         </View>
 
         <View style={{ flexDirection: "row", gap: 7, marginTop: 14 }}>
-          {[{ l: "Waiting", v: data.pending.length, c: colors.blush50, f: colors.blush500 }, { l: "Passes", v: data.passes.length, c: colors.brand50, f: colors.brand600 }, { l: "Help today", v: data.help.filter((h: any) => h.attendance?.checkInAt).length, c: colors.mint50, f: colors.mint600 }].map((s) => <View key={s.l} style={{ flex: 1, backgroundColor: s.c, borderRadius: 14, padding: 11 }}><Text style={{ fontFamily: fonts.semibold, fontSize: 17, color: colors.ink }}>{s.v}</Text><Text style={{ fontFamily: fonts.medium, fontSize: 12, color: s.f }}>{s.l}</Text></View>)}
+          {[{ l: "Waiting", v: data.pending.length, c: colors.blush50, f: colors.blush700 }, { l: "Passes", v: data.passes.length, c: colors.brand50, f: colors.brand600 }, { l: "Help today", v: data.help.filter((h: any) => h.attendance?.checkInAt).length, c: colors.mint50, f: colors.mint600 }].map((s) => <View key={s.l} style={{ flex: 1, backgroundColor: s.c, borderRadius: 14, padding: 11 }}><Text style={{ fontFamily: fonts.semibold, fontSize: 17, color: colors.ink }}>{s.v}</Text><Text style={{ fontFamily: fonts.medium, fontSize: 12, color: s.f }}>{s.l}</Text></View>)}
         </View>
 
         <View style={{ marginTop: 14 }}><Segmented value={tab} onChange={setTab} options={[{ value: "pending", label: "Waiting", count: data.pending.length }, { value: "passes", label: "Pre-approved", count: data.passes.length }, { value: "history", label: "History", count: data.history.length }]} /></View>

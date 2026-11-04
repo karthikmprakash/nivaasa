@@ -21,6 +21,7 @@ export const colors = {
   blush400: "#ef7fa4",
   blush500: "#e55d8b",
   blush600: "#cc3d71",
+  blush700: "#a82e5b",
   mint50: "#eefaf4",
   mint600: "#18764e",
   amberSoft: "#fff6e2",

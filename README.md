@@ -51,15 +51,17 @@ Nivaasa is a self-hosted, multi-tenant community platform for resident welfare a
 
 ## Design system
 
-- **Brand** — Nivaasa (Kannada **ನಿವಾಸ**, “the place we live”). Blue tile, ink, white and blush; see [`brand/README.md`](brand/README.md).
+- **Brand** — Nivaasa (Kannada **ನಿವಾಸ**, “the place we live”). Royal blue, white/cool neutrals and blush; see [`brand/README.md`](brand/README.md).
+- **Colour roles** — blue for action and trust, white for surfaces and clarity, blush for warmth, live moments and attention accents. Blush is never used for errors.
 - **Type** — Plus Jakarta Sans for UI, Instrument Serif for editorial moments.
-- **Icons** — Lucide across web, mobile and admin.
+- **Type scale** — 11px eyebrows, 13px captions, 15px body, 17px section titles and 29px resident titles; page headings are 26–30px.
+- **Icons** — Lucide across web, mobile and admin; 16px in compact controls and menus, 18–20px in navigation.
 - **Surfaces** — soft off-white canvas, fine borders, restrained shadows, 10px controls, 16px panels and 20px overlays.
+- **Gradients** — a quiet app wash, warm selected rows and cards, and blue CTA panels. Decorative washes stay behind content.
 - **Charts** — Recharts with readable axes, distinct line styles and accessible data tables.
-- **Type scale** — 12px captions, 14px body, 16px section titles and 28–30px page titles.
 - **UI architecture** — shared role-aware navigation, one responsive application shell, accessible field context and URL-backed view tabs.
 
-See [DESIGN.md](DESIGN.md) for the interface standards and implementation boundaries.
+Read the full [design system](DESIGN.md) for tokens, colour balance, gradient recipes, component specs, motion and accessibility rules.
 
 Shared tokens live in [`apps/web/src/app/globals.css`](apps/web/src/app/globals.css) and [`apps/mobile/lib/theme.ts`](apps/mobile/lib/theme.ts).
 

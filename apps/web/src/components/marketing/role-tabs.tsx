@@ -61,7 +61,7 @@ export function RoleTabs() {
       <div className="mt-6 grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
         <div className="flex flex-col justify-between rounded-[26px] border border-line bg-white p-6 shadow-soft sm:p-8">
           <div>
-            <div className={cn("mb-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em]", role.accent === "pink" ? "bg-blush-100 text-blush-600" : role.accent === "ink" ? "bg-[#eef1f8] text-ink-soft" : "bg-brand-50 text-brand-700")}>
+            <div className={cn("mb-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em]", role.accent === "pink" ? "bg-blush-100 text-blush-700" : role.accent === "ink" ? "bg-[#eef1f8] text-ink-soft" : "bg-brand-50 text-brand-700")}>
               Built for {role.label.toLowerCase()}
             </div>
             <h3 className="max-w-md text-[26px] font-semibold leading-[1.15] tracking-[-0.03em] text-ink sm:text-[32px]">{role.title}</h3>
@@ -130,7 +130,7 @@ function ResidentPreview() {
         </div>
         <div className="mt-3 rounded-2xl border border-blush-200 bg-blush-50 p-3">
           <div className="flex items-center justify-between">
-            <span className="rounded-full bg-white px-2 py-0.5 text-[8px] font-bold text-blush-600">AT THE GATE</span>
+            <span className="rounded-full bg-white px-2 py-0.5 text-[8px] font-bold text-blush-700">AT THE GATE</span>
             <span className="text-[8px] text-muted">Just now</span>
           </div>
           <p className="mt-2 text-[11px] font-semibold leading-snug text-ink">Yash from Swiggy is waiting with your order</p>
@@ -234,7 +234,7 @@ function GuardPreview() {
       <div className="mt-3 grid grid-cols-2 gap-2">
         {[
           { t: "New visitor", s: "Log entry", c: "bg-brand-50 text-brand-700" },
-          { t: "Delivery", s: "3 at gate", c: "bg-blush-50 text-blush-600" },
+          { t: "Delivery", s: "3 at gate", c: "bg-blush-50 text-blush-700" },
           { t: "Daily help", s: "Attendance", c: "bg-[#eef7f1] text-mint-600" },
           { t: "Patrol check", s: "5 of 6", c: "bg-[#f7f5ee] text-amber-ink" },
         ].map((a) => (
@@ -247,7 +247,7 @@ function GuardPreview() {
       <div className="mt-3 rounded-xl border border-line p-3">
         <div className="flex items-center justify-between">
           <p className="text-[10px] font-bold text-ink">Waiting for approval</p>
-          <span className="rounded-full bg-blush-100 px-2 py-0.5 text-[8px] font-bold text-blush-600">3</span>
+          <span className="rounded-full bg-blush-100 px-2 py-0.5 text-[8px] font-bold text-blush-700">3</span>
         </div>
         <div className="mt-2 space-y-2">
           {[

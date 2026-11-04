@@ -89,7 +89,7 @@ export default async function GatePage() {
           {[
             { l: "Waiting approval", v: queue.filter((q) => q.status === "pending").length, i: Clock3, tone: "text-amber-ink bg-amber-soft" },
             { l: "Pre-approved", v: preApproved.length, i: KeyRound, tone: "text-mint-600 bg-mint-50" },
-            { l: "Deliveries", v: deliveriesRows.length, i: Package, tone: "text-blush-600 bg-blush-50" },
+            { l: "Deliveries", v: deliveriesRows.length, i: Package, tone: "text-blush-700 bg-blush-50" },
             { l: "Staff present", v: `${staffPresent}/${staffRows.length}`, i: Users, tone: "text-brand-600 bg-brand-50" },
             { l: "Patrol done", v: `${patrolDone}/${checkpoints.length}`, i: MapPin, tone: "text-[#6a54c8] bg-[#f2effc]" },
           ].map((s) => <div key={s.l} className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-line bg-white px-3 py-3 last:col-span-2 sm:last:col-span-1"><p className="text-caption font-medium text-muted">{s.l}</p><p className="shrink-0 text-lg font-semibold tabular-nums text-ink">{s.v}</p></div>)}

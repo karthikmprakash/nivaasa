@@ -30,6 +30,14 @@
   --color-blush-400: #ef7fa4;
   --color-blush-500: #e55d8b;
   --color-blush-600: #cc3d71;
+  --color-blush-700: #a82e5b;
+
+  /* Semantic accent aliases. Blush is the warmth layer, never an error. */
+  --color-accent: var(--color-blush-400);
+  --color-accent-soft: var(--color-blush-50);
+  --color-accent-line: var(--color-blush-200);
+  --color-accent-strong: var(--color-blush-500);
+  --color-accent-ink: var(--color-blush-700);
 
   --color-mint-50: #eefaf4;
   --color-mint-600: #18764e;
@@ -45,6 +53,8 @@
   --radius-control: 0.625rem;
   --radius-panel: 1rem;
   --radius-overlay: 1.25rem;
+  --text-eyebrow: 0.6875rem;
+  --text-eyebrow--line-height: 1.4;
   --text-caption: 0.8125rem;
   --text-caption--line-height: 1.5;
   --text-body: 0.9375rem;
@@ -153,6 +163,12 @@
     background:
       radial-gradient(50% 70% at 100% 0%, rgba(239, 127, 164, 0.15), transparent 70%),
       radial-gradient(45% 60% at 0% 100%, rgba(49, 85, 216, 0.09), transparent 70%);
+  }
+  .app-wash {
+    background:
+      radial-gradient(42% 28% at 94% 0%, rgba(239, 127, 164, 0.12), transparent 72%),
+      radial-gradient(36% 24% at 6% 0%, rgba(49, 85, 216, 0.07), transparent 72%),
+      var(--color-canvas);
   }
   .landing-gutter {
     padding-left: max(var(--landing-gutter, 1.25rem), env(safe-area-inset-left));

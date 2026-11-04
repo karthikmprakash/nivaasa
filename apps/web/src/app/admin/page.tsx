@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Admin console" };
 export const dynamic = "force-dynamic";
 
 const statusTone: Record<string, string> = {
-  pending: "bg-amber-soft text-amber-ink", approved: "bg-brand-50 text-brand-700", entered: "bg-blush-50 text-blush-600",
+  pending: "bg-amber-soft text-amber-ink", approved: "bg-brand-50 text-brand-700", entered: "bg-blush-50 text-blush-700",
   exited: "bg-canvas text-muted", denied: "bg-[#fdeced] text-[#c43d4d]", expired: "bg-canvas text-muted",
 };
 
@@ -49,6 +49,7 @@ export default async function AdminDashboard() {
     <div>
       <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-end md:justify-between">
         <div>
+          <p className="mb-1.5 text-eyebrow font-bold uppercase tracking-[0.14em] text-blush-700">Overview</p>
           <p className="flex items-center gap-2 text-caption font-medium text-muted"><span className="inline-flex size-1.5 rounded-lg bg-brand-500" /> {formatDate(now, { weekday: "long", day: "numeric", month: "long" })} · {ctx.society!.name}</p>
           <h1 className="mt-1 text-[26px] font-semibold leading-tight tracking-[-0.04em] text-ink sm:text-[30px]">{greeting}, {firstName}.</h1>
           <p className="mt-1.5 text-body text-ink-soft">Here&apos;s the pulse of your community. {visibleAttention ? <span className="font-medium text-ink">{visibleAttention} things need your attention.</span> : "Everything looks calm."}</p>
@@ -61,7 +62,7 @@ export default async function AdminDashboard() {
 
       <div className="mt-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
         {canSeeBilling ? <Stat label="Collected this month" value={formatINR(snapshot.collections)} hint={growth === null ? "No previous month to compare" : `${growth >= 0 ? "+" : ""}${growth.toFixed(1)}% vs last month`} tone="blue" /> : null}
-        {canSeeBilling ? <Stat label="Outstanding" value={formatINR(snapshot.outstanding)} hint={`${snapshot.outstandingCount} open invoices`} /> : null}
+        {canSeeBilling ? <Stat label="Outstanding" value={formatINR(snapshot.outstanding)} hint={`${snapshot.outstandingCount} open invoices`} tone="pink" /> : null}
         {canSeeHelpdesk ? <Stat label="Open requests" value={snapshot.openTickets} hint={`${snapshot.slaRisk} approaching or past SLA`} /> : null}
         {canSeeSecurity ? <Stat label="Gate entries this month" value={snapshot.visitors} hint={`${deliveryToday[0]?.count ?? 0} deliveries today`} /> : null}
       </div>

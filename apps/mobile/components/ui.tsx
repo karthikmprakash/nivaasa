@@ -95,7 +95,7 @@ export function Button({ title, onPress, variant = "primary", size = "md", disab
 
 export function Badge({ label, tone = "neutral", dot }: { label: string; tone?: "neutral" | "blue" | "pink" | "green" | "amber" | "danger" | "purple"; dot?: boolean }) {
   const map = {
-    neutral: [colors.canvas, colors.muted], blue: [colors.brand50, colors.brand700], pink: [colors.blush100, colors.blush600],
+    neutral: [colors.canvas, colors.muted], blue: [colors.brand50, colors.brand700], pink: [colors.blush100, colors.blush700],
     green: [colors.mint50, colors.mint600], amber: [colors.amberSoft, colors.amberInk], danger: [colors.dangerSoft, "#b53a48"],
     purple: ["#f2effc", "#6a54c8"],
   } as const;

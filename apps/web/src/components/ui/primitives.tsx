@@ -12,8 +12,8 @@ const buttonVariants = cva(
         secondary: "bg-brand-50 text-brand-700 hover:bg-brand-100 border border-brand-100",
         outline: "border border-line-strong bg-white text-ink hover:bg-canvas shadow-[0_1px_2px_rgba(19,26,42,0.04)]",
         ghost: "text-ink-soft hover:bg-canvas hover:text-ink",
-        pink: "bg-blush-600 text-white hover:bg-[#ae2e5b]",
-        blush: "bg-blush-100 text-blush-600 hover:bg-blush-200 border border-blush-200",
+        pink: "bg-blush-600 text-white hover:bg-blush-700",
+        blush: "bg-blush-100 text-blush-700 hover:bg-blush-200 border border-blush-200",
         danger: "bg-[#d94a5a] text-white hover:bg-[#c43d4d]",
         dangerSoft: "bg-[#fdeced] text-[#c43d4d] hover:bg-[#fbdde0]",
         success: "bg-mint-600 text-white hover:bg-[#187a4f]",
@@ -68,7 +68,7 @@ export function PageHeader({ title, eyebrow, description, actions, className }: 
   return (
     <div className={cn("flex min-w-0 flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between", className)}>
       <div className="min-w-0 sm:flex-[1_1_20rem]">
-        {eyebrow ? <span className="sr-only">{eyebrow}</span> : null}
+        {eyebrow ? <p className="mb-1.5 text-eyebrow font-bold uppercase tracking-[0.14em] text-blush-700">{eyebrow}</p> : null}
         <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.03em] text-ink sm:text-[30px]">{title}</h1>
         {description ? <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink-soft">{description}</p> : null}
       </div>
@@ -83,7 +83,7 @@ const badgeVariants = cva("inline-flex shrink-0 items-center gap-1.5 rounded-md 
     variant: {
       neutral: "bg-[#f1f3f9] text-ink-soft",
       blue: "bg-brand-50 text-brand-700",
-      pink: "bg-blush-100 text-blush-600",
+      pink: "bg-blush-100 text-blush-700",
       success: "bg-mint-50 text-mint-600",
       warning: "bg-amber-soft text-amber-ink",
       danger: "bg-[#fdeced] text-[#c43d4d]",
@@ -157,15 +157,23 @@ export function Divider({ className }: { className?: string }) {
 }
 
 export function Stat({ label, value, hint, tone = "neutral", icon }: { label: string; value: ReactNode; hint?: ReactNode; tone?: "neutral" | "blue" | "pink" | "green" | "amber"; icon?: ReactNode }) {
-  const tones = { neutral: "bg-white", blue: "bg-brand-50/60", pink: "bg-white", green: "bg-white", amber: "bg-amber-soft/60" };
+  const tones = {
+    neutral: "border-line bg-white",
+    blue: "border-brand-100 bg-brand-50/60",
+    pink: "border-blush-200 bg-gradient-to-br from-blush-50 via-white to-brand-50/50",
+    green: "border-mint-600/15 bg-mint-50/40",
+    amber: "border-amber-ink/15 bg-amber-soft/60",
+  };
+  const iconTones = { neutral: "text-muted", blue: "text-brand-500", pink: "text-blush-500", green: "text-mint-600", amber: "text-amber-ink" };
   return (
-    <div className={cn("rounded-xl border border-line p-4 tabular-nums", tones[tone])}>
-      <div className="flex items-start justify-between gap-2">
+    <div className={cn("relative overflow-hidden rounded-xl border p-4 tabular-nums", tones[tone])}>
+      {tone === "pink" ? <span aria-hidden="true" className="pointer-events-none absolute -right-6 -top-8 size-20 rounded-full bg-blush-200/60 blur-2xl" /> : null}
+      <div className="relative flex items-start justify-between gap-2">
         <p className="text-body font-medium text-ink-soft">{label}</p>
-        {icon ? <span aria-hidden="true" className="text-muted">{icon}</span> : null}
+        {icon ? <span aria-hidden="true" className={iconTones[tone]}>{icon}</span> : null}
       </div>
-      <p className="mt-2 text-[24px] font-semibold leading-none tracking-[-0.03em] text-ink">{value}</p>
-      {hint ? <p className="mt-1.5 text-caption leading-snug text-ink-soft">{hint}</p> : null}
+      <p className="relative mt-2 text-[24px] font-semibold leading-none tracking-[-0.03em] text-ink">{value}</p>
+      {hint ? <p className="relative mt-1.5 text-caption leading-snug text-ink-soft">{hint}</p> : null}
     </div>
   );
 }

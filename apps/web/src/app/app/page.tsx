@@ -29,6 +29,7 @@ export default async function ResidentHomePage() {
   return <div>
     <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
       <div>
+        <p className="mb-1.5 text-eyebrow font-bold uppercase tracking-[0.14em] text-blush-700">Your community</p>
         <h1 className="text-title font-semibold tracking-[-0.03em] sm:text-[30px]">{greeting}, {ctx.user.name.split(" ")[0]}.</h1>
         <p className="mt-2 text-body text-muted">{now.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", weekday: "long", day: "numeric", month: "long" })}<span className="mx-2 text-line-strong">/</span>Home {ctx.unit.number}</p>
       </div>
@@ -46,7 +47,7 @@ export default async function ResidentHomePage() {
       </section>
 
       <aside className="contents xl:col-start-2 xl:row-span-2 xl:block xl:space-y-5" aria-label="Your home summary">
-        <div className="order-1 rounded-panel border border-brand-200 bg-brand-50/70 p-5 xl:order-none">
+        <div className="order-1 rounded-panel border border-blush-200/80 bg-gradient-to-br from-brand-50 via-white to-blush-50 p-5 xl:order-none">
           <div className="flex items-center justify-between gap-2"><h2 className="text-body font-medium text-ink-soft">Maintenance & dues</h2><Wallet aria-hidden="true" className="size-[18px] text-brand-600" /></div>
           <p className="mt-3 text-[36px] font-semibold leading-tight tracking-[-0.03em] tabular-nums text-ink">{formatINR(data.dues.total)}</p>
           <p className="mt-1 text-caption text-ink-soft">{hasDues ? `${data.dues.count} open ${data.dues.count === 1 ? "invoice" : "invoices"}` : "All paid. You're up to date."}</p>
