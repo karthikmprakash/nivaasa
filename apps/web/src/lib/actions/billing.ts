@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, inArray, lt, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   auditLogs, billingHeads, expenses, invoices, invoiceItems, memberships, notifications, payments, units, vendors,
@@ -99,7 +99,7 @@ export async function runBilling(_prev: BillingState, formData: FormData): Promi
   }
 
   // In-app notice to every resident with a flat who still wants payment updates.
-  const residentRows = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, societyId), eq(memberships.status, "active"), inArray(memberships.role, ["owner", "tenant", "committee"])));
+  const residentRows = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, societyId), eq(memberships.status, "active"), isNotNull(memberships.unitId), inArray(memberships.role, ["owner", "tenant", "committee"])));
   const residents = await filterRecipientsByPref(societyId, residentRows, "payments");
   if (residents.length) {
     await db.insert(notifications).values(residents.map((r) => ({

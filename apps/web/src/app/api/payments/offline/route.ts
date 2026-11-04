@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { auditLogs, invoices, memberships, notifications, payments } from "@/db/schema";
 import { getSession } from "@/lib/auth";
+import { communityDayStart } from "@/lib/datetime";
 import { todayISO } from "@/lib/utils";
 
 const schema = z.object({
@@ -23,7 +24,8 @@ export async function POST(req: Request) {
   if (!invoice || invoice.unitId !== session.membership.unitId) return NextResponse.json({ error: "Invoice not found." }, { status: 404 });
   if (invoice.status === "paid") return NextResponse.json({ error: "This invoice is already paid." }, { status: 409 });
   if (invoice.status === "cancelled") return NextResponse.json({ error: "This invoice has been cancelled." }, { status: 409 });
-  if (parsed.data.paidOn && (!/^\d{4}-\d{2}-\d{2}$/.test(parsed.data.paidOn) || parsed.data.paidOn > todayISO())) {
+  const paidOn = parsed.data.paidOn ? communityDayStart(parsed.data.paidOn) : null;
+  if (parsed.data.paidOn && (!paidOn || parsed.data.paidOn > todayISO())) {
     return NextResponse.json({ error: "Choose a valid payment date." }, { status: 400 });
   }
   const [pending] = await db.select().from(payments).where(and(eq(payments.invoiceId, invoice.id), eq(payments.status, "pending"))).limit(1);
@@ -35,7 +37,7 @@ export async function POST(req: Request) {
   await db.insert(payments).values({
     id: crypto.randomUUID(), societyId: session.membership.societyId, unitId: invoice.unitId, invoiceId: invoice.id,
     userId: session.user.id, receiptNo, amount, method: parsed.data.method, reference: parsed.data.reference ?? null,
-    status: "pending", note: parsed.data.note ?? "Offline payment intimation", paidAt: parsed.data.paidOn ? new Date(parsed.data.paidOn) : now, createdAt: now,
+    status: "pending", note: parsed.data.note ?? "Offline payment intimation", paidAt: paidOn ?? now, createdAt: now,
   });
   const admins = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, session.membership.societyId), eq(memberships.status, "active"), inArray(memberships.role, ["accountant", "admin", "manager"])));
   if (admins.length) {

@@ -124,10 +124,10 @@ export async function createAmenity(_prev: AdminState, formData: FormData): Prom
   if (!name) return { error: "Enter an amenity name." };
   const openTime = String(formData.get("openTime") ?? "06:00");
   const closeTime = String(formData.get("closeTime") ?? "22:00");
-  if (!/^\d{2}:\d{2}$/.test(openTime) || !/^\d{2}:\d{2}$/.test(closeTime) || closeTime <= openTime) {
-    return { error: "Closing time must be after opening time." };
-  }
   const slotMinutes = Math.max(15, Math.floor(Number(formData.get("slotMinutes") ?? 60) || 60));
+  if (!/^\d{2}:\d{2}$/.test(openTime) || !/^\d{2}:\d{2}$/.test(closeTime) || (slotMinutes < 1440 && closeTime <= openTime)) {
+    return { error: slotMinutes >= 1440 ? "Choose valid opening and closing times." : "Closing time must be after opening time." };
+  }
   const [openHour, openMinute] = openTime.split(":").map(Number);
   const [closeHour, closeMinute] = closeTime.split(":").map(Number);
   const openMinutes = openHour * 60 + openMinute;

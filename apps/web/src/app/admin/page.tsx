@@ -34,7 +34,7 @@ export default async function AdminDashboard() {
   const canSeeAmenities = ["admin", "manager", "committee"].includes(role) || isSuper;
   const canApproveMoves = ["admin", "manager", "committee"].includes(role) || isSuper;
   const { now, snapshot, monthly, growth, pendingPayments, pendingDiscussions, pendingMoves, openPanics, recentVisitors, ticketCats, patrolScanned, patrolMissed, staffToday, staffCount, bookingRows, deliveryToday, avgClosure, topDues, maxCategory } = await getAdminDashboardData(ctx.society!.id);
-  const visibleAttention = (canSeeSecurity ? openPanics.length : 0) + (canApproveMoves ? pendingMoves.length : 0) + (canRunBilling ? pendingPayments.length : 0) + (canSeeComms ? pendingDiscussions.length : 0) + (canSeeHelpdesk && snapshot.slaRisk ? 1 : 0);
+  const visibleAttention = (canSeeSecurity ? openPanics.length : 0) + (canApproveMoves ? pendingMoves.length : 0) + (canRunBilling ? pendingPayments.length : 0) + (canSeeComms ? pendingDiscussions.length : 0) + (canSeeHelpdesk ? snapshot.slaRisk : 0);
   const quickActions = [
     { l: "Run the monthly billing", h: "/admin/billing", icon: Wallet, show: canRunBilling },
     { l: "Review helpdesk SLAs", h: "/admin/helpdesk", icon: Wrench, show: canSeeHelpdesk },
@@ -42,7 +42,7 @@ export default async function AdminDashboard() {
     { l: "Open financial reports", h: "/admin/reports", icon: ScrollText, show: canSeeBilling },
   ].filter((action) => action.show);
   const firstName = ctx.user.name.split(" ")[0];
-  const hour = Number(now.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", hour12: false }));
+  const hour = Number(now.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", hourCycle: "h23" }));
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   return (

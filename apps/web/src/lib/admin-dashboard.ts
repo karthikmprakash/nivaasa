@@ -45,6 +45,6 @@ export async function getAdminDashboardData(societyId: string) {
   const patrolScanned = patrolRows.find((p) => p.status === "scanned")?.count ?? 0;
   const patrolMissed = patrolRows.find((p) => p.status === "missed")?.count ?? 0;
   const maxCategory = Math.max(1, ...ticketCats.map((t) => t.count));
-  const attention = pendingPayments.length + pendingDiscussions.length + pendingMoves.length + openPanics.length + (snapshot.slaRisk ? 1 : 0);
+  const attention = pendingPayments.length + pendingDiscussions.length + pendingMoves.length + openPanics.length + snapshot.slaRisk;
   return { now, snapshot, monthly, growth, pendingPayments, pendingDiscussions, pendingMoves, openPanics, recentVisitors, ticketCats, patrolScanned, patrolMissed, staffToday, staffCount, bookingRows, deliveryToday, avgClosure, topDues, maxCategory, attention };
 }
