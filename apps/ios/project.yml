@@ -14,6 +14,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.nivaasa.community
         INFOPLIST_FILE: Nivaasa/Info.plist
         TARGETED_DEVICE_FAMILY: "1,2"
+        DEVELOPMENT_TEAM: 3A567KLT3Y
+        CODE_SIGN_STYLE: Automatic
         NIVAASA_API_URL: https://nivaasa.app
       configs:
         Debug:

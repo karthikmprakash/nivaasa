@@ -143,8 +143,6 @@ struct LoginView: View {
     @Binding var error: String?
     @Binding var busy: Bool
     let signIn: () -> Void
-    @FocusState private var focus: Field?
-    private enum Field { case email, password }
 
     var body: some View {
         ZStack {
@@ -166,28 +164,8 @@ struct LoginView: View {
                     }
                     NivaasaCard {
                         VStack(alignment: .leading, spacing: 14) {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Email address").font(.nivaasaCaptionMedium).foregroundStyle(NK.inkSoft)
-                                TextField("you@nivaasa.app", text: $email)
-                                    .textContentType(.username).keyboardType(.emailAddress)
-                                    .textInputAutocapitalization(.never).autocorrectionDisabled()
-                                    .focused($focus, equals: .email)
-                                    .accessibilityIdentifier("email")
-                                    .font(.nivaasaBody)
-                                    .padding(.horizontal, 12).frame(height: 48)
-                                    .background(NK.surface, in: RoundedRectangle(cornerRadius: NKRadius.control))
-                                    .overlay { RoundedRectangle(cornerRadius: NKRadius.control).strokeBorder(NK.lineStrong) }
-                            }
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Password").font(.nivaasaCaptionMedium).foregroundStyle(NK.inkSoft)
-                                SecureField("Your password", text: $password)
-                                    .textContentType(.password).focused($focus, equals: .password)
-                                    .onSubmit(signIn).accessibilityIdentifier("password")
-                                    .font(.nivaasaBody)
-                                    .padding(.horizontal, 12).frame(height: 48)
-                                    .background(NK.surface, in: RoundedRectangle(cornerRadius: NKRadius.control))
-                                    .overlay { RoundedRectangle(cornerRadius: NKRadius.control).strokeBorder(NK.lineStrong) }
-                            }
+                            NivaasaInput(label: "Email address", text: $email, placeholder: "you@nivaasa.app", keyboard: .emailAddress, capitalization: .never, identifier: "email")
+                            NivaasaInput(label: "Password", text: $password, placeholder: "Your password", secure: true, identifier: "password")
                             if let error {
                                 Text(error).font(.nivaasaCaption).foregroundStyle(NK.dangerInk)
                             }

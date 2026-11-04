@@ -669,10 +669,7 @@ struct VisitorsScreen: View {
                             HStack {
                                 Text(string(pass, "code")).font(.jakarta(20, .bold)).tracking(1.5).foregroundStyle(NK.ink).monospacedDigit()
                                 Spacer()
-                                ShareLink(item: "Your Nivaasa entry code is \(string(pass, "code")). Show it at the gate.") {
-                                    Image(systemName: "square.and.arrow.up").font(.system(size: 16, weight: .semibold))
-                                        .foregroundStyle(NK.brand700).frame(width: 40, height: 40)
-                                }
+                                NivaasaCopyButton(value: string(pass, "code"), label: "Copy code")
                             }
                         }
                     }
@@ -761,6 +758,7 @@ struct PaymentsScreen: View {
                         .font(.nivaasaBody).foregroundStyle(NK.inkSoft)
                 }
                 if let error { NivaasaCard { Text(error).font(.nivaasaCaption).foregroundStyle(NK.dangerInk) } }
+                if let confirmation { NivaasaFeedback(text: confirmation, tone: .mint) }
                 if let data {
                     let dues = data["dues"] as? Double ?? 0
                     NivaasaCard(tinted: true) {
@@ -784,9 +782,6 @@ struct PaymentsScreen: View {
         .background(Color.clear)
         .task { await load() }
         .refreshable { await load() }
-        .alert("Payment recorded", isPresented: Binding(get: { confirmation != nil }, set: { if !$0 { confirmation = nil } })) {
-            Button("Done", role: .cancel) { confirmation = nil }
-        } message: { Text(confirmation ?? "") }
     }
 
     private func invoices(_ data: [String: Any]) -> some View {
@@ -1162,10 +1157,20 @@ struct EmergencyScreen: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(busy)
-                .confirmationDialog("Send an emergency alert?", isPresented: $confirm, titleVisibility: .visible) {
-                    Button("Send alert", role: .destructive) { Task { await send() } }
-                    Button("Cancel", role: .cancel) {}
-                } message: { Text("The guard and community team will be notified immediately.") }
+                if confirm {
+                    NivaasaCard {
+                        Text("Send an emergency alert?").font(.nivaasaBodySemibold).foregroundStyle(NK.ink)
+                        Text("The guard and community team will be notified immediately.").font(.nivaasaCaption).foregroundStyle(NK.muted)
+                        HStack(spacing: 8) {
+                            OutlineButton(title: "Cancel") { confirm = false }
+                            Button { confirm = false; Task { await send() } } label: {
+                                Text("Send alert").font(.nivaasaBodySemibold).foregroundStyle(.white)
+                                    .frame(maxWidth: .infinity, minHeight: 46)
+                                    .background(NK.danger, in: RoundedRectangle(cornerRadius: NKRadius.control))
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                }
                 Text("Only use this for a real emergency.")
                     .font(.nivaasaCaption).foregroundStyle(NK.muted)
             }
@@ -1314,48 +1319,27 @@ struct NewTicketSheet: View {
     @State private var error: String?
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            NivaasaSheetHeader(title: "Raise a request", subtitle: "Tell us what needs attention.", close: { dismiss() })
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    eyebrowStyle("Helpdesk")
-                    Text("Raise a request").font(.nivaasaPageTitle).tracking(-0.6).foregroundStyle(NK.ink)
-                    field("Category", value: $category, options: ["Plumbing", "Electrical", "Housekeeping", "Common areas", "Security", "Other"])
-                    field("Scope", value: $scope, options: ["personal", "community"])
-                    field("Priority", value: $priority, options: ["low", "medium", "high", "urgent"])
+                    NivaasaChips(label: "Category", options: ["Plumbing", "Electrical", "Housekeeping", "Common areas", "Security", "Other"], selection: $category)
+                    NivaasaChips(label: "Scope", options: ["personal", "community"], selection: $scope)
+                    NivaasaChips(label: "Priority", options: ["low", "medium", "high", "urgent"], selection: $priority)
                     NivaasaCard {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Subject").font(.nivaasaCaptionMedium).foregroundStyle(NK.inkSoft)
-                            TextField("What needs attention?", text: $subject)
-                                .font(.nivaasaBody).padding(12).background(NK.surface, in: RoundedRectangle(cornerRadius: 10))
-                                .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(NK.line) }
-                            Text("Description").font(.nivaasaCaptionMedium).foregroundStyle(NK.inkSoft)
-                            TextEditor(text: $description)
-                                .font(.nivaasaBody).frame(minHeight: 100).padding(8)
-                                .background(NK.surface, in: RoundedRectangle(cornerRadius: 10))
-                                .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(NK.line) }
-                        }
+                        NivaasaInput(label: "Subject", text: $subject, placeholder: "What needs attention?", capitalization: .sentences)
+                        NivaasaTextArea(label: "Description", text: $description, placeholder: "Add a little detail so the right person can help.", minHeight: 110)
                     }
-                    if let error { Text(error).font(.nivaasaCaption).foregroundStyle(NK.dangerInk) }
+                    if let error { NivaasaFeedback(text: error, tone: .danger) }
                     PrimaryButton(title: busy ? "Sending…" : "Submit request", icon: "paperplane", disabled: busy || subject.count < 5 || description.count < 10) {
                         Task { await submit() }
                     }
                 }
-                .padding(16)
+                .padding(20)
             }
-            .background(AppWash())
-            .navigationTitle("New request")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
         }
-    }
-
-    private func field(_ label: String, value: Binding<String>, options: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label).font(.nivaasaCaptionMedium).foregroundStyle(NK.inkSoft)
-            Picker(label, selection: value) {
-                ForEach(options, id: \.self) { Text($0.replacingOccurrences(of: "_", with: " ").capitalized).tag($0) }
-            }.pickerStyle(.segmented)
-        }
+        .background(AppWash())
+        .interactiveDismissDisabled(busy)
     }
 
     private func submit() async {
