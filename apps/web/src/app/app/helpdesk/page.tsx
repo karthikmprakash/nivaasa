@@ -10,6 +10,7 @@ import { Avatar, Badge, Card, CardHeader, EmptyState, PageHeader, Stat } from "@
 import { requireResident } from "@/lib/queries";
 import { db } from "@/db";
 import { helpdeskTickets, users } from "@/db/schema";
+import { slaHoursForPriority } from "@/lib/helpdesk-sla";
 import { formatDate, formatTime, timeAgo } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Helpdesk" };
@@ -33,6 +34,7 @@ const statusMeta: Record<string, { label: string; variant: "blue" | "pink" | "su
 export default async function HelpdeskPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   const ctx = await requireResident();
   const params = await searchParams;
+  const baseSla = ctx.society.settings?.helpdeskSlaHours ?? 24;
   const filter = params.status ?? "all";
   const rows = await db.select({ ticket: helpdeskTickets, assignee: users }).from(helpdeskTickets).leftJoin(users, eq(helpdeskTickets.assigneeId, users.id)).where(eq(helpdeskTickets.unitId, ctx.unit.id)).orderBy(desc(helpdeskTickets.updatedAt));
   const filtered = filter === "all" ? rows : rows.filter((r) => r.ticket.status === filter);
@@ -96,7 +98,7 @@ export default async function HelpdeskPage({ searchParams }: { searchParams: Pro
           <Card>
             <CardHeader title="Your service promise" description="How we respond" icon={<ShieldCheck className="size-4" />} />
             <div className="border-t border-line px-5 py-4">
-              {[["Urgent", "4 hours"], ["High", "8 hours"], ["Normal", "24 hours"], ["Low", "48 hours"]].map(([p, s]) => <div key={p} className="flex items-center justify-between border-b border-line/60 py-2 last:border-0"><span className="text-caption font-medium text-ink-soft">{p}</span><span className="rounded-full bg-canvas px-2 py-0.5 text-caption font-semibold text-ink">{s}</span></div>)}
+              {[["urgent", "Urgent"], ["high", "High"], ["medium", "Normal"], ["low", "Low"]].map(([key, label]) => <div key={key} className="flex items-center justify-between border-b border-line/60 py-2 last:border-0"><span className="text-caption font-medium text-ink-soft">{label}</span><span className="rounded-full bg-canvas px-2 py-0.5 text-caption font-semibold text-ink">{slaHoursForPriority(key, baseSla)} hours</span></div>)}
               <p className="mt-2 text-caption leading-relaxed text-muted">Requests escalate automatically when the SLA is breached — to the helpdesk manager, then the community manager.</p>
             </div>
           </Card>

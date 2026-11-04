@@ -5,11 +5,13 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { auditLogs, classifieds, discussions, eventRsvps, events, memberships, notifications, notices, polls } from "@/db/schema";
 import { requireAdmin } from "@/lib/queries";
+import { filterRecipientsByPref, type NotificationPrefKey } from "@/lib/notifications";
 
 export type CommsState = { error?: string; ok?: boolean; message?: string; fieldErrors?: Record<string, string> };
 
-async function residentsOf(societyId: string) {
-  return db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, societyId), inArray(memberships.role, ["owner", "tenant", "committee"]))).catch(() => []);
+async function residentsOf(societyId: string, pref: NotificationPrefKey) {
+  const rows = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, societyId), inArray(memberships.role, ["owner", "tenant", "committee"]))).catch(() => []);
+  return filterRecipientsByPref(societyId, rows, pref);
 }
 
 export async function publishNotice(_prev: CommsState, formData: FormData): Promise<CommsState> {
@@ -26,7 +28,7 @@ export async function publishNotice(_prev: CommsState, formData: FormData): Prom
   const id = crypto.randomUUID();
   const now = new Date();
   await db.insert(notices).values({ id, societyId: ctx.society.id, authorId: ctx.user.id, title, body, category, pinned, audience, publishedAt: now });
-  const residents = await residentsOf(ctx.society.id);
+  const residents = await residentsOf(ctx.society.id, "community");
   if (residents.length) await db.insert(notifications).values(residents.map((r) => ({ id: crypto.randomUUID(), userId: r.userId, societyId: ctx.society!.id, title: `Notice: ${title}`, body: body.slice(0, 160), type: "notice" as const, link: `/app/community/notices/${id}`, createdAt: now })));
   await db.insert(auditLogs).values({ id: crypto.randomUUID(), societyId: ctx.society.id, actorId: ctx.user.id, actorName: ctx.user.name, action: "notice.published", entity: "notice", entityId: id, metadata: { title, category, audience, pinned }, createdAt: now });
   revalidatePath("/admin/communications");
@@ -61,7 +63,7 @@ export async function createPoll(_prev: CommsState, formData: FormData): Promise
   const id = crypto.randomUUID();
   const now = new Date();
   await db.insert(polls).values({ id, societyId: ctx.society.id, authorId: ctx.user.id, question, description: description || null, options: options.map((label, i) => ({ id: `opt-${i + 1}-${Math.random().toString(36).slice(2, 6)}`, label })), audience, secret, hideResults, status: "active", endsAt: endsAt ? new Date(endsAt) : null, createdAt: now });
-  const residents = await residentsOf(ctx.society.id);
+  const residents = await residentsOf(ctx.society.id, "community");
   if (residents.length) await db.insert(notifications).values(residents.map((r) => ({ id: crypto.randomUUID(), userId: r.userId, societyId: ctx.society!.id, title: "New community poll", body: question, type: "community" as const, link: "/app/community?tab=polls", createdAt: now })));
   await db.insert(auditLogs).values({ id: crypto.randomUUID(), societyId: ctx.society.id, actorId: ctx.user.id, actorName: ctx.user.name, action: "poll.created", entity: "poll", entityId: id, metadata: { question }, createdAt: now });
   revalidatePath("/admin/communications");
@@ -88,7 +90,8 @@ export async function moderateDiscussion(formData: FormData) {
   const [d] = await db.select().from(discussions).where(and(eq(discussions.id, id), eq(discussions.societyId, ctx.society.id))).limit(1);
   if (!d) return;
   await db.update(discussions).set({ status: decision === "publish" ? "published" : decision === "reject" ? "rejected" : "hidden" }).where(eq(discussions.id, id));
-  await db.insert(notifications).values({ id: crypto.randomUUID(), userId: d.authorId, societyId: ctx.society.id, title: decision === "publish" ? "Your discussion is live" : "Your discussion was reviewed", body: decision === "publish" ? `“${d.title}” is now visible to the community.` : `A moderator reviewed “${d.title}” and it is not visible. Contact the community office if you have questions.`, type: "community", link: "/app/community?tab=discussions", createdAt: new Date() });
+  const [author] = await filterRecipientsByPref(ctx.society.id, [{ userId: d.authorId }], "community");
+  if (author) await db.insert(notifications).values({ id: crypto.randomUUID(), userId: d.authorId, societyId: ctx.society.id, title: decision === "publish" ? "Your discussion is live" : "Your discussion was reviewed", body: decision === "publish" ? `“${d.title}” is now visible to the community.` : `A moderator reviewed “${d.title}” and it is not visible. Contact the community office if you have questions.`, type: "community", link: "/app/community?tab=discussions", createdAt: new Date() });
   await db.insert(auditLogs).values({ id: crypto.randomUUID(), societyId: ctx.society.id, actorId: ctx.user.id, actorName: ctx.user.name, action: `discussion.${decision}`, entity: "discussion", entityId: id, metadata: { title: d.title }, createdAt: new Date() });
   revalidatePath("/admin/communications");
   revalidatePath("/app/community");
@@ -110,7 +113,7 @@ export async function createEvent(_prev: CommsState, formData: FormData): Promis
   const id = crypto.randomUUID();
   const now = new Date();
   await db.insert(events).values({ id, societyId: ctx.society.id, authorId: ctx.user.id, title, description, startAt: new Date(startAt), endAt: endAt ? new Date(endAt) : null, location, capacity, coverColor: "#fde8ef", createdAt: now });
-  const residents = await residentsOf(ctx.society.id);
+  const residents = await residentsOf(ctx.society.id, "community");
   if (residents.length) await db.insert(notifications).values(residents.map((r) => ({ id: crypto.randomUUID(), userId: r.userId, societyId: ctx.society!.id, title: `You're invited: ${title}`, body: `${new Date(startAt).toLocaleDateString("en-IN", { day: "numeric", month: "long" })} at ${location}. RSVP in the community tab.`, type: "community" as const, link: "/app/community?tab=events", createdAt: now })));
   await db.insert(auditLogs).values({ id: crypto.randomUUID(), societyId: ctx.society.id, actorId: ctx.user.id, actorName: ctx.user.name, action: "event.created", entity: "event", entityId: id, metadata: { title }, createdAt: now });
   revalidatePath("/admin/communications");

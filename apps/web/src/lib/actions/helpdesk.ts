@@ -9,14 +9,17 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { auditLogs, helpdeskTickets, memberships, notifications, ticketComments, users } from "@/db/schema";
 import { requireAdmin, requireResident } from "@/lib/queries";
+import { filterRecipientsByPref } from "@/lib/notifications";
+import { slaHoursForPriority } from "@/lib/helpdesk-sla";
 
 export type TicketState = { error?: string; fieldErrors?: Record<string, string> };
 
 const categories = ["Plumbing", "Electrical", "Lifts", "Housekeeping", "Security", "Parking", "Common areas", "Intercom", "Internet", "Other"];
 
 async function notify(stakeholders: { userId: string }[], societyId: string, title: string, body: string, link: string) {
-  if (!stakeholders.length) return;
-  await db.insert(notifications).values(stakeholders.map((s) => ({ id: randomUUID(), userId: s.userId, societyId, title, body, type: "helpdesk" as const, link, createdAt: new Date() })));
+  const recipients = await filterRecipientsByPref(societyId, stakeholders, "helpdesk");
+  if (!recipients.length) return;
+  await db.insert(notifications).values(recipients.map((s) => ({ id: randomUUID(), userId: s.userId, societyId, title, body, type: "helpdesk" as const, link, createdAt: new Date() })));
 }
 
 async function savePhotos(files: File[]): Promise<string[]> {
@@ -48,7 +51,7 @@ export async function createTicket(_prev: TicketState, formData: FormData): Prom
 
   const files = formData.getAll("photos").filter((f): f is File => f instanceof File);
   const attachments = await savePhotos(files);
-  const hours = priority === "urgent" ? 4 : priority === "high" ? 8 : priority === "medium" ? 24 : 48;
+  const hours = slaHoursForPriority(priority, ctx.society.settings?.helpdeskSlaHours ?? 24);
   const now = new Date();
   const id = randomUUID();
   await db.insert(helpdeskTickets).values({
@@ -113,20 +116,23 @@ export async function adminUpdateTicket(formData: FormData) {
   const assigneeId = String(formData.get("assigneeId") ?? "") || null;
   const priority = String(formData.get("priority") ?? "") || null;
   const note = String(formData.get("note") ?? "").trim();
+  const allowedStatuses = ["open", "assigned", "in_progress", "resolved", "closed", "reopened"];
+  const allowedPriorities = ["low", "medium", "high", "urgent"];
   const [ticket] = await db.select().from(helpdeskTickets).where(and(eq(helpdeskTickets.id, ticketId), eq(helpdeskTickets.societyId, ctx.society.id))).limit(1);
   if (!ticket) return;
   const now = new Date();
   const updates: Partial<typeof helpdeskTickets.$inferInsert> = { updatedAt: now };
-  if (status) updates.status = status as typeof ticket.status;
+  if (allowedStatuses.includes(status)) updates.status = status as typeof ticket.status;
   if (assigneeId !== undefined) updates.assigneeId = assigneeId;
-  if (priority) updates.priority = priority as typeof ticket.priority;
+  if (allowedPriorities.includes(priority ?? "")) updates.priority = priority as typeof ticket.priority;
   if (status === "resolved" || status === "closed") updates.resolvedAt = now;
   if (status === "in_progress" && !ticket.assigneeId && assigneeId) updates.status = "in_progress";
   await db.update(helpdeskTickets).set(updates).where(eq(helpdeskTickets.id, ticketId));
   if (note) {
     await db.insert(ticketComments).values({ id: randomUUID(), ticketId, authorId: ctx.user.id, body: note, internal: false, createdAt: now });
   }
-  await notify([{ userId: ticket.raisedBy }], ctx.society.id, "Update on your helpdesk request", `${ctx.user.name}: ${note || `Status changed to ${status || "updated"}`}`, `/app/helpdesk/${ticketId}`);
+  const updateLabel = note || (allowedStatuses.includes(status) ? `Status changed to ${status.replaceAll("_", " ")}` : allowedPriorities.includes(priority ?? "") ? `Priority changed to ${priority}` : "Your request was updated");
+  await notify([{ userId: ticket.raisedBy }], ctx.society.id, "Update on your helpdesk request", `${ctx.user.name}: ${updateLabel}`, `/app/helpdesk/${ticketId}`);
   await db.insert(auditLogs).values({ id: randomUUID(), societyId: ctx.society.id, actorId: ctx.user.id, actorName: ctx.user.name, action: "helpdesk.updated", entity: "ticket", entityId: ticketId, metadata: { status, assigneeId, priority }, createdAt: now });
   revalidatePath("/admin/helpdesk");
   revalidatePath(`/admin/helpdesk/${ticketId}`);

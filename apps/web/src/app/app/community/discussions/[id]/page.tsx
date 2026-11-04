@@ -6,8 +6,8 @@ import { Avatar, Badge, Card } from "@/components/ui/primitives";
 import { SubmitButton } from "@/components/ui/client";
 import { requireResident } from "@/lib/queries";
 import { db } from "@/db";
-import { discussionComments, discussions, users } from "@/db/schema";
-import { addDiscussionComment } from "@/lib/actions/community";
+import { discussionComments, discussionLikes, discussions, users } from "@/db/schema";
+import { addDiscussionComment, toggleDiscussionLike } from "@/lib/actions/community";
 import { formatDateTime, timeAgo } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,11 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
   if (!row || row.discussion.societyId !== ctx.society.id) notFound();
   const isAuthor = row.discussion.authorId === ctx.user.id;
   if (row.discussion.status !== "published" && !isAuthor) notFound();
-  const comments = await db.select({ comment: discussionComments, author: users }).from(discussionComments).innerJoin(users, eq(discussionComments.authorId, users.id)).where(eq(discussionComments.discussionId, id)).orderBy(asc(discussionComments.createdAt));
+  const [comments, likedRows] = await Promise.all([
+    db.select({ comment: discussionComments, author: users }).from(discussionComments).innerJoin(users, eq(discussionComments.authorId, users.id)).where(eq(discussionComments.discussionId, id)).orderBy(asc(discussionComments.createdAt)),
+    db.select({ id: discussionLikes.id }).from(discussionLikes).where(and(eq(discussionLikes.discussionId, id), eq(discussionLikes.userId, ctx.user.id))).limit(1),
+  ]);
+  const liked = likedRows.length > 0;
   const d = row.discussion;
 
   return (
@@ -36,7 +40,7 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
         <h1 className="mt-5 text-[26px] font-semibold leading-[1.18] tracking-[-0.035em] text-ink sm:text-[31px]">{d.title}</h1>
         <p className="mt-3 whitespace-pre-line text-body leading-[1.85] text-ink-soft">{d.body}</p>
         <div className="mt-6 flex items-center gap-4 border-t border-line pt-4 text-caption text-muted">
-          <span className="inline-flex items-center gap-1"><Heart className="size-4" /> {d.likes} likes</span>
+          <form action={toggleDiscussionLike}><input type="hidden" name="discussionId" value={d.id} /><button type="submit" aria-pressed={liked} className={`inline-flex items-center gap-1 font-semibold ${liked ? "text-blush-500" : "text-muted hover:text-blush-500"}`}><Heart className={`size-4 ${liked ? "fill-current" : ""}`} /> {d.likes} {d.likes === 1 ? "like" : "likes"}</button></form>
           <span className="inline-flex items-center gap-1"><MessageCircle className="size-4" /> {comments.length} replies</span>
           <Badge variant="outline">{d.category.replace("_", " ")}</Badge>
         </div>

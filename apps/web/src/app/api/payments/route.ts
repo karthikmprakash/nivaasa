@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { auditLogs, invoices, memberships, notifications, payments } from "@/db/schema";
 import { getSession, isAdminRole } from "@/lib/auth";
+import { filterRecipientsByPref } from "@/lib/notifications";
 
 const schema = z.object({
   invoiceId: z.string().optional(),
@@ -65,7 +66,8 @@ export async function POST(req: Request) {
       title: "Payment received", body: `${session.user.name} paid ₹${(amount / 100).toLocaleString("en-IN")}${invoice ? ` for ${invoice.title}` : " as advance"}. Receipt ${receiptNo}.`, type: "payment" as const, link: "/admin/billing", createdAt: now,
     })));
   }
-  await db.insert(notifications).values({
+  const [selfRecipient] = await filterRecipientsByPref(session.membership.societyId, [{ userId: session.user.id }], "payments");
+  if (selfRecipient) await db.insert(notifications).values({
     id: crypto.randomUUID(), userId: session.user.id, societyId: session.membership.societyId,
     title: "Payment successful — receipt ready", body: `₹${(amount / 100).toLocaleString("en-IN")} received. Your receipt number is ${receiptNo}.`, type: "payment", link: "/app/payments", createdAt: now,
   });

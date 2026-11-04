@@ -37,7 +37,7 @@ export function PanicButton() {
       </button>
       <Dialog open={open} onOpenChange={setOpen} title={done ? "Help is on the way" : "Send an emergency alert"} description={done ? "The security team has been alerted. Stay where you are if it is safe." : "Only use this for a real emergency. The guard and community team will be notified immediately."} className="max-w-md">
         {done ? (
-          <div className="py-3 text-center"><span className="mx-auto grid size-16 place-items-center rounded-full bg-mint-50 text-mint-600"><CheckCircle2 className="size-8" /></span><p className="mt-4 text-[18px] font-semibold text-ink">Alert sent to Gate 1</p><p className="mt-1 text-caption text-muted">Ramesh Yadav and the community manager have been notified. If you can, call 108 for medical emergencies.</p><Button className="mt-4 w-full" onClick={() => setOpen(false)}>Close</Button></div>
+          <div className="py-3 text-center"><span className="mx-auto grid size-16 place-items-center rounded-full bg-mint-50 text-mint-600"><CheckCircle2 className="size-8" /></span><p className="mt-4 text-[18px] font-semibold text-ink">Alert sent to security</p><p className="mt-1 text-caption text-muted">Your society&apos;s security team and community manager have been notified. If you can, call 108 for medical emergencies.</p><Button className="mt-4 w-full" onClick={() => setOpen(false)}>Close</Button></div>
         ) : (
           <div>
             <div className="rounded-xl border border-[#f0c7cc] bg-[#fdf1f3] px-3.5 py-2.5 text-caption leading-relaxed text-[#9e4a55]"><AlertTriangle className="mr-1 inline size-4" /> False alerts have consequences. For routine issues, use the helpdesk instead.</div>

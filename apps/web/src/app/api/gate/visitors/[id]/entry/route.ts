@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { auditLogs, notifications, visitors } from "@/db/schema";
 import { gateSession, residentsOfUnit } from "@/lib/gate";
+import { filterRecipientsByPref } from "@/lib/notifications";
 
 export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await gateSession();
@@ -19,7 +20,7 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
   if (v.validTo && v.validTo < now) return NextResponse.json({ error: "This pass has expired." }, { status: 409 });
   const [admitted] = await db.update(visitors).set({ status: "entered", enteredAt: now, guardId: session.user.id }).where(and(eq(visitors.id, id), eq(visitors.status, "approved"))).returning({ id: visitors.id });
   if (!admitted) return NextResponse.json({ error: "This entry is no longer available." }, { status: 409 });
-  const hosts = await residentsOfUnit(v.unitId!, session.society!.id);
+  const hosts = await filterRecipientsByPref(session.society!.id, await residentsOfUnit(v.unitId!, session.society!.id), "visitors");
   if (hosts.length) await db.insert(notifications).values(hosts.map((h) => ({ id: crypto.randomUUID(), userId: h.userId, societyId: session.society!.id, title: `${v.name} entered the community`, body: "Recorded at Gate 1.", type: "security" as const, link: "/app/visitors", createdAt: now })));
   await db.insert(auditLogs).values({ id: crypto.randomUUID(), societyId: session.society!.id, actorId: session.user.id, actorName: session.user.name, action: "visitor.entered", entity: "visitor", entityId: id, metadata: { name: v.name }, createdAt: now });
   revalidatePath("/gate"); revalidatePath("/app/visitors"); revalidatePath("/admin/security");

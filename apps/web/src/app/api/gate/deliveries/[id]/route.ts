@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { deliveries, notifications } from "@/db/schema";
 import { gateSession, residentsOfUnit } from "@/lib/gate";
+import { filterRecipientsByPref } from "@/lib/notifications";
 
 const schema = z.object({ otp: z.string().min(4).max(8), action: z.enum(["deliver", "leave"]).default("deliver") });
 
@@ -23,7 +24,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .where(and(eq(deliveries.id, id), eq(deliveries.status, expected), eq(deliveries.otp, parsed.data.otp))).returning({ id: deliveries.id });
   if (!updated) return NextResponse.json({ error: "This parcel is no longer available for this action." }, { status: 409 });
   if (delivery.unitId) {
-    const hosts = await residentsOfUnit(delivery.unitId, session.society!.id);
+    const hosts = await filterRecipientsByPref(session.society!.id, await residentsOfUnit(delivery.unitId, session.society!.id), "visitors");
     if (hosts.length) await db.insert(notifications).values(hosts.map((h) => ({ id: crypto.randomUUID(), userId: h.userId, societyId: session.society!.id, title: parsed.data.action === "leave" ? "Parcel kept at the gate" : "Parcel delivered", body: `${delivery.company} parcel ${parsed.data.action === "leave" ? "is safe at Gate 1. Collect with your code." : "was handed over."}`, type: "delivery" as const, link: "/app/deliveries", createdAt: now })));
   }
   revalidatePath("/gate"); revalidatePath("/app/deliveries"); revalidatePath("/admin/security");

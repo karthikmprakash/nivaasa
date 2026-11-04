@@ -8,25 +8,28 @@ import { requireResident } from "@/lib/queries";
 import { db } from "@/db";
 import { panicAlerts } from "@/db/schema";
 import { resolveMyAlert } from "@/lib/actions/emergency";
+import { getSocietyContacts, telHref } from "@/lib/society-contacts";
 import { formatDateTime } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Emergency" };
 
 export const dynamic = "force-dynamic";
 
-const contacts = [
-  { name: "Gate 1 · Security", phone: "+91 97400 22334", role: "24×7 gate desk", icon: ShieldCheck, tone: "bg-brand-50 text-brand-600" },
-  { name: "Security manager", phone: "+91 98111 88990", role: "Imran Shaikh", icon: ShieldAlert, tone: "bg-[#f2effc] text-[#6a54c8]" },
-  { name: "Community manager", phone: "+91 98450 89012", role: "Priya Nair", icon: UserRound, tone: "bg-blush-50 text-blush-500" },
-  { name: "Ambulance", phone: "108", role: "National emergency", icon: Ambulance, tone: "bg-mint-50 text-mint-600" },
-  { name: "Police", phone: "112", role: "National emergency", icon: Siren, tone: "bg-amber-soft text-amber-ink" },
-  { name: "Fire", phone: "101", role: "National emergency", icon: Flame, tone: "bg-[#fdeced] text-[#c43d4d]" },
-];
-
 export default async function EmergencyPage() {
   const ctx = await requireResident();
-  const alerts = await db.select().from(panicAlerts).where(and(eq(panicAlerts.societyId, ctx.society.id), eq(panicAlerts.userId, ctx.user.id))).orderBy(desc(panicAlerts.createdAt)).limit(5);
+  const [alerts, societyContacts] = await Promise.all([
+    db.select().from(panicAlerts).where(and(eq(panicAlerts.societyId, ctx.society.id), eq(panicAlerts.userId, ctx.user.id))).orderBy(desc(panicAlerts.createdAt)).limit(5),
+    getSocietyContacts(ctx.society.id),
+  ]);
   const active = alerts.find((a) => ["open", "acknowledged"].includes(a.status));
+  const contacts = [
+    ...(societyContacts.guard ? [{ name: `Gate security · ${societyContacts.guard.name}`, phone: societyContacts.guard.phone, role: "24×7 gate desk", icon: ShieldCheck, tone: "bg-brand-50 text-brand-600" }] : []),
+    ...(societyContacts.security && societyContacts.security.name !== societyContacts.guard?.name ? [{ name: `Security manager · ${societyContacts.security.name}`, phone: societyContacts.security.phone, role: "Escalation contact", icon: ShieldAlert, tone: "bg-[#f2effc] text-[#6a54c8]" }] : []),
+    ...(societyContacts.manager ? [{ name: `Community manager · ${societyContacts.manager.name}`, phone: societyContacts.manager.phone, role: "Society office", icon: UserRound, tone: "bg-blush-50 text-blush-500" }] : []),
+    { name: "Ambulance", phone: "108", role: "National emergency", icon: Ambulance, tone: "bg-mint-50 text-mint-600" },
+    { name: "Police", phone: "112", role: "National emergency", icon: Siren, tone: "bg-amber-soft text-amber-ink" },
+    { name: "Fire", phone: "101", role: "National emergency", icon: Flame, tone: "bg-[#fdeced] text-[#c43d4d]" },
+  ];
   return (
     <div className="mx-auto max-w-4xl">
       <PageHeader eyebrow="Safety first" title="Emergency" description="One tap alerts the guard and community team. Keep the numbers you might need in a hurry close at hand." actions={<Link href="/app/my-home" className="inline-flex h-10 items-center gap-1.5 rounded-full border border-line bg-white px-4 text-caption font-semibold text-ink-soft">Edit emergency contact</Link>} />
@@ -49,7 +52,7 @@ export default async function EmergencyPage() {
         <h2 className="text-base font-semibold text-ink">Emergency contacts</h2>
         <div className="mt-2.5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {contacts.map((c) => (
-            <a key={c.name} href={`tel:${c.phone.replace(/\s/g, "")}`} className="group flex items-center gap-3 rounded-2xl border border-line bg-white p-3.5 transition-all hover:border-brand-200 hover:shadow-soft">
+            <a key={c.name} href={telHref(c.phone)} className="group flex items-center gap-3 rounded-2xl border border-line bg-white p-3.5 transition-all hover:border-brand-200 hover:shadow-soft">
               <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${c.tone}`}><c.icon className="size-4" /></span>
               <div className="min-w-0 flex-1"><p className="text-caption font-semibold text-ink">{c.name}</p><p className="text-caption text-muted">{c.role}</p></div>
               <span className="text-caption font-semibold text-brand-600 group-hover:underline">{c.phone}</span>
@@ -69,7 +72,7 @@ export default async function EmergencyPage() {
         </div>
         <div className="rounded-[20px] border border-line bg-[#fbfcff] p-5">
           <p className="text-caption font-semibold text-ink">Community safety drills</p>
-          <p className="mt-1 text-caption leading-relaxed text-muted">Fire drills are conducted twice a year. The next drill is scheduled for 15 December at 10 AM. Floor marshals will guide residents to the assembly point on the east lawn.</p>
+          <p className="mt-1 text-caption leading-relaxed text-muted">Fire drills are conducted twice a year. The committee will announce the next drill in the community feed. Floor marshals guide residents to the assembly point.</p>
           <Link href="/app/community" className="mt-2 inline-flex items-center gap-1 text-caption font-semibold text-brand-600">See safety notices <ArrowRight className="size-4" /></Link>
         </div>
       </div>

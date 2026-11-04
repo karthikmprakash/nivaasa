@@ -10,6 +10,7 @@ import { Avatar, Badge, Card, CardHeader } from "@/components/ui/primitives";
 import { GateEntryWizard, GateQueue, GateStaff, GatePatrol, GateDeliveries, GatePanic, GateExitButton } from "@/components/gate/gate-panels";
 import { SocietySwitcher } from "@/components/shell/society-switcher";
 import { getSocietyOptions, requireGuard } from "@/lib/queries";
+import { getSocietyContacts, telHref } from "@/lib/society-contacts";
 import { db } from "@/db";
 import { deliveries, patrolCheckpoints, patrolRounds, staff, staffAttendance, units, users, visitors, panicAlerts, helpdeskTickets, notifications } from "@/db/schema";
 import { logoutAction } from "@/lib/actions/auth";
@@ -23,6 +24,7 @@ export default async function GatePage() {
   const ctx = await requireGuard();
   const society = ctx.society!;
   const societies = await getSocietyOptions(ctx);
+  const societyContacts = await getSocietyContacts(society.id);
   const today = todayISO();
   const start = passDateBoundary(today);
   const tomorrow = passDateBoundary(shiftPassDate(today, 1));
@@ -144,7 +146,7 @@ export default async function GatePage() {
 
             <div className="rounded-[18px] border border-line bg-white p-4">
               <div className="flex items-center gap-2"><Phone className="size-4 text-brand-600" /><p className="text-caption font-semibold text-ink">Quick contacts</p></div>
-              <div className="mt-2 space-y-1.5"><a href="tel:+919845089012" className="flex items-center justify-between text-caption text-ink-soft"><span>Community manager</span><span className="font-semibold text-ink">Call</span></a><a href="tel:+919811188990" className="flex items-center justify-between text-caption text-ink-soft"><span>Security manager</span><span className="font-semibold text-ink">Call</span></a><a href="tel:112" className="flex items-center justify-between text-caption text-ink-soft"><span>Police / ambulance</span><span className="font-semibold text-[#c43d4d]">112</span></a></div>
+              <div className="mt-2 space-y-1.5">{societyContacts.manager ? <a href={telHref(societyContacts.manager.phone)} className="flex items-center justify-between text-caption text-ink-soft"><span>Community manager · {societyContacts.manager.name}</span><span className="font-semibold text-ink">{societyContacts.manager.phone}</span></a> : null}{societyContacts.security ? <a href={telHref(societyContacts.security.phone)} className="flex items-center justify-between text-caption text-ink-soft"><span>Security manager · {societyContacts.security.name}</span><span className="font-semibold text-ink">{societyContacts.security.phone}</span></a> : null}<a href="tel:112" className="flex items-center justify-between text-caption text-ink-soft"><span>Police / ambulance</span><span className="font-semibold text-[#c43d4d]">112</span></a></div>
             </div>
             <div className="rounded-[18px] bg-gradient-to-br from-brand-50 to-blush-50 p-4"><p className="flex items-center gap-1.5 text-caption font-semibold text-ink"><Wifi className="size-4 text-brand-600" /> Shift handover</p><p className="mt-1 text-caption leading-relaxed text-ink-soft">Evening shift starts at 2 PM. Note any pending approvals, deliveries or missed patrol checkpoints before handover.</p></div>
           </aside>

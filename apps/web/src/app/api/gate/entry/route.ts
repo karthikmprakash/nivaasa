@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { auditLogs, deliveries, notifications, units, visitors } from "@/db/schema";
 import { gateSession, residentsOfUnit } from "@/lib/gate";
+import { filterRecipientsByPref } from "@/lib/notifications";
 import { todayISO } from "@/lib/utils";
 import { validVisitorPhone } from "@/lib/visitor-pass-rules";
 import { nextVisitorCode } from "@/lib/visitor-passes";
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
   const [unit] = await db.select().from(units).where(and(eq(units.id, d.unitId), eq(units.societyId, societyId))).limit(1);
   if (!unit) return NextResponse.json({ error: "Choose a valid home." }, { status: 404 });
   const hosts = await residentsOfUnit(unit.id, societyId);
+  const notifyHosts = await filterRecipientsByPref(societyId, hosts, "visitors");
   const now = new Date();
   const day = todayISO();
   const fail = (error: string, status = 400) => ({ error, status } as const);
@@ -59,7 +61,8 @@ export async function POST(req: Request) {
     const visitorId = pass && !pass.recurringCab ? pass.id : crypto.randomUUID();
     const company = pass?.company ?? d.company ?? null;
     const leaveAtGate = type === "delivery" && !!pass?.leaveAtGate;
-    const status = leaveAtGate ? "left_at_gate" : pass ? "entered" : "pending";
+    const autoApprove = !pass && type !== "delivery" && session.society!.settings?.visitorApproval === false;
+    const status = leaveAtGate ? "left_at_gate" : pass || autoApprove ? "entered" : "pending";
     const log = {
       name, phone: phone || null, vehicleNo: vehicleNo || null, guardId,
       enteredAt: status === "entered" ? now : null,
@@ -80,7 +83,10 @@ export async function POST(req: Request) {
       tx.insert(visitors).values({
         ...log, id: visitorId, societyId, unitId: unit.id, hostUserId: hosts[0]?.userId ?? null,
         type, company, purpose: d.purpose || null, notes: d.notes || null,
-        status: "pending", code: walkInCode, createdAt: now,
+        status: autoApprove ? "entered" : "pending", code: walkInCode, createdAt: now,
+        enteredAt: autoApprove ? now : null,
+        approvedAt: autoApprove ? now : null,
+        approvedBy: autoApprove ? guardId : null,
       }).run();
     }
 
@@ -94,10 +100,10 @@ export async function POST(req: Request) {
       }).run();
     }
 
-    if (hosts.length) tx.insert(notifications).values(hosts.map((h) => ({
+    if (notifyHosts.length) tx.insert(notifications).values(notifyHosts.map((h) => ({
       id: crypto.randomUUID(), userId: h.userId, societyId,
-      title: leaveAtGate ? "Parcel ready for pickup" : pass ? `${name} entered the community` : "Visitor waiting at the gate",
-      body: leaveAtGate ? "Find your pickup code in Deliveries." : pass ? "Verified with their passcode at the gate." : `${name} is at the gate for Home ${unit.number}. Approve or deny in the app.`,
+      title: leaveAtGate ? "Parcel ready for pickup" : pass || autoApprove ? `${name} entered the community` : "Visitor waiting at the gate",
+      body: leaveAtGate ? "Find your pickup code in Deliveries." : pass ? "Verified with their passcode at the gate." : autoApprove ? "Auto-approved at the gate by your society's visitor policy." : `${name} is at the gate for Home ${unit.number}. Approve or deny in the app.`,
       type: "security" as const, link: leaveAtGate ? "/app/deliveries" : "/app/visitors", createdAt: now,
     }))).run();
     tx.insert(auditLogs).values({

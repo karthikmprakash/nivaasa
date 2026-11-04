@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { and, eq, like as sqlLike, or } from "drizzle-orm";
+import { and, eq, inArray, like as sqlLike, or } from "drizzle-orm";
 import { BookUser, CalendarHeart, FileText, HelpCircle, Megaphone, MessageSquare, Search, ShoppingBag, Wrench } from "lucide-react";
 import { PageHeader } from "@/components/ui/primitives";
 import { requireResident } from "@/lib/queries";
 import { db } from "@/db";
 import { amenities, classifieds, discussions, documents, helpdeskTickets, notices } from "@/db/schema";
+import { noticeAudiencesForRole } from "@/lib/community-access";
 
 export const metadata: Metadata = { title: "Search" };
 
@@ -20,7 +21,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   if (term) {
     const [n, d, t, a, docs, c] = await Promise.all([
-      db.select().from(notices).where(and(eq(notices.societyId, ctx.society.id), or(sqlLike(notices.title, pattern), sqlLike(notices.body, pattern)))).limit(6),
+      db.select().from(notices).where(and(eq(notices.societyId, ctx.society.id), inArray(notices.audience, noticeAudiencesForRole(ctx.membership.role)), or(sqlLike(notices.title, pattern), sqlLike(notices.body, pattern)))).limit(6),
       db.select().from(discussions).where(and(eq(discussions.societyId, ctx.society.id), eq(discussions.status, "published"), or(sqlLike(discussions.title, pattern), sqlLike(discussions.body, pattern)))).limit(6),
       db.select().from(helpdeskTickets).where(and(eq(helpdeskTickets.societyId, ctx.society.id), eq(helpdeskTickets.unitId, ctx.unit.id), or(sqlLike(helpdeskTickets.subject, pattern), sqlLike(helpdeskTickets.description, pattern)))).limit(6),
       db.select().from(amenities).where(and(eq(amenities.societyId, ctx.society.id), or(sqlLike(amenities.name, pattern), sqlLike(amenities.description!, pattern)))).limit(4),

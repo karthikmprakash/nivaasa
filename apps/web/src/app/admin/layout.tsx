@@ -4,6 +4,7 @@ import { AdminShell } from "@/components/shell/admin-shell";
 import { db } from "@/db";
 import { helpdeskTickets, payments, visitors } from "@/db/schema";
 import { getSocietyOptions, getUnreadCount, requireAdmin } from "@/lib/queries";
+import { escalateOverdueTickets } from "@/lib/helpdesk-escalation";
 
 export const metadata: Metadata = { title: "Admin console" };
 export const dynamic = "force-dynamic";
@@ -12,6 +13,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const ctx = await requireAdmin();
   const society = ctx.society!;
   const societies = await getSocietyOptions(ctx);
+  await escalateOverdueTickets(society.id);
   const [ticketRows, visitorRows, paymentRows, unread] = await Promise.all([
     db.select({ count: sql<number>`count(*)` }).from(helpdeskTickets).where(and(eq(helpdeskTickets.societyId, society.id), inArray(helpdeskTickets.status, ["open", "assigned", "in_progress", "reopened"]))),
     db.select({ count: sql<number>`count(*)` }).from(visitors).where(and(eq(visitors.societyId, society.id), eq(visitors.status, "pending"))),

@@ -1,9 +1,9 @@
 import { QueryTabs } from "@/components/ui/query-tabs";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { and, count, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import {
-  ArrowRight, CalendarDays, CheckCircle2, ChevronRight, Clock3, Heart, MapPin, MessageCircle,
+  ArrowRight, CalendarDays, CalendarPlus, CheckCircle2, ChevronRight, Clock3, Heart, MapPin, MessageCircle,
   MessageSquare, Pin, Plus, Sparkles, Users, Vote, Info, PartyPopper, Megaphone,
 } from "lucide-react";
 import { Avatar, Badge, Card, CardHeader, EmptyState, PageHeader } from "@/components/ui/primitives";
@@ -12,6 +12,7 @@ import { requireResident } from "@/lib/queries";
 import { db } from "@/db";
 import { discussionComments, discussions, eventRsvps, events, notices, pollVotes, polls, users } from "@/db/schema";
 import { toggleEventRsvp } from "@/lib/actions/community";
+import { canVoteInPollAudience, noticeAudiencesForRole, pollAudiencesForRole, pollIsOpen } from "@/lib/community-access";
 import { formatDate, formatTime, timeAgo } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Community" };
@@ -34,7 +35,7 @@ const categories: Record<string, { label: string; variant: "blue" | "pink" | "su
   finance: { label: "Finance", variant: "success" },
 };
 
-export default async function CommunityPage({ searchParams }: { searchParams: Promise<{ tab?: string; submitted?: string }> }) {
+export default async function CommunityPage({ searchParams }: { searchParams: Promise<{ tab?: string; submitted?: string; rsvp?: string }> }) {
   const ctx = await requireResident();
   const params = await searchParams;
   const tab = params.tab ?? "all";
@@ -42,11 +43,11 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
   const userId = ctx.user.id;
 
   const [noticeRows, discussionRows, pendingMine, commentCounts, pollRows, votes, myVotes, eventRows, rsvpCounts, myRsvps] = await Promise.all([
-    db.select({ notice: notices, author: users }).from(notices).leftJoin(users, eq(notices.authorId, users.id)).where(and(eq(notices.societyId, societyId), or(eq(notices.audience, "all"), eq(notices.audience, "owners")))).orderBy(desc(notices.pinned), desc(notices.publishedAt)),
+    db.select({ notice: notices, author: users }).from(notices).leftJoin(users, eq(notices.authorId, users.id)).where(and(eq(notices.societyId, societyId), inArray(notices.audience, noticeAudiencesForRole(ctx.membership.role)))).orderBy(desc(notices.pinned), desc(notices.publishedAt)),
     db.select({ discussion: discussions, author: users }).from(discussions).innerJoin(users, eq(discussions.authorId, users.id)).where(and(eq(discussions.societyId, societyId), eq(discussions.status, "published"))).orderBy(desc(discussions.pinned), desc(discussions.createdAt)),
     db.select({ discussion: discussions }).from(discussions).where(and(eq(discussions.societyId, societyId), eq(discussions.authorId, userId), eq(discussions.status, "pending"))).orderBy(desc(discussions.createdAt)),
     db.select({ discussionId: discussionComments.discussionId, c: count() }).from(discussionComments).groupBy(discussionComments.discussionId),
-    db.select().from(polls).where(eq(polls.societyId, societyId)).orderBy(desc(polls.createdAt)),
+    db.select().from(polls).where(and(eq(polls.societyId, societyId), inArray(polls.audience, pollAudiencesForRole(ctx.membership.role)))).orderBy(desc(polls.createdAt)),
     db.select({ pollId: pollVotes.pollId, optionId: pollVotes.optionId, c: count() }).from(pollVotes).where(inArray(pollVotes.pollId, db.select({ id: polls.id }).from(polls).where(eq(polls.societyId, societyId)))).groupBy(pollVotes.pollId, pollVotes.optionId),
     db.select().from(pollVotes).where(eq(pollVotes.userId, userId)),
     db.select().from(events).where(and(eq(events.societyId, societyId), gte(events.startAt, new Date(Date.now() - 12 * 3600 * 1000)))).orderBy(events.startAt),
@@ -66,8 +67,7 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
   const rsvpBy = new Map(rsvpCounts.map((r) => [r.eventId, { count: r.c, guests: r.guests }]));
   const myRsvpSet = new Set(myRsvps.map((r) => r.eventId));
   const featured = noticeRows.find((n) => n.notice.pinned) ?? noticeRows[0];
-  const activePolls = pollRows.filter((p) => p.status === "active");
-  const isOwner = ["owner", "committee", "admin", "manager"].includes(ctx.membership.role);
+  const activePolls = pollRows.filter((p) => pollIsOpen(p.status, p.endsAt));
 
   return (
     <div>
@@ -82,6 +82,12 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
         <div className={`mt-5 flex items-start gap-3 rounded-2xl border p-4 ${params.submitted === "moderation" ? "border-amber-ink/20 bg-amber-soft" : "border-mint-600/20 bg-mint-50"}`}>
           {params.submitted === "moderation" ? <Clock3 className="mt-0.5 size-4 text-amber-ink" /> : <CheckCircle2 className="mt-0.5 size-4 text-mint-600" />}
           <div><p className="text-body font-semibold text-ink">{params.submitted === "moderation" ? "Your post is with the committee for review" : "Your discussion is live"}</p><p className="mt-0.5 text-caption text-ink-soft">{params.submitted === "moderation" ? "We'll publish it once a moderator approves it. You'll find it under your posts below." : "Your neighbours can now read and reply to it."}</p></div>
+        </div>
+      ) : null}
+      {params.rsvp === "full" ? (
+        <div className="mt-5 flex items-start gap-3 rounded-2xl border border-amber-ink/20 bg-amber-soft p-4">
+          <Info className="mt-0.5 size-4 text-amber-ink" />
+          <div><p className="text-body font-semibold text-ink">This event is full</p><p className="mt-0.5 text-caption text-ink-soft">The committee has reached the capacity for this event. Ask them about a waiting list or a future date.</p></div>
         </div>
       ) : null}
 
@@ -157,10 +163,11 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
             <div>
               <div className="mb-2.5 flex items-center justify-between"><h2 className="text-base font-semibold text-ink">Polls</h2><span className="text-caption text-muted">{activePolls.length} open</span></div>
               <div className="space-y-3">
-                {pollRows.filter((p) => tab === "all" ? p.status === "active" : true).map((p) => {
-                  const canVote = p.status === "active" && (p.audience !== "owners" || isOwner);
+                {pollRows.filter((p) => tab === "all" ? pollIsOpen(p.status, p.endsAt) : true).map((p) => {
+                  const open = pollIsOpen(p.status, p.endsAt);
+                  const canVote = open && canVoteInPollAudience(ctx.membership.role, p.audience);
                   return (
-                    <PollCard key={p.id} pollId={p.id} question={p.question} description={p.description} options={p.options} counts={votesBy[p.id] ?? {}} total={totals[p.id] ?? 0} userVote={myVoteBy.get(p.id)} status={p.status} endsLabel={p.status === "active" && p.endsAt ? `Closes ${formatDate(p.endsAt)}` : "Closed"} audience={p.audience} secret={p.secret} hideResults={p.hideResults} canVote={canVote} />
+                    <PollCard key={p.id} pollId={p.id} question={p.question} description={p.description} options={p.options} counts={votesBy[p.id] ?? {}} total={totals[p.id] ?? 0} userVote={myVoteBy.get(p.id)} status={open ? "active" : "closed"} endsLabel={open && p.endsAt ? `Closes ${formatDate(p.endsAt)}` : "Closed"} audience={p.audience} secret={p.secret} hideResults={p.hideResults} canVote={canVote} />
                   );
                 })}
               </div>
@@ -188,7 +195,10 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
                         <p className="mt-0.5 flex items-center gap-1 text-caption text-muted"><MapPin className="size-4" /> {e.location}</p>
                         <div className="mt-2 flex items-center justify-between gap-2">
                           <span className="text-caption text-muted">{going?.count ?? 0} going{going ? ` · ${going.guests + (going.count ?? 0)} people` : ""}</span>
-                          <form action={toggleEventRsvp}><input type="hidden" name="eventId" value={e.id} /><button className={`rounded-full px-2.5 py-1 text-caption font-semibold ${mine ? "bg-mint-50 text-mint-600" : "bg-brand-600 text-white"}`}>{mine ? "Going ✓" : "RSVP"}</button></form>
+                          <div className="flex items-center gap-1">
+                            <a href={`/api/events/${e.id}/ics`} aria-label={`Add ${e.title} to calendar`} className="grid size-8 place-items-center rounded-full border border-line text-muted hover:border-brand-200 hover:text-brand-700"><CalendarPlus className="size-4" /></a>
+                            <form action={toggleEventRsvp}><input type="hidden" name="eventId" value={e.id} /><button className={`rounded-full px-2.5 py-1 text-caption font-semibold ${mine ? "bg-mint-50 text-mint-600" : "bg-brand-600 text-white"}`}>{mine ? "Going ✓" : "RSVP"}</button></form>
+                          </div>
                         </div>
                       </div>
                     </div>

@@ -11,7 +11,7 @@ export async function cancelBooking(formData: FormData) {
   const bookingId = String(formData.get("bookingId") ?? "");
   const [booking] = await db.select().from(amenityBookings).where(and(eq(amenityBookings.id, bookingId), eq(amenityBookings.unitId, ctx.unit.id))).limit(1);
   if (!booking || booking.status !== "confirmed") return;
-  const startsAt = new Date(`${booking.date}T${booking.startTime}:00`);
+  const startsAt = new Date(`${booking.date}T${booking.startTime}:00+05:30`);
   const hoursAway = (startsAt.getTime() - Date.now()) / 3600000;
   if (hoursAway < 0) return;
   const refundable = hoursAway >= 24 && booking.amount > 0;

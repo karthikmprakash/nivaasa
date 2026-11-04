@@ -10,6 +10,7 @@ import { requireAdmin } from "@/lib/queries";
 import { db } from "@/db";
 import { deliveries, panicAlerts, patrolCheckpoints, patrolRounds, staff, staffAttendance, units, users, visitors } from "@/db/schema";
 import { handlePanicAlert } from "@/lib/actions/admin";
+import { getSocietyContacts, telHref } from "@/lib/society-contacts";
 import { formatDate, formatTime, timeAgo, todayISO } from "@/lib/utils";
 
 export const metadata = { title: "Security & gate" };
@@ -23,7 +24,7 @@ export default async function AdminSecurityPage({ searchParams }: { searchParams
   const societyId = ctx.society!.id;
   const { filter = "all" } = await searchParams;
   const today = todayISO();
-  const [pending, recent, patrol, checkpoints, alerts, attendanceRows, staffRows, deliveryRows] = await Promise.all([
+  const [pending, recent, patrol, checkpoints, alerts, attendanceRows, staffRows, deliveryRows, societyContacts] = await Promise.all([
     db.select({ visitor: visitors, unit: units.number }).from(visitors).leftJoin(units, eq(visitors.unitId, units.id)).where(and(eq(visitors.societyId, societyId), eq(visitors.status, "pending"))).orderBy(desc(visitors.createdAt)),
     db.select({ visitor: visitors, unit: units.number }).from(visitors).leftJoin(units, eq(visitors.unitId, units.id)).where(eq(visitors.societyId, societyId)).orderBy(desc(visitors.createdAt)).limit(40),
     db.select({ round: patrolRounds, checkpoint: patrolCheckpoints }).from(patrolRounds).innerJoin(patrolCheckpoints, eq(patrolRounds.checkpointId, patrolCheckpoints.id)).where(and(eq(patrolRounds.societyId, societyId), gte(patrolRounds.scannedAt, new Date(today)))).orderBy(desc(patrolRounds.scannedAt)),
@@ -32,7 +33,9 @@ export default async function AdminSecurityPage({ searchParams }: { searchParams
     db.select({ attendance: staffAttendance, person: staff }).from(staffAttendance).innerJoin(staff, eq(staffAttendance.staffId, staff.id)).where(and(eq(staffAttendance.societyId, societyId), eq(staffAttendance.date, today))).limit(10),
     db.select().from(staff).where(and(eq(staff.societyId, societyId), eq(staff.active, true), inArray(staff.kind, ["security", "society"]))),
     db.select({ count: sql<number>`count(*)` }).from(deliveries).where(and(eq(deliveries.societyId, societyId), gte(deliveries.createdAt, new Date(today)))),
+    getSocietyContacts(societyId),
   ]);
+  const gateContact = societyContacts.guard ?? societyContacts.security;
   const todayEntries = recent.filter((r) => r.visitor.createdAt >= new Date(today));
   const preApproved = recent.filter((r) => r.visitor.preApproved && ["approved", "pending"].includes(r.visitor.status));
   const missed = patrol.filter((p) => p.round.status === "missed");
@@ -111,8 +114,8 @@ export default async function AdminSecurityPage({ searchParams }: { searchParams
           <Card>
             <CardHeader title="Emergency readiness" icon={<ShieldAlert className="size-4" />} />
             <div className="border-t border-line p-4">
-              <div className="flex items-center justify-between rounded-xl bg-canvas px-3 py-2.5"><div className="flex items-center gap-2"><Phone className="size-4 text-brand-600" /><span className="text-caption text-ink-soft">Gate 1 direct line</span></div><span className="text-caption font-semibold text-ink">+91 97400 22334</span></div>
-              <div className="mt-2 flex items-center justify-between rounded-xl bg-canvas px-3 py-2.5"><div className="flex items-center gap-2"><Siren className="size-4 text-[#c43d4d]" /><span className="text-caption text-ink-soft">Panic response drill</span></div><span className="text-caption font-semibold text-mint-600">Passed · 12 Oct</span></div>
+              <div className="flex items-center justify-between rounded-xl bg-canvas px-3 py-2.5"><div className="flex items-center gap-2"><Phone className="size-4 text-brand-600" /><span className="text-caption text-ink-soft">Gate direct line{gateContact ? ` · ${gateContact.name}` : ""}</span></div>{gateContact ? <a href={telHref(gateContact.phone)} className="text-caption font-semibold text-ink hover:text-brand-700">{gateContact.phone}</a> : <span className="text-caption text-muted">Not configured</span>}</div>
+              <div className="mt-2 flex items-center justify-between rounded-xl bg-canvas px-3 py-2.5"><div className="flex items-center gap-2"><Siren className="size-4 text-[#c43d4d]" /><span className="text-caption text-ink-soft">Emergency contacts</span></div><Link href="/admin/settings" className="text-caption font-semibold text-brand-600">Manage team</Link></div>
             </div>
           </Card>
         </div>

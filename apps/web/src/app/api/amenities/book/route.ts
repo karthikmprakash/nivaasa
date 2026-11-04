@@ -31,7 +31,19 @@ export async function POST(req: Request) {
   const { amenityId, date, startTime, guests, notes } = parsed.data;
   const [amenity] = await db.select().from(amenities).where(and(eq(amenities.id, amenityId), eq(amenities.societyId, session.membership.societyId), eq(amenities.active, true))).limit(1);
   if (!amenity) return NextResponse.json({ error: "Amenity not found." }, { status: 404 });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00`))) return NextResponse.json({ error: "Choose a valid date." }, { status: 400 });
   if (date < todayISO()) return NextResponse.json({ error: "Choose today or a future date." }, { status: 400 });
+  if (guests > amenity.capacity) return NextResponse.json({ error: `This space holds up to ${amenity.capacity} people.` }, { status: 400 });
+  const startMinutes = toMinutes(startTime);
+  const openMinutes = toMinutes(amenity.openTime);
+  const closeMinutes = toMinutes(amenity.closeTime);
+  if (!Number.isFinite(startMinutes) || startMinutes < openMinutes || startMinutes >= closeMinutes) {
+    return NextResponse.json({ error: `Choose a time between ${amenity.openTime} and ${amenity.closeTime}.` }, { status: 400 });
+  }
+  if (amenity.slotMinutes < 1440) {
+    if ((startMinutes - openMinutes) % amenity.slotMinutes !== 0) return NextResponse.json({ error: "Choose one of the available slots." }, { status: 400 });
+    if (startMinutes + amenity.slotMinutes > closeMinutes) return NextResponse.json({ error: "That slot ends after the amenity closes." }, { status: 400 });
+  }
   const endTime = amenity.slotMinutes >= 1440 ? amenity.closeTime : addMinutes(startTime, amenity.slotMinutes);
   const sameDay = await db.select().from(amenityBookings).where(and(eq(amenityBookings.amenityId, amenityId), eq(amenityBookings.date, date), inArray(amenityBookings.status, ["confirmed", "completed"])));
   const conflict = amenity.slotMinutes >= 1440

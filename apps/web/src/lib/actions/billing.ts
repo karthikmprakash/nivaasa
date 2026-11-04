@@ -1,13 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   auditLogs, billingHeads, expenses, invoices, invoiceItems, memberships, notifications, payments, units, vendors,
 } from "@/db/schema";
 import { requireAdmin } from "@/lib/queries";
 import { canManageBilling } from "@/lib/auth";
+import { filterRecipientsByPref } from "@/lib/notifications";
+import { todayISO } from "@/lib/utils";
 
 export type BillingState = { error?: string; ok?: boolean; count?: number; message?: string };
 
@@ -45,11 +47,12 @@ export async function runBilling(_prev: BillingState, formData: FormData): Promi
   const heads = await db.select().from(billingHeads).where(and(eq(billingHeads.societyId, societyId), inArray(billingHeads.id, headIds), eq(billingHeads.active, true)));
   if (!heads.length) return { error: "No active billing heads selected." };
 
+  const includeVacant = formData.get("includeVacant") === "on";
   const allUnits = await db.select().from(units).where(eq(units.societyId, societyId));
   const existing = await db.select({ unitId: invoices.unitId }).from(invoices).where(and(eq(invoices.societyId, societyId), eq(invoices.periodStart, periodStart)));
   const existingSet = new Set(existing.map((e) => e.unitId));
-  const targetUnits = allUnits.filter((u) => !existingSet.has(u.id));
-  if (!targetUnits.length) return { error: "Invoices already exist for this period. Choose a different period." };
+  const targetUnits = allUnits.filter((u) => (includeVacant || u.status === "occupied") && !existingSet.has(u.id));
+  if (!targetUnits.length) return { error: existingSet.size ? "Invoices already exist for this period. Choose a different period." : "There are no occupied homes to bill. Add residents first, or choose to include vacant homes." };
 
   let seq = await nextInvoiceSequence(societyId);
   const now = new Date();
@@ -77,8 +80,9 @@ export async function runBilling(_prev: BillingState, formData: FormData): Promi
     count++;
   }
 
-  // In-app notice to every resident with a flat.
-  const residents = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, societyId), inArray(memberships.role, ["owner", "tenant", "committee"])));
+  // In-app notice to every resident with a flat who still wants payment updates.
+  const residentRows = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, societyId), inArray(memberships.role, ["owner", "tenant", "committee"])));
+  const residents = await filterRecipientsByPref(societyId, residentRows, "payments");
   if (residents.length) {
     await db.insert(notifications).values(residents.map((r) => ({
       id: crypto.randomUUID(), userId: r.userId, societyId: societyId,
@@ -94,6 +98,64 @@ export async function runBilling(_prev: BillingState, formData: FormData): Promi
   revalidatePath("/admin");
   revalidatePath("/app/payments");
   return { ok: true, count, message: `${count} invoices created for ${periodStart} – ${periodEnd}.` };
+}
+
+export async function applyLateFees(_prev: BillingState, _formData: FormData): Promise<BillingState> {
+  const ctx = await requireAdmin();
+  const role = ctx.membership?.role;
+  if (!ctx.society || !canBill(role, ctx.user.globalRole === "super_admin")) return { error: "You don't have billing access." };
+  const societyId = ctx.society.id;
+  const lateFeePercent = Math.max(0, ctx.society.settings?.lateFeePercent ?? 2);
+  const graceDays = Math.max(0, ctx.society.settings?.graceDays ?? 5);
+  if (!lateFeePercent) return { error: "Set a late fee percentage in Society settings first." };
+  const cutoff = todayISO(-graceDays);
+  const candidates = await db.select().from(invoices).where(and(
+    eq(invoices.societyId, societyId),
+    inArray(invoices.status, ["due", "partially_paid"]),
+    lt(invoices.dueDate, cutoff),
+    eq(invoices.penalty, 0),
+  ));
+  const eligible = candidates.filter((invoice) => invoice.total > invoice.amountPaid);
+  if (!eligible.length) return { error: "No unpaid invoices are past the grace period right now." };
+
+  const now = new Date();
+  const updated: { invoice: (typeof eligible)[number]; penalty: number }[] = [];
+  for (const invoice of eligible) {
+    const penalty = Math.round((invoice.total - invoice.amountPaid) * lateFeePercent / 100);
+    if (penalty <= 0) continue;
+    await db.update(invoices).set({ penalty: invoice.penalty + penalty, total: invoice.total + penalty, status: "overdue" }).where(eq(invoices.id, invoice.id));
+    updated.push({ invoice, penalty });
+  }
+  if (!updated.length) return { error: "No invoices needed a late fee." };
+
+  const unitIds = [...new Set(updated.map(({ invoice }) => invoice.unitId))];
+  const residents = await db.select({ userId: memberships.userId, unitId: memberships.unitId }).from(memberships).where(and(
+    eq(memberships.societyId, societyId),
+    eq(memberships.status, "active"),
+    inArray(memberships.unitId, unitIds),
+  ));
+  const recipients = await filterRecipientsByPref(societyId, residents.map((resident) => ({ userId: resident.userId })), "payments");
+  const allowed = new Set(recipients.map((recipient) => recipient.userId));
+  const notificationsToSend = updated.flatMap(({ invoice, penalty }) => residents
+    .filter((resident) => resident.unitId === invoice.unitId && allowed.has(resident.userId))
+    .map((resident) => ({
+      id: crypto.randomUUID(), userId: resident.userId, societyId,
+      title: `Late fee added to ${invoice.number}`,
+      body: `A ${lateFeePercent}% late fee of ₹${(penalty / 100).toLocaleString("en-IN")} was applied because the invoice was unpaid ${graceDays} days after its due date.`,
+      type: "payment" as const, link: "/app/payments", createdAt: now,
+    })));
+  if (notificationsToSend.length) await db.insert(notifications).values(notificationsToSend);
+
+  await db.insert(auditLogs).values({
+    id: crypto.randomUUID(), societyId, actorId: ctx.user.id, actorName: ctx.user.name,
+    action: "invoice.late_fees.applied", entity: "invoice",
+    metadata: { count: updated.length, lateFeePercent, graceDays, penalties: updated.reduce((total, item) => total + item.penalty, 0) }, createdAt: now,
+  });
+  revalidatePath("/admin/billing");
+  revalidatePath("/admin");
+  revalidatePath("/app/payments");
+  revalidatePath("/app");
+  return { ok: true, count: updated.length, message: `${updated.length} invoices updated with a ${lateFeePercent}% late fee.` };
 }
 
 export type ExpenseState = { error?: string; ok?: boolean };
@@ -136,7 +198,8 @@ export async function verifyPayment(formData: FormData) {
   const now = new Date();
   if (decision === "reject") {
     await db.update(payments).set({ status: "rejected", verifiedBy: ctx.user.id, note: payment.note }).where(eq(payments.id, paymentId));
-    await db.insert(notifications).values({
+    const [recipient] = payment.userId ? await filterRecipientsByPref(societyId, [{ userId: payment.userId }], "payments") : [];
+    if (recipient) await db.insert(notifications).values({
       id: crypto.randomUUID(), userId: payment.userId!, societyId: societyId,
       title: "Payment intimation rejected", body: `We couldn't verify the ${payment.method.toUpperCase()} payment of ₹${(payment.amount / 100).toLocaleString("en-IN")}. Please check the reference and try again.`, type: "payment", link: "/app/payments", createdAt: now,
     });
@@ -150,9 +213,10 @@ export async function verifyPayment(formData: FormData) {
         await db.update(invoices).set({ amountPaid, status }).where(eq(invoices.id, inv.id));
       }
     }
-    if (payment.userId) {
+    const [recipient] = payment.userId ? await filterRecipientsByPref(societyId, [{ userId: payment.userId }], "payments") : [];
+    if (recipient) {
       await db.insert(notifications).values({
-        id: crypto.randomUUID(), userId: payment.userId, societyId: societyId,
+        id: crypto.randomUUID(), userId: payment.userId!, societyId: societyId,
         title: "Payment verified — receipt ready", body: `Your ${payment.method.toUpperCase()} payment of ₹${(payment.amount / 100).toLocaleString("en-IN")} has been verified. Receipt ${payment.receiptNo}.`, type: "payment", link: "/app/payments", createdAt: now,
       });
     }

@@ -7,12 +7,12 @@ import {
 } from "lucide-react";
 import { Avatar, Badge, Card, CardHeader, EmptyState, PageHeader, Stat } from "@/components/ui/primitives";
 import { CollectionsChart } from "@/components/admin/collections-chart";
-import { AddHeadDialog, ExpenseDialog, RunBillingDialog } from "@/components/admin/billing-dialogs";
+import { AddHeadDialog, ExpenseDialog, LateFeeDialog, RunBillingDialog } from "@/components/admin/billing-dialogs";
 import { requireAdmin } from "@/lib/queries";
 import { db } from "@/db";
 import { billingHeads, expenses, invoices, payments, units, users, vendors } from "@/db/schema";
 import { verifyPayment } from "@/lib/actions/billing";
-import { formatDate, formatINR, timeAgo } from "@/lib/utils";
+import { formatDate, formatINR, timeAgo, todayISO } from "@/lib/utils";
 
 export const metadata = { title: "Billing & accounts" };
 
@@ -57,11 +57,16 @@ export default async function AdminBillingPage({ searchParams }: { searchParams:
   const filteredPayments = paymentRows.filter((p) => (status === "all" || p.payment.status === status));
   const categoryTotals = Object.entries(expenseRows.reduce<Record<string, number>>((acc, e) => { acc[e.expense.category] = (acc[e.expense.category] ?? 0) + e.expense.amount; return acc; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 6);
   const maxCat = Math.max(1, ...categoryTotals.map((c) => c[1]));
+  const lateFeePercent = Math.max(0, ctx.society!.settings?.lateFeePercent ?? 2);
+  const graceDays = Math.max(0, ctx.society!.settings?.graceDays ?? 5);
+  const lateFeeCutoff = todayISO(-graceDays);
+  const eligibleLateFeeCount = invoiceRows.filter(({ invoice }) => ["due", "partially_paid"].includes(invoice.status) && invoice.penalty === 0 && invoice.dueDate < lateFeeCutoff && invoice.total > invoice.amountPaid).length;
 
   return (
     <div>
       <PageHeader eyebrow="Money" title="Billing & accounts" description="Invoices, collections, expenses and a clean audit trail. Built for treasurers, reviewed by auditors." actions={<>
         <RunBillingDialog heads={headRows} />
+        <LateFeeDialog eligible={eligibleLateFeeCount} graceDays={graceDays} lateFeePercent={lateFeePercent} />
         <ExpenseDialog vendors={vendorRows.map((v) => ({ id: v.id, name: v.name }))} />
         <a href="/api/admin/export?type=invoices" className="hidden h-9 items-center gap-1.5 rounded-full border border-line-strong bg-white px-3.5 text-caption font-semibold text-ink-soft hover:bg-canvas sm:inline-flex"><ArrowDownToLine className="size-4" /> Export</a>
       </>} />

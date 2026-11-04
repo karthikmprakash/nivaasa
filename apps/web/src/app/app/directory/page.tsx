@@ -6,6 +6,7 @@ import { Avatar, Badge, Card, EmptyState, PageHeader } from "@/components/ui/pri
 import { requireResident } from "@/lib/queries";
 import { db } from "@/db";
 import { memberships, pets, staff, towers, units, users, vehicles } from "@/db/schema";
+import { getSocietyContacts, telHref } from "@/lib/society-contacts";
 import { formatDate } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Directory" };
@@ -39,7 +40,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   const q = (params.q ?? "").trim().toLowerCase();
   const roleFilter = params.role ?? "all";
 
-  const [peopleRows, petRows, vehicleRows, helpRows, towerRows] = await Promise.all([
+  const [peopleRows, petRows, vehicleRows, helpRows, towerRows, societyContacts] = await Promise.all([
     db.select({ m: memberships, u: users, unit: units, tower: towers })
       .from(memberships).innerJoin(users, eq(memberships.userId, users.id))
       .leftJoin(units, eq(memberships.unitId, units.id)).leftJoin(towers, eq(units.towerId, towers.id))
@@ -49,7 +50,9 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     db.select({ vehicle: vehicles, unit: units }).from(vehicles).innerJoin(units, eq(vehicles.unitId, units.id)).where(eq(vehicles.societyId, ctx.society.id)).orderBy(asc(units.number)),
     db.select({ person: staff, unit: units }).from(staff).leftJoin(units, eq(staff.unitId, units.id)).where(and(eq(staff.societyId, ctx.society.id), eq(staff.active, true))).orderBy(asc(staff.kind), asc(staff.name)),
     db.select().from(towers).where(eq(towers.societyId, ctx.society.id)).orderBy(asc(towers.sortOrder)),
+    getSocietyContacts(ctx.society.id),
   ]);
+  const guardPhone = societyContacts.guard?.phone;
 
   const people = peopleRows.filter((r) => {
     if (roleFilter === "owners" && !["owner", "committee"].includes(r.m.role)) return false;
@@ -58,9 +61,10 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     if (!q) return true;
     return r.u.name.toLowerCase().includes(q) || (r.unit?.number ?? "").toLowerCase().includes(q);
   });
-  const help = helpRows.filter((r) => r.person.kind === "daily_help").filter((r) => !q || r.person.name.toLowerCase().includes(q) || r.person.role.toLowerCase().includes(q));
-  const petsFiltered = petRows.filter((r) => !q || r.pet.name.toLowerCase().includes(q) || r.pet.species.toLowerCase().includes(q));
-  const vehiclesFiltered = vehicleRows.filter((r) => !q || r.vehicle.registrationNo.toLowerCase().includes(q) || `${r.vehicle.make} ${r.vehicle.model}`.toLowerCase().includes(q));
+  const visibleUnitIds = new Set(peopleRows.map((r) => r.unit?.id).filter((id): id is string => !!id));
+  const help = helpRows.filter((r) => (r.person.kind === "daily_help") && (!r.person.unitId || visibleUnitIds.has(r.person.unitId))).filter((r) => !q || r.person.name.toLowerCase().includes(q) || r.person.role.toLowerCase().includes(q));
+  const petsFiltered = petRows.filter((r) => visibleUnitIds.has(r.unit.id)).filter((r) => !q || r.pet.name.toLowerCase().includes(q) || r.pet.species.toLowerCase().includes(q));
+  const vehiclesFiltered = vehicleRows.filter((r) => visibleUnitIds.has(r.unit.id)).filter((r) => !q || r.vehicle.registrationNo.toLowerCase().includes(q) || `${r.vehicle.make} ${r.vehicle.model}`.toLowerCase().includes(q));
 
   return (
     <div>
@@ -98,7 +102,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
                           <p className="text-caption text-muted">Home {unit?.number} · {m.role === "tenant" ? "Tenant" : "Owner"}{m.designation ? ` · ${m.designation}` : ""}</p>
                           <p className="mt-0.5 text-caption text-muted">{maskPhone(u.phone)}</p>
                         </div>
-                        <a href={`tel:${ctx.society.name ? "+919740022334" : ""}`} aria-label={`Call ${u.name} via the guard`} className="grid size-11 shrink-0 place-items-center rounded-full bg-canvas text-muted hover:bg-brand-50 hover:text-brand-600 sm:size-9"><Phone className="size-4" /></a>
+                        <a href={guardPhone ? telHref(guardPhone) : "/app/helpdesk/new"} aria-label={guardPhone ? `Call the gate about ${u.name}` : `Ask the community office to contact ${u.name}`} className="grid size-11 shrink-0 place-items-center rounded-full bg-canvas text-muted hover:bg-brand-50 hover:text-brand-600 sm:size-9"><Phone className="size-4" /></a>
                       </div>
                     ))}
                   </div>
@@ -153,7 +157,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
                   <Avatar name={p.name} color={p.photoColor} size="md" />
                   <div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><p className="text-body font-semibold text-ink">{p.name}</p>{p.policeVerified ? <ShieldCheck className="size-4 text-mint-600" /> : null}</div><p className="text-caption text-muted">{p.role} · Home {unit?.number ?? "Multiple"} </p><div className="mt-1 flex items-center gap-1"><span className="text-caption text-muted">{p.shift}</span></div></div>
                 </div>
-                <div className="mt-3 flex items-center justify-between border-t border-line pt-2.5"><span className="text-caption text-muted">{p.policeVerified ? "Verified" : "Verification pending"}</span><a href="tel:+919740022334" className="rounded-lg bg-brand-50 px-2 py-1 text-caption font-semibold text-brand-700">Contact via guard</a></div>
+                <div className="mt-3 flex items-center justify-between border-t border-line pt-2.5"><span className="text-caption text-muted">{p.policeVerified ? "Verified" : "Verification pending"}</span>{guardPhone ? <a href={telHref(guardPhone)} className="rounded-lg bg-brand-50 px-2 py-1 text-caption font-semibold text-brand-700">Contact via guard</a> : <Link href="/app/helpdesk/new" className="rounded-lg bg-brand-50 px-2 py-1 text-caption font-semibold text-brand-700">Ask the office</Link>}</div>
               </Card>
             ))}
             {!help.length ? <Card className="sm:col-span-2 xl:col-span-3"><EmptyState icon={<Sparkles className="size-6" />} title="No daily help listed" /></Card> : null}

@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
-import { ArrowLeft, CalendarDays, Eye, Megaphone, Pin, Share2, UserRound } from "lucide-react";
+import { ArrowLeft, CalendarDays, Eye, Megaphone, Pin, UserRound } from "lucide-react";
 import { Avatar, Badge } from "@/components/ui/primitives";
+import { ShareNoticeButton } from "@/components/app/share-notice";
 import { requireResident } from "@/lib/queries";
 import { db } from "@/db";
 import { notices, users } from "@/db/schema";
+import { canViewNoticeAudience } from "@/lib/community-access";
 import { formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +18,7 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
   const ctx = await requireResident();
   const { id } = await params;
   const [row] = await db.select({ notice: notices, author: users }).from(notices).leftJoin(users, eq(notices.authorId, users.id)).where(eq(notices.id, id)).limit(1);
-  if (!row || row.notice.societyId !== ctx.society.id) notFound();
+  if (!row || row.notice.societyId !== ctx.society.id || !canViewNoticeAudience(ctx.membership.role, row.notice.audience)) notFound();
   await db.update(notices).set({ views: row.notice.views + 1 }).where(eq(notices.id, id));
   const n = row.notice;
   return (
@@ -41,9 +43,9 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
           <div className="mt-8 flex items-center justify-between border-t border-line pt-5">
             <div className="flex items-center gap-2.5">
               <Avatar name={row.author?.name ?? "Committee"} color={row.author?.avatarColor} size="sm" />
-              <div><p className="text-caption font-semibold text-ink">{row.author?.name ?? "Community office"}</p><p className="text-caption text-muted">{n.audience === "owners" ? "Visible to owners" : "Visible to all residents"}</p></div>
+              <div><p className="text-caption font-semibold text-ink">{row.author?.name ?? "Community office"}</p><p className="text-caption text-muted">{n.audience === "owners" ? "Visible to owners" : n.audience === "tenants" ? "Visible to tenants" : n.audience === "tower" ? "Visible to the selected tower" : "Visible to all residents"}</p></div>
             </div>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-caption font-semibold text-ink-soft"><Share2 className="size-4" /> Share</span>
+            <ShareNoticeButton title={n.title} text={n.body.slice(0, 160)} />
           </div>
         </div>
       </article>

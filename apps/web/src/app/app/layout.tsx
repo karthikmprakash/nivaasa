@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { ResidentShell } from "@/components/shell/resident-shell";
 import { getResidentCounts, getSocietyOptions, requireResident } from "@/lib/queries";
+import { escalateOverdueTickets } from "@/lib/helpdesk-escalation";
 
 export const metadata: Metadata = { title: "Home" };
 export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await requireResident();
+  await escalateOverdueTickets(ctx.society.id);
   const counts = await getResidentCounts(ctx.unit.id, ctx.society.id, ctx.user.id);
   const societies = await getSocietyOptions(ctx);
   return (

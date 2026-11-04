@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { auditLogs, pollVotes, polls } from "@/db/schema";
 import { getSession } from "@/lib/auth";
+import { canVoteInPollAudience, pollIsOpen } from "@/lib/community-access";
 
 const schema = z.object({ pollId: z.string(), optionId: z.string() });
 
@@ -17,10 +18,10 @@ export async function POST(req: Request) {
   const [poll] = await db.select().from(polls).where(eq(polls.id, pollId)).limit(1);
   if (!poll) return NextResponse.json({ error: "Poll not found" }, { status: 404 });
   if (poll.societyId !== session.membership?.societyId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (poll.status !== "active" || (poll.endsAt && poll.endsAt < new Date())) return NextResponse.json({ error: "This poll has closed." }, { status: 409 });
+  if (!pollIsOpen(poll.status, poll.endsAt)) return NextResponse.json({ error: "This poll has closed." }, { status: 409 });
   if (!poll.options.some((o) => o.id === optionId)) return NextResponse.json({ error: "Invalid choice" }, { status: 400 });
-  if (poll.audience === "owners" && !["owner", "committee", "admin", "manager"].includes(session.membership?.role ?? "")) {
-    return NextResponse.json({ error: "This poll is open to owners only." }, { status: 403 });
+  if (!canVoteInPollAudience(session.membership?.role, poll.audience)) {
+    return NextResponse.json({ error: "This poll is not open to your membership." }, { status: 403 });
   }
   const [existing] = await db.select().from(pollVotes).where(and(eq(pollVotes.pollId, pollId), eq(pollVotes.userId, session.user.id))).limit(1);
   if (existing) return NextResponse.json({ error: "You've already voted in this poll." }, { status: 409 });

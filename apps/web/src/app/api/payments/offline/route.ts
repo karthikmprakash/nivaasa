@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { invoices, memberships, notifications, payments } from "@/db/schema";
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     userId: session.user.id, receiptNo, amount, method: parsed.data.method, reference: parsed.data.reference ?? null,
     status: "pending", note: parsed.data.note ?? "Offline payment intimation", paidAt: parsed.data.paidOn ? new Date(parsed.data.paidOn) : now, createdAt: now,
   });
-  const admins = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, session.membership.societyId), eq(memberships.role, "accountant")));
+  const admins = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, session.membership.societyId), eq(memberships.status, "active"), inArray(memberships.role, ["accountant", "admin", "manager"])));
   if (admins.length) {
     await db.insert(notifications).values(admins.map((a) => ({
       id: crypto.randomUUID(), userId: a.userId, societyId: session.membership!.societyId,

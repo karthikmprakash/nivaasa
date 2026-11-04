@@ -367,6 +367,13 @@ export const discussions = sqliteTable("discussions", {
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
 
+export const discussionLikes = sqliteTable("discussion_likes", {
+  id: text("id").primaryKey(),
+  discussionId: text("discussion_id").notNull().references(() => discussions.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+}, (t) => [uniqueIndex("discussion_like_user_idx").on(t.discussionId, t.userId)]);
+
 export const discussionComments = sqliteTable("discussion_comments", {
   id: text("id").primaryKey(),
   discussionId: text("discussion_id").notNull().references(() => discussions.id, { onDelete: "cascade" }),

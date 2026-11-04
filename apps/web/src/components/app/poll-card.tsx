@@ -29,7 +29,7 @@ export function PollCard({ pollId, question, description, options, counts, total
   const [localCounts, setLocalCounts] = useState(counts);
   const [localTotal, setLocalTotal] = useState(total);
   const [busy, setBusy] = useState<string | null>(null);
-  const [showResults, setShowResults] = useState(!!userVote || status !== "active");
+  const [showResults, setShowResults] = useState(status !== "active" || (!hideResults && !!userVote));
   const closed = status !== "active";
 
   async function vote(optionId: string) {
@@ -42,7 +42,7 @@ export function PollCard({ pollId, question, description, options, counts, total
       setSelected(optionId);
       setLocalCounts((c) => ({ ...c, [optionId]: (c[optionId] ?? 0) + 1 }));
       setLocalTotal((t) => t + 1);
-      setShowResults(true);
+      setShowResults(!hideResults);
       toast.success("Vote recorded — thank you");
       router.refresh();
     } catch (e) {
@@ -52,7 +52,7 @@ export function PollCard({ pollId, question, description, options, counts, total
     }
   }
 
-  const resultsVisible = showResults || (!!selected && !hideResults);
+  const resultsVisible = status !== "active" || (!hideResults && (showResults || !!selected));
   return (
     <div className={cn("rounded-2xl border border-line bg-white", compact ? "p-4" : "p-5 shadow-[0_1px_2px_rgba(19,26,42,0.03)]")}>
       <div className="flex items-start gap-3">
@@ -99,7 +99,7 @@ export function PollCard({ pollId, question, description, options, counts, total
         <span className="inline-flex items-center gap-1"><Users className="size-4" /> {localTotal} {localTotal === 1 ? "vote" : "votes"}{selected ? " · you voted" : ""}</span>
         <span>{endsLabel}</span>
       </div>
-      {!canVote && !selected ? <p className="mt-2 rounded-lg bg-canvas px-2.5 py-1.5 text-caption text-muted">Only owners can vote in this poll.</p> : null}
+      {!canVote && !selected ? <p className="mt-2 rounded-lg bg-canvas px-2.5 py-1.5 text-caption text-muted">{audience === "owners" ? "Only owners can vote in this poll." : audience === "tenants" ? "Only tenants can vote in this poll." : "Voting is closed."}</p> : null}
       {hideResults && !selected && !closed ? null : null}
     </div>
   );

@@ -10,7 +10,7 @@ import { Badge, Button, Card, CardHeader, EmptyState, PageHeader, Stat } from "@
 import { AdvanceButton, PaidOfflineButton, PayNowButton } from "@/components/app/payment-dialogs";
 import { requireResident, getDuesSummary } from "@/lib/queries";
 import { db } from "@/db";
-import { invoices, payments } from "@/db/schema";
+import { invoiceItems, invoices, payments } from "@/db/schema";
 import { formatDate, formatINR } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Payments" };
@@ -42,7 +42,14 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
   const pendingInvoiceIds = new Set(paymentsRows.filter((p) => p.status === "pending" && p.invoiceId).map((p) => p.invoiceId));
   const dueInvoices = invoicesRows.filter((i) => ["due", "overdue", "partially_paid"].includes(i.status));
   const oldestDue = dueInvoices[dueInvoices.length - 1];
+  const latestInvoice = invoicesRows[0] ?? null;
+  const breakdown = latestInvoice
+    ? await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, latestInvoice.id))
+    : [];
   const fy = `${financialYear}–${String(financialYear + 1).slice(-2)}`;
+  const bankAccount = ctx.society.bankAccount?.replace(/\s/g, "") ?? "";
+  const bankName = ctx.society.bankName ?? "Society bank account";
+  const bankLine = bankAccount ? `${bankName} · ••${bankAccount.slice(-4)}${ctx.society.ifsc ? ` · ${ctx.society.ifsc}` : ""}` : null;
 
   return (
     <div>
@@ -126,23 +133,16 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
           </div>
           <aside className="space-y-4">
             <Card>
-              <CardHeader title="What you're paying for" description="This month's invoice breakdown" icon={<Wallet className="size-4" />} />
+              <CardHeader title="What you're paying for" description={latestInvoice ? `${latestInvoice.title} · ${latestInvoice.number}` : "No invoice issued yet"} icon={<Wallet className="size-4" />} />
               <div className="border-t border-line px-5 py-4">
-                {[
-                  ["Maintenance (₹3.50 / sq ft)", 318500],
-                  ["Sinking fund", 100000],
-                  ["Water charges", 40000],
-                  ["Security & housekeeping", 60000],
-                  ["Clubhouse", 25000],
-                  ["Parking", 50000],
-                ].map(([l, a]) => <div key={l as string} className="flex items-center justify-between border-b border-line/60 py-2 last:border-0"><span className="text-caption text-ink-soft">{l}</span><span className="text-caption font-semibold text-ink">{formatINR(a as number)}</span></div>)}
-                <div className="mt-2 flex items-center justify-between"><span className="text-caption font-semibold text-ink">Total</span><span className="text-body font-semibold text-ink">{formatINR(593500)}</span></div>
-                <p className="mt-1 text-caption text-muted">GST not applicable · amounts are illustrative of your current plan</p>
+                {breakdown.length ? breakdown.map((item) => <div key={item.id} className="flex items-center justify-between border-b border-line/60 py-2 last:border-0"><span className="text-caption text-ink-soft">{item.description}</span><span className="text-caption font-semibold text-ink">{formatINR(item.amount)}</span></div>) : <p className="py-3 text-caption text-muted">The committee has not issued a breakdown for this invoice yet.</p>}
+                {latestInvoice ? <div className="mt-2 flex items-center justify-between"><span className="text-caption font-semibold text-ink">Total</span><span className="text-body font-semibold text-ink">{formatINR(latestInvoice.total)}</span></div> : null}
+                <p className="mt-1 text-caption text-muted">{latestInvoice && latestInvoice.gstAmount > 0 ? `Includes GST of ${formatINR(latestInvoice.gstAmount)}` : "No GST applied"} · amounts are taken from the invoice on record</p>
               </div>
             </Card>
             <div className="rounded-[18px] border border-line bg-[#fbfcff] p-4">
               <div className="flex items-start gap-2"><Info className="mt-0.5 size-4 shrink-0 text-brand-500" /><div><p className="text-caption font-semibold text-ink">Paying by NEFT or cheque?</p><p className="mt-1 text-caption leading-relaxed text-muted">Use “I have paid”, add the reference and the accounts team will verify it. You&apos;ll get a receipt once matched.</p></div></div>
-              <div className="mt-3 rounded-lg bg-white px-3 py-2"><p className="text-caption font-semibold uppercase tracking-wide text-muted">Society bank account</p><p className="mt-0.5 text-caption font-medium text-ink">HDFC Bank · ••5678 · HDFC0001234</p></div>
+              <div className="mt-3 rounded-lg bg-white px-3 py-2"><p className="text-caption font-semibold uppercase tracking-wide text-muted">Society bank account</p>{bankLine ? <p className="mt-0.5 text-caption font-medium text-ink">{bankLine}</p> : <p className="mt-0.5 text-caption text-muted">Not configured. Ask the community office for transfer details.</p>}</div>
             </div>
             <div className="rounded-[18px] bg-gradient-to-br from-blush-50 to-brand-50 p-4">
               <p className="text-caption font-semibold text-ink">Advance keeps it simple</p>

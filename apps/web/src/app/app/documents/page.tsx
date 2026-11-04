@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { and, desc, eq, inArray, or } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { ArrowDownToLine, BookOpenCheck, FileArchive, FileSpreadsheet, FileText, FolderOpen, Search, ShieldCheck, Stamp, ScrollText, ReceiptText } from "lucide-react";
 import { Badge, Card, EmptyState, PageHeader, Stat } from "@/components/ui/primitives";
 import { requireResident } from "@/lib/queries";
 import { db } from "@/db";
 import { documents } from "@/db/schema";
+import { isOwnerAudience } from "@/lib/community-access";
 import { formatDate } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Documents" };
@@ -32,7 +33,8 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
   const cat = params.cat ?? "all";
   const q = (params.q ?? "").toLowerCase();
   const role = ctx.membership.role;
-  const visible = await db.select().from(documents).where(and(eq(documents.societyId, ctx.society.id), or(eq(documents.visibility, "all"), role === "tenant" ? eq(documents.visibility, "all") : inArray(documents.visibility, ["all", "owners", "committee"])))).orderBy(desc(documents.createdAt));
+  const visibilities: ("all" | "owners" | "committee")[] = ["all", ...(isOwnerAudience(role) ? ["owners" as const] : []), ...(["committee", "admin", "manager"].includes(role) ? ["committee" as const] : [])];
+  const visible = await db.select().from(documents).where(and(eq(documents.societyId, ctx.society.id), inArray(documents.visibility, visibilities))).orderBy(desc(documents.createdAt));
   const list = visible.filter((d) => (cat === "all" || d.category === cat) && (!q || d.title.toLowerCase().includes(q)));
   return (
     <div>

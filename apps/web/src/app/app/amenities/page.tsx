@@ -111,7 +111,7 @@ export default async function AmenitiesPage() {
             {upcoming.map(({ booking: b, amenity }) => (
               <div key={b.id} className="flex flex-col gap-2 border-b border-line/70 px-5 py-3.5 last:border-0 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-brand-50 text-brand-600"><CalendarHeart className="size-4" /></span><div><p className="text-caption font-semibold text-ink">{amenity.name}</p><p className="text-caption text-muted">{formatDate(b.date)} · {b.startTime}–{b.endTime} · {b.guests} guests</p></div></div>
-                <div className="flex items-center gap-2"><Badge variant="success">Confirmed</Badge>{b.amount ? <span className="text-caption font-semibold text-ink">{formatINR(b.amount)}</span> : null}<CancelBookingButton bookingId={b.id} refundable={new Date(`${b.date}T${b.startTime}:00`).getTime() - Date.now() >= 24 * 3600 * 1000} /></div>
+                <div className="flex items-center gap-2"><Badge variant="success">Confirmed</Badge>{b.amount ? <span className="text-caption font-semibold text-ink">{formatINR(b.amount)}</span> : null}<CancelBookingButton bookingId={b.id} refundable={new Date(`${b.date}T${b.startTime}:00+05:30`).getTime() - Date.now() >= 24 * 3600 * 1000} /></div>
               </div>
             ))}
             {!upcoming.length ? <EmptyState icon={<CalendarHeart className="size-6" />} title="No upcoming bookings" description="Pick something from above and make a little time for yourself." className="py-8" /> : null}

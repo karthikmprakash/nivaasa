@@ -7,6 +7,7 @@ import { adminNavigation, isNavigationActive, navigationTitle, residentNavigatio
 import { Field, Input } from "../components/ui/field";
 import { validatePassRequest } from "./visitor-pass-rules";
 import { isSafeInternalPath, resolveSwitchPath, societyHomePath } from "./society-access";
+import { canViewNoticeAudience, canVoteInPollAudience, pollIsOpen } from "./community-access";
 
 test("semantic font sizes preserve button foreground colors", () => {
   assert.match(cn("bg-brand-600 text-white", "text-body"), /text-white/);
@@ -74,6 +75,26 @@ test("internal destinations reject absolute URLs and traversal", () => {
   assert.equal(isSafeInternalPath("/app/../admin"), false);
   assert.equal(isSafeInternalPath("/app/%2e%2e/admin"), false);
   assert.equal(isSafeInternalPath("/app\\admin"), false);
+});
+
+test("notice and poll audiences respect the resident role", () => {
+  assert.equal(canViewNoticeAudience("owner", "owners"), true);
+  assert.equal(canViewNoticeAudience("tenant", "owners"), false);
+  assert.equal(canViewNoticeAudience("tenant", "tenants"), true);
+  assert.equal(canViewNoticeAudience("owner", "tenants"), false);
+  assert.equal(canViewNoticeAudience("family", "tenants"), true);
+  assert.equal(canViewNoticeAudience("owner", "all"), true);
+  assert.equal(canVoteInPollAudience("owner", "owners"), true);
+  assert.equal(canVoteInPollAudience("tenant", "owners"), false);
+  assert.equal(canVoteInPollAudience("tenant", "tenants"), true);
+  assert.equal(canVoteInPollAudience("owner", "tenants"), false);
+});
+
+test("polls close at the end of their configured day", () => {
+  assert.equal(pollIsOpen("active", null, new Date("2026-11-04T10:00:00Z")), true);
+  assert.equal(pollIsOpen("active", "2026-11-03T18:29:59.999Z", new Date("2026-11-04T10:00:00Z")), false);
+  assert.equal(pollIsOpen("active", "2026-11-05T18:29:59.999Z", new Date("2026-11-04T10:00:00Z")), true);
+  assert.equal(pollIsOpen("closed", "2026-11-05T18:29:59.999Z", new Date("2026-11-04T10:00:00Z")), false);
 });
 
 test("resident and guard dates use the community time zone across midnight", () => {

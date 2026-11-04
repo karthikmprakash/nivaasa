@@ -8,6 +8,7 @@ import { requireAdmin } from "@/lib/queries";
 import { db } from "@/db";
 import { helpdeskTickets, memberships, ticketComments, units, users } from "@/db/schema";
 import { adminAddComment, adminUpdateTicket } from "@/lib/actions/helpdesk";
+import { slaHoursForPriority } from "@/lib/helpdesk-sla";
 import { formatDateTime, timeAgo } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ export default async function AdminTicketPage({ params }: { params: Promise<{ id
   const [row] = await db.select({ ticket: helpdeskTickets, unit: units.number, requester: users }).from(helpdeskTickets).leftJoin(units, eq(helpdeskTickets.unitId, units.id)).innerJoin(users, eq(helpdeskTickets.raisedBy, users.id)).where(eq(helpdeskTickets.id, id)).limit(1);
   if (!row || row.ticket.societyId !== ctx.society!.id) notFound();
   const t = row.ticket;
+  const baseSla = ctx.society!.settings?.helpdeskSlaHours ?? 24;
   const [comments, assignees] = await Promise.all([
     db.select({ comment: ticketComments, author: users }).from(ticketComments).innerJoin(users, eq(ticketComments.authorId, users.id)).where(eq(ticketComments.ticketId, id)).orderBy(asc(ticketComments.createdAt)),
     db.select({ id: users.id, name: users.name, role: memberships.role }).from(memberships).innerJoin(users, eq(memberships.userId, users.id)).where(and(eq(memberships.societyId, ctx.society!.id), inArray(memberships.role, ["manager", "helpdesk_manager", "security_manager", "guard", "committee", "accountant"]))),
@@ -58,7 +60,7 @@ export default async function AdminTicketPage({ params }: { params: Promise<{ id
             </form>
           </Card>
           <Card><CardHeader title="Requester" icon={<UserRound className="size-4" />} /><div className="border-t border-line p-5"><div className="flex items-center gap-2.5"><Avatar name={row.requester.name} color={row.requester.avatarColor} size="md" /><div><p className="text-caption font-semibold text-ink">{row.requester.name}</p><p className="text-caption text-muted">Home {row.unit} · {row.requester.phone}</p></div></div><div className="mt-3 space-y-2 border-t border-line pt-3"><div className="flex justify-between text-caption"><span className="text-muted">SLA due</span><span className="font-medium text-ink">{t.slaDueAt ? formatDateTime(t.slaDueAt) : "—"}</span></div><div className="flex justify-between text-caption"><span className="text-muted">Reopened</span><span className="font-medium text-ink">{t.reopenedCount}×</span></div><div className="flex justify-between text-caption"><span className="text-muted">Last update</span><span className="font-medium text-ink">{timeAgo(t.updatedAt)}</span></div></div></div></Card>
-          <div className="rounded-[18px] border border-line bg-[#fbfcff] p-4"><p className="flex items-center gap-1.5 text-caption font-semibold text-ink"><Clock3 className="size-4 text-brand-600" /> SLA policy</p><p className="mt-1 text-caption leading-relaxed text-muted">Urgent 4h · High 8h · Medium 24h · Low 48h. Escalates automatically to the manager, then the committee.</p></div>
+          <div className="rounded-[18px] border border-line bg-[#fbfcff] p-4"><p className="flex items-center gap-1.5 text-caption font-semibold text-ink"><Clock3 className="size-4 text-brand-600" /> SLA policy</p><p className="mt-1 text-caption leading-relaxed text-muted">Urgent {slaHoursForPriority("urgent", baseSla)}h · High {slaHoursForPriority("high", baseSla)}h · Medium {baseSla}h · Low {slaHoursForPriority("low", baseSla)}h. The console sweeps overdue requests and escalates them to the helpdesk manager and committee.</p></div>
         </aside>
       </div>
     </div>

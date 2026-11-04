@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { auditLogs, discussionComments, discussions, eventRsvps, events, memberships, notifications } from "@/db/schema";
+import { auditLogs, discussionComments, discussionLikes, discussions, eventRsvps, events, memberships, notifications } from "@/db/schema";
 import { requireResident, requireSession } from "@/lib/queries";
 
 export type DiscussionState = { error?: string; fieldErrors?: Record<string, string> };
@@ -47,6 +47,25 @@ export async function addDiscussionComment(formData: FormData) {
   revalidatePath("/app/community");
 }
 
+export async function toggleDiscussionLike(formData: FormData) {
+  const ctx = await requireResident();
+  const discussionId = String(formData.get("discussionId") ?? "");
+  db.transaction((tx) => {
+    const discussion = tx.select().from(discussions).where(and(eq(discussions.id, discussionId), eq(discussions.societyId, ctx.society.id), eq(discussions.status, "published"))).get();
+    if (!discussion) return;
+    const existing = tx.select().from(discussionLikes).where(and(eq(discussionLikes.discussionId, discussionId), eq(discussionLikes.userId, ctx.user.id))).get();
+    if (existing) {
+      tx.delete(discussionLikes).where(eq(discussionLikes.id, existing.id)).run();
+      tx.update(discussions).set({ likes: Math.max(0, discussion.likes - 1) }).where(eq(discussions.id, discussionId)).run();
+    } else {
+      tx.insert(discussionLikes).values({ id: crypto.randomUUID(), discussionId, userId: ctx.user.id, createdAt: new Date() }).run();
+      tx.update(discussions).set({ likes: discussion.likes + 1 }).where(eq(discussions.id, discussionId)).run();
+    }
+  }, { behavior: "immediate" });
+  revalidatePath(`/app/community/discussions/${discussionId}`);
+  revalidatePath("/app/community");
+}
+
 export async function toggleEventRsvp(formData: FormData) {
   const ctx = await requireResident();
   const eventId = String(formData.get("eventId") ?? "");
@@ -57,6 +76,11 @@ export async function toggleEventRsvp(formData: FormData) {
   if (existing) {
     await db.delete(eventRsvps).where(eq(eventRsvps.id, existing.id));
   } else {
+    if (event.capacity) {
+      const current = await db.select({ guests: eventRsvps.guests }).from(eventRsvps).where(eq(eventRsvps.eventId, eventId));
+      const people = current.reduce((total, rsvp) => total + 1 + rsvp.guests, 0);
+      if (people + 1 + guests > event.capacity) redirect("/app/community?tab=events&rsvp=full");
+    }
     await db.insert(eventRsvps).values({ id: crypto.randomUUID(), eventId, userId: ctx.user.id, guests, createdAt: new Date() });
   }
   revalidatePath("/app/community");
