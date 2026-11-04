@@ -105,7 +105,7 @@ struct CreatePass: View {
                 .background(NK.canvas, in: Capsule())
                 .overlay { Capsule().strokeBorder(NK.line, lineWidth: 1) }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(NivaasaPressStyle())
     }
 
     private func preset(offset: Int, length: Int) {
@@ -189,7 +189,7 @@ struct VerifyPass: View {
                                         .padding(.horizontal, 12).frame(minHeight: 46)
                                         .background(NK.canvas, in: RoundedRectangle(cornerRadius: NKRadius.control))
                                     }
-                                    .buttonStyle(.plain)
+                                    .buttonStyle(NivaasaPressStyle())
                                 }
                             }
                         }

@@ -56,9 +56,9 @@ struct ResidentHomeView: View {
         .background(Color.clear)
         .task { await load() }
         .refreshable { await load() }
-        .sheet(isPresented: $showPass) { CreatePass(token: account.token) }
-        .sheet(item: $selectedNotice) { NoticeDetail(notice: $0.notice) }
-        .sheet(item: $sheet) { ResidentSheet(destination: $0, token: account.token, account: account, session: session) }
+        .fullScreenCover(isPresented: $showPass) { CreatePass(token: account.token) }
+        .fullScreenCover(item: $selectedNotice) { NoticeDetail(notice: $0.notice) }
+        .fullScreenCover(item: $sheet) { ResidentSheet(destination: $0, token: account.token, account: account, session: session) }
     }
 
     private var greeting: some View {
@@ -90,7 +90,7 @@ struct ResidentHomeView: View {
                 Button { openTab("Visitors") } label: {
                     HStack(spacing: 2) { Text("All visitors"); Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold)) }
                         .font(.nivaasaCaptionMedium).foregroundStyle(NK.brand700).frame(minHeight: 36)
-                }.buttonStyle(.plain)
+                }.buttonStyle(NivaasaPressStyle())
             }
             if visitors.isEmpty {
                 EmptyPanel(icon: "checkmark.circle", title: "No visitors waiting", detail: "Approval requests will appear here when someone arrives.")
@@ -218,7 +218,7 @@ struct ResidentHomeView: View {
                 }
                 Button { openTab("Community") } label: {
                     Text("Open in community").font(.nivaasaCaptionMedium).foregroundStyle(NK.brand700)
-                }.buttonStyle(.plain)
+                }.buttonStyle(NivaasaPressStyle())
             }
         }
     }
@@ -243,7 +243,7 @@ struct ResidentHomeView: View {
                             Text(string(notice, "body")).font(.nivaasaCaption).foregroundStyle(NK.muted).lineLimit(2)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(NivaasaPressStyle())
                 }
             }
         }
@@ -416,7 +416,7 @@ struct CommunityScreen: View {
         .background(Color.clear)
         .task { await load() }
         .refreshable { await load() }
-        .sheet(item: $selectedNotice) { NoticeDetail(notice: $0.notice) }
+        .fullScreenCover(item: $selectedNotice) { NoticeDetail(notice: $0.notice) }
     }
 
     private func noticeList(_ data: [String: Any]) -> some View {
@@ -439,7 +439,7 @@ struct CommunityScreen: View {
                         }
                     }
                 }
-            }.buttonStyle(.plain)
+            }.buttonStyle(NivaasaPressStyle())
         }
     }
 
@@ -529,8 +529,10 @@ struct CommunityScreen: View {
 
 struct NoticeDetail: View {
     let notice: [String: Any]
+    @Environment(\.dismiss) private var dismiss
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            NivaasaCloseBar(close: { dismiss() })
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     eyebrowStyle(string(notice, "category"))
@@ -544,10 +546,8 @@ struct NoticeDetail: View {
                 }
                 .padding(20)
             }
-            .background(AppWash())
-            .navigationTitle("Notice")
-            .navigationBarTitleDisplayMode(.inline)
         }
+        .background(AppWash())
     }
 }
 
@@ -597,7 +597,7 @@ struct VisitorsScreen: View {
         .background(Color.clear)
         .task { await load() }
         .refreshable { await load() }
-        .sheet(isPresented: $showPass) { CreatePass(token: token) }
+        .fullScreenCover(isPresented: $showPass) { CreatePass(token: token) }
     }
 
     private func waiting(_ data: [String: Any]) -> some View {
@@ -906,14 +906,14 @@ struct MoreScreen: View {
                     .frame(maxWidth: .infinity, minHeight: 48)
                     .background(NK.dangerSoft, in: RoundedRectangle(cornerRadius: NKRadius.control))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(NivaasaPressStyle())
             }
             .frame(maxWidth: 600)
             .padding(.horizontal, 16).padding(.top, 20).padding(.bottom, 24)
             .frame(maxWidth: .infinity)
         }
         .background(Color.clear)
-        .sheet(item: $sheet) { ResidentSheet(destination: $0, token: account.token, account: account, session: session) }
+        .fullScreenCover(item: $sheet) { ResidentSheet(destination: $0, token: account.token, account: account, session: session) }
     }
 
     private func moreRow(_ title: String, _ icon: String, run: @escaping () -> Void) -> some View {
@@ -925,7 +925,7 @@ struct MoreScreen: View {
                 Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(NK.muted)
             }
             .padding(.horizontal, 14).frame(minHeight: 48)
-        }.buttonStyle(.plain)
+        }.buttonStyle(NivaasaPressStyle())
     }
 }
 
@@ -936,9 +936,11 @@ struct ResidentSheet: View {
     let token: String
     let account: Account
     let session: Session
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            NivaasaCloseBar(close: { dismiss() })
             Group {
                 switch destination {
                 case .helpdesk: HelpdeskScreen(token: token)
@@ -954,10 +956,8 @@ struct ResidentSheet: View {
                     .padding(16)
                 }
             }
-            .background(AppWash())
-            .navigationTitle(destination.title)
-            .navigationBarTitleDisplayMode(.inline)
         }
+        .background(AppWash())
     }
 }
 
@@ -1155,7 +1155,7 @@ struct EmergencyScreen: View {
                     .frame(maxWidth: .infinity, minHeight: 130)
                     .background(NK.danger, in: RoundedRectangle(cornerRadius: NKRadius.card))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(NivaasaPressStyle())
                 .disabled(busy)
                 if confirm {
                     NivaasaCard {
@@ -1167,7 +1167,7 @@ struct EmergencyScreen: View {
                                 Text("Send alert").font(.nivaasaBodySemibold).foregroundStyle(.white)
                                     .frame(maxWidth: .infinity, minHeight: 46)
                                     .background(NK.danger, in: RoundedRectangle(cornerRadius: NKRadius.control))
-                            }.buttonStyle(.plain)
+                            }.buttonStyle(NivaasaPressStyle())
                         }
                     }
                 }
@@ -1190,11 +1190,14 @@ struct EmergencyScreen: View {
 
 struct NotificationsScreen: View {
     let token: String
+    @Environment(\.dismiss) private var dismiss
     @State private var notifications: [[String: Any]] = []
     @State private var error: String?
 
     var body: some View {
-        ScrollView {
+        VStack(spacing: 0) {
+            NivaasaCloseBar(close: { dismiss() })
+            ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 eyebrowStyle("Your updates")
                 Text("Notifications").font(.nivaasaPageTitle).tracking(-0.6).foregroundStyle(NK.ink)
@@ -1217,7 +1220,9 @@ struct NotificationsScreen: View {
                 }
             }
             .padding(16)
+            }
         }
+        .background(AppWash())
         .task { await load() }
     }
 
@@ -1285,7 +1290,7 @@ struct HelpdeskScreen: View {
         }
         .task { await load() }
         .refreshable { await load() }
-        .sheet(isPresented: $showNew) { NewTicketSheet(token: token) { showNew = false; Task { await load() } } }
+        .fullScreenCover(isPresented: $showNew) { NewTicketSheet(token: token) { showNew = false; Task { await load() } } }
     }
 
     private func statusTone(_ status: String) -> NivaasaBadge.Tone {
@@ -1418,7 +1423,8 @@ struct SearchScreen: View {
     private var term: String { query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            NivaasaSheetHeader(title: "Search", subtitle: "Notices, people, documents and amenities.", close: { dismiss() })
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack(spacing: 8) {
@@ -1462,11 +1468,8 @@ struct SearchScreen: View {
                 }
                 .padding(16)
             }
-            .background(AppWash())
-            .navigationTitle("Search")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
         }
+        .background(AppWash())
         .task { await load() }
     }
 

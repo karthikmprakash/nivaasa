@@ -32,6 +32,29 @@ final class SnapshotTests: XCTestCase {
         capture(app, "resident-more")
     }
 
+    func testVisitorPassControls() {
+        let app = XCUIApplication()
+        app.launchArguments.append("--ui-testing")
+        app.launch()
+        let email = app.textFields["email"]
+        XCTAssertTrue(email.waitForExistence(timeout: 10))
+        email.tap()
+        email.typeText("resident@nivaasa.app")
+        capture(app, "login-filled")
+        let password = app.secureTextFields["password"]
+        password.tap()
+        password.typeText("demo1234\n")
+        XCTAssertTrue(app.buttons["Pre-approve a visitor"].waitForExistence(timeout: 20))
+        app.buttons["Pre-approve a visitor"].tap()
+        XCTAssertTrue(app.staticTexts["Who’s coming?"].waitForExistence(timeout: 10))
+        capture(app, "resident-pass")
+        XCTAssertTrue(app.buttons["Guest"].exists)
+        XCTAssertTrue(app.buttons["Create pass"].exists)
+        app.buttons["Valid from"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Choose a day in the next 30 days."].waitForExistence(timeout: 10))
+        capture(app, "resident-date-picker")
+    }
+
     private func capture(_ app: XCUIApplication, _ name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = name

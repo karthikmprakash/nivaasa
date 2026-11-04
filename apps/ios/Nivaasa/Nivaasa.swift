@@ -165,7 +165,7 @@ struct LoginView: View {
                     NivaasaCard {
                         VStack(alignment: .leading, spacing: 14) {
                             NivaasaInput(label: "Email address", text: $email, placeholder: "you@nivaasa.app", keyboard: .emailAddress, capitalization: .never, identifier: "email")
-                            NivaasaInput(label: "Password", text: $password, placeholder: "Your password", secure: true, identifier: "password")
+                            NivaasaInput(label: "Password", text: $password, placeholder: "Your password", secure: true, identifier: "password", onSubmit: signIn)
                             if let error {
                                 Text(error).font(.nivaasaCaption).foregroundStyle(NK.dangerInk)
                             }
@@ -224,13 +224,13 @@ struct ResidentShell: View {
             NivaasaBottomBar(selection: tab, unread: unread) { tab = $0 }
         }
         .background(AppWash())
-        .sheet(isPresented: $showServices) {
+        .fullScreenCover(isPresented: $showServices) {
             ServicesSheet(account: account, session: session, tab: $tab)
         }
-        .sheet(isPresented: $showNotifications) {
+        .fullScreenCover(isPresented: $showNotifications) {
             NotificationsScreen(token: account.token)
         }
-        .sheet(isPresented: $showSearch) {
+        .fullScreenCover(isPresented: $showSearch) {
             SearchScreen(token: account.token)
         }
     }
@@ -243,7 +243,8 @@ struct ServicesSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            NivaasaSheetHeader(title: "Navigation", subtitle: "Everything in your community.", close: { dismiss() })
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     HStack(spacing: 12) {
@@ -270,11 +271,8 @@ struct ServicesSheet: View {
                 }
                 .padding(16)
             }
-            .background(AppWash())
-            .navigationTitle("Navigation")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
         }
+        .background(AppWash())
     }
 
     private func service(_ title: String, _ icon: String, run: @escaping () -> Void) -> some View {
@@ -287,7 +285,7 @@ struct ServicesSheet: View {
             }
             .padding(.horizontal, 14).frame(minHeight: 48)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(NivaasaPressStyle())
         .accessibilityIdentifier("destination-" + title.lowercased())
     }
 }

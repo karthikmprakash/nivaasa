@@ -44,11 +44,11 @@ struct StaffShell: View {
             NivaasaStaffBottomBar(tabs: tabs, selection: tab) { tab = $0 }
         }
         .background(AppWash())
-        .sheet(isPresented: $showServices) {
+        .fullScreenCover(isPresented: $showServices) {
             StaffServicesSheet(account: account, session: session, tab: $tab)
         }
-        .sheet(isPresented: $showNotifications) { NotificationsScreen(token: account.token) }
-        .sheet(isPresented: $showSearch) { SearchScreen(token: account.token) }
+        .fullScreenCover(isPresented: $showNotifications) { NotificationsScreen(token: account.token) }
+        .fullScreenCover(isPresented: $showSearch) { SearchScreen(token: account.token) }
     }
 }
 
@@ -59,7 +59,8 @@ struct StaffServicesSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            NivaasaSheetHeader(title: "Navigation", subtitle: session.society.name, close: { dismiss() })
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(spacing: 12) {
@@ -82,11 +83,8 @@ struct StaffServicesSheet: View {
                 }
                 .padding(16)
             }
-            .background(AppWash())
-            .navigationTitle("Navigation")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
         }
+        .background(AppWash())
     }
 
     private func service(_ title: String, _ icon: String, run: @escaping () -> Void) -> some View {
@@ -98,7 +96,7 @@ struct StaffServicesSheet: View {
                 Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(NK.muted)
             }
             .padding(.horizontal, 14).frame(minHeight: 48)
-        }.buttonStyle(.plain)
+        }.buttonStyle(NivaasaPressStyle())
         .accessibilityIdentifier("destination-" + title.lowercased())
     }
 }
@@ -340,7 +338,7 @@ struct GuardConsoleView: View {
         .background(Color.clear)
         .task { await load() }
         .refreshable { await load() }
-        .sheet(isPresented: $showVerify) { VerifyPass(token: token) }
+        .fullScreenCover(isPresented: $showVerify) { VerifyPass(token: token) }
     }
 
     private func load() async {
@@ -411,7 +409,7 @@ struct StaffMoreScreen: View {
                     .font(.nivaasaBodySemibold).foregroundStyle(NK.dangerInk)
                     .frame(maxWidth: .infinity, minHeight: 48)
                     .background(NK.dangerSoft, in: RoundedRectangle(cornerRadius: NKRadius.control))
-                }.buttonStyle(.plain)
+                }.buttonStyle(NivaasaPressStyle())
             }.padding(16)
         }
     }

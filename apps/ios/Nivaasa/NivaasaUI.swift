@@ -213,7 +213,7 @@ struct SectionHeading: View {
                     .foregroundStyle(NK.brand700)
                     .frame(minHeight: 36)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(NivaasaPressStyle())
             }
         }
     }
@@ -264,7 +264,7 @@ struct PrimaryButton: View {
             .foregroundStyle(.white)
             .background(NK.brand600, in: RoundedRectangle(cornerRadius: NKRadius.control, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(NivaasaPressStyle())
         .disabled(disabled)
         .opacity(disabled ? 0.55 : 1)
     }
@@ -285,7 +285,7 @@ struct SoftButton: View {
             .foregroundStyle(NK.dangerInk)
             .background(NK.dangerSoft, in: RoundedRectangle(cornerRadius: NKRadius.control, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(NivaasaPressStyle())
     }
 }
 
@@ -305,7 +305,7 @@ struct OutlineButton: View {
             .background(NK.surface, in: RoundedRectangle(cornerRadius: NKRadius.control, style: .continuous))
             .overlay { RoundedRectangle(cornerRadius: NKRadius.control, style: .continuous).strokeBorder(NK.lineStrong, lineWidth: 1) }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(NivaasaPressStyle())
     }
 }
 
@@ -403,7 +403,7 @@ struct QuickActionTile: View {
             .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
             .background(NK.canvas, in: RoundedRectangle(cornerRadius: NKRadius.control, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(NivaasaPressStyle())
     }
 }
 
@@ -443,7 +443,7 @@ struct TabStrip: View {
                             .background(active ? NK.brand600 : NK.surface, in: Capsule())
                             .overlay { if !active { Capsule().strokeBorder(NK.line, lineWidth: 1) } }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(NivaasaPressStyle())
                 }
             }
             .padding(.vertical, 2)
@@ -542,7 +542,7 @@ struct NivaasaBottomBar: View {
                     .frame(maxWidth: .infinity, minHeight: 64)
                     .foregroundStyle(active ? NK.brand700 : NK.muted)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(NivaasaPressStyle())
                 .accessibilityAddTraits(active ? .isSelected : [])
                 .accessibilityIdentifier("quick-" + title.lowercased())
             }
@@ -608,7 +608,7 @@ struct NivaasaStaffBottomBar: View {
                     .frame(maxWidth: .infinity, minHeight: 64)
                     .foregroundStyle(active ? NK.brand700 : NK.muted)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(NivaasaPressStyle())
                 .accessibilityAddTraits(active ? .isSelected : [])
                 .accessibilityIdentifier("quick-" + title.lowercased())
             }

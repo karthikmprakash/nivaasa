@@ -1,6 +1,53 @@
 import SwiftUI
 import UIKit
 
+// MARK: - Interaction
+
+struct NivaasaPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.975 : 1)
+            .opacity(configuration.isPressed ? 0.9 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+struct NivaasaTextButton: View {
+    let title: String
+    var icon: String?
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                if let icon { Image(systemName: icon).font(.system(size: 12, weight: .semibold)) }
+                Text(title).font(.nivaasaCaptionMedium)
+            }
+            .foregroundStyle(NK.brand700)
+            .frame(minHeight: 38)
+        }
+        .buttonStyle(NivaasaPressStyle())
+    }
+}
+
+struct NivaasaCloseBar: View {
+    let close: () -> Void
+
+    var body: some View {
+        HStack {
+            Spacer()
+            Button(action: close) {
+                Image(systemName: "xmark").font(.system(size: 14, weight: .semibold)).foregroundStyle(NK.inkSoft)
+                    .frame(width: 36, height: 36).background(NK.canvas, in: Circle())
+            }
+            .buttonStyle(NivaasaPressStyle())
+            .accessibilityLabel("Close")
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+    }
+}
+
 // MARK: - Inputs
 
 struct NivaasaInput: View {
@@ -11,6 +58,7 @@ struct NivaasaInput: View {
     var keyboard: UIKeyboardType = .default
     var capitalization: TextInputAutocapitalization = .sentences
     var identifier: String?
+    var onSubmit: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -25,6 +73,7 @@ struct NivaasaInput: View {
                 }
             }
             .keyboardType(keyboard)
+            .onSubmit { onSubmit?() }
             .font(.nivaasaBody)
             .foregroundStyle(NK.ink)
             .tint(NK.brand600)
@@ -92,7 +141,7 @@ struct NivaasaChips: View {
                             .background(active ? NK.brand600 : NK.surface, in: Capsule())
                             .overlay { if !active { Capsule().strokeBorder(NK.line, lineWidth: 1) } }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(NivaasaPressStyle())
                     .accessibilityAddTraits(active ? .isSelected : [])
                 }
             }
@@ -125,7 +174,7 @@ struct NivaasaToggleRow: View {
             .background(NK.surface, in: RoundedRectangle(cornerRadius: NKRadius.control, style: .continuous))
             .overlay { RoundedRectangle(cornerRadius: NKRadius.control, style: .continuous).strokeBorder(NK.line, lineWidth: 1) }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(NivaasaPressStyle())
         .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 }
@@ -149,7 +198,7 @@ struct NivaasaSheetHeader: View {
                 Image(systemName: "xmark").font(.system(size: 14, weight: .semibold)).foregroundStyle(NK.inkSoft)
                     .frame(width: 36, height: 36).background(NK.canvas, in: Circle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(NivaasaPressStyle())
             .accessibilityLabel("Close")
         }
         .padding(.horizontal, 20)
@@ -193,8 +242,9 @@ struct NivaasaDateField: View {
             .background(NK.surface, in: RoundedRectangle(cornerRadius: NKRadius.control, style: .continuous))
             .overlay { RoundedRectangle(cornerRadius: NKRadius.control, style: .continuous).strokeBorder(NK.lineStrong, lineWidth: 1) }
         }
-        .buttonStyle(.plain)
-        .sheet(isPresented: $showPicker) {
+        .buttonStyle(NivaasaPressStyle())
+        .accessibilityIdentifier(label)
+        .fullScreenCover(isPresented: $showPicker) {
             NivaasaDateChoice(title: label, days: days, selected: $date, close: { showPicker = false })
         }
     }
@@ -230,15 +280,13 @@ struct NivaasaDateChoice: View {
                             .background(active ? NK.brand600 : NK.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                             .overlay { if !active { RoundedRectangle(cornerRadius: 12).strokeBorder(NK.line, lineWidth: 1) } }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(NivaasaPressStyle())
                     }
                 }
                 .padding(20)
             }
         }
         .background(AppWash())
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
     }
 }
 
@@ -263,7 +311,7 @@ struct NivaasaCopyButton: View {
             .frame(maxWidth: .infinity, minHeight: 46)
             .background(copied ? NK.mint50 : NK.brand50, in: RoundedRectangle(cornerRadius: NKRadius.control, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(NivaasaPressStyle())
         .accessibilityLabel(copied ? "Copied" : label)
     }
 }
