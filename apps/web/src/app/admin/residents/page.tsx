@@ -3,7 +3,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { ArrowDownToLine, ArrowRight, Building2, ChevronRight, Home, MoveRight, Search, UserPlus, Users, Wallet, XCircle } from "lucide-react";
 import { Avatar, Badge, Card, CardHeader, EmptyState, PageHeader, Stat } from "@/components/ui/primitives";
 import { AddResidentDialog } from "@/components/admin/add-resident-dialog";
-import { requireAdmin } from "@/lib/queries";
+import { requireAdminRole } from "@/lib/queries";
 import { db } from "@/db";
 import { invoices, memberships, moveRequests, towers, units, users } from "@/db/schema";
 import { handleMoveRequest } from "@/lib/actions/admin";
@@ -14,7 +14,7 @@ export const metadata = { title: "Residents & homes" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminResidentsPage({ searchParams }: { searchParams: Promise<{ q?: string; tower?: string; status?: string }> }) {
-  const ctx = await requireAdmin();
+  const ctx = await requireAdminRole(["admin", "manager", "committee", "security_manager", "auditor"]);
   const societyId = ctx.society!.id;
   const params = await searchParams;
   const q = (params.q ?? "").toLowerCase();
@@ -39,7 +39,7 @@ export default async function AdminResidentsPage({ searchParams }: { searchParam
     return unit.number.toLowerCase().includes(q) || (resident?.user.name.toLowerCase().includes(q) ?? false) || (resident?.user.email.toLowerCase().includes(q) ?? false);
   });
   const occupied = unitRows.length - vacant.length;
-  const canAdd = ["admin", "manager", "committee"].includes(ctx.membership?.role ?? "");
+  const canAdd = ctx.user.globalRole === "super_admin" || ["admin", "manager", "committee"].includes(ctx.membership?.role ?? "");
 
   return (
     <div>
@@ -61,7 +61,7 @@ export default async function AdminResidentsPage({ searchParams }: { searchParam
             {moves.map((m) => (
               <div key={m.request.id} className="flex flex-col gap-2 border-b border-line/70 px-5 py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-3"><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-amber-soft text-amber-ink"><MoveRight className="size-4" /></span><div><p className="text-caption font-semibold capitalize text-ink">{m.request.type.replace("_", " ")} · Home {m.unit} · {m.user}</p><p className="text-caption text-muted">{formatDate(m.request.date)} · {m.request.notes ?? "No notes"}</p></div></div>
-                <div className="flex items-center gap-2"><form action={handleMoveRequest}><input type="hidden" name="id" value={m.request.id} /><input type="hidden" name="decision" value="reject" /><button className="rounded-full border border-line px-2.5 py-1.5 text-caption font-semibold text-ink-soft">Reject</button></form><form action={handleMoveRequest}><input type="hidden" name="id" value={m.request.id} /><input type="hidden" name="decision" value="approve" /><button className="rounded-full bg-mint-600 px-2.5 py-1.5 text-caption font-semibold text-white">Approve</button></form></div>
+                {canAdd ? <div className="flex items-center gap-2"><form action={handleMoveRequest}><input type="hidden" name="id" value={m.request.id} /><input type="hidden" name="decision" value="reject" /><button className="rounded-full border border-line px-2.5 py-1.5 text-caption font-semibold text-ink-soft">Reject</button></form><form action={handleMoveRequest}><input type="hidden" name="id" value={m.request.id} /><input type="hidden" name="decision" value="approve" /><button className="rounded-full bg-mint-600 px-2.5 py-1.5 text-caption font-semibold text-white">Approve</button></form></div> : <Badge variant="outline">Read only</Badge>}
               </div>
             ))}
           </div>

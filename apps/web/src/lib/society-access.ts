@@ -82,6 +82,26 @@ export function resolveSwitchPath({
   return roots.some((root) => next === root || next.startsWith(`${root}/`)) ? next : home;
 }
 
+/**
+ * Detail pages contain IDs that belong to one society. Keep the user in the
+ * same section when they switch, rather than landing on a 404 for another
+ * society's unit, ticket, notice, discussion or receipt.
+ */
+export function stableSwitchPath(pathname: string) {
+  const rules: [RegExp, string][] = [
+    [/^\/app\/helpdesk\/[^/]+$/, "/app/helpdesk"],
+    [/^\/app\/community\/notices\/[^/]+$/, "/app/community"],
+    [/^\/app\/community\/discussions\/[^/]+$/, "/app/community"],
+    [/^\/app\/payments\/receipts\/[^/]+$/, "/app/payments"],
+    [/^\/admin\/residents\/[^/]+$/, "/admin/residents"],
+    [/^\/admin\/helpdesk\/[^/]+$/, "/admin/helpdesk"],
+  ];
+  for (const [pattern, section] of rules) {
+    if (pattern.test(pathname)) return section;
+  }
+  return pathname;
+}
+
 /** Reject absolute URLs, protocol-relative URLs and path traversal. */
 export function isSafeInternalPath(path?: string | null): path is string {
   if (!path || !path.startsWith("/") || path.startsWith("//")) return false;

@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui/primitives";
 import { requireResident } from "@/lib/queries";
 import { db } from "@/db";
 import { amenities, classifieds, discussions, documents, helpdeskTickets, notices } from "@/db/schema";
-import { noticeAudiencesForRole } from "@/lib/community-access";
+import { isOwnerAudience, noticeAudiencesForRole } from "@/lib/community-access";
 
 export const metadata: Metadata = { title: "Search" };
 
@@ -20,12 +20,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const results: { group: string; icon: typeof Search; items: { title: string; meta: string; href: string }[] }[] = [];
 
   if (term) {
+    const documentVisibilities: ("all" | "owners" | "committee")[] = ["all", ...(isOwnerAudience(ctx.membership.role) ? ["owners" as const] : []), ...(["committee", "admin", "manager"].includes(ctx.membership.role) ? ["committee" as const] : [])];
     const [n, d, t, a, docs, c] = await Promise.all([
-      db.select().from(notices).where(and(eq(notices.societyId, ctx.society.id), inArray(notices.audience, noticeAudiencesForRole(ctx.membership.role)), or(sqlLike(notices.title, pattern), sqlLike(notices.body, pattern)))).limit(6),
+      db.select().from(notices).where(and(eq(notices.societyId, ctx.society.id), or(inArray(notices.audience, noticeAudiencesForRole(ctx.membership.role)), and(eq(notices.audience, "tower"), eq(notices.towerId, ctx.unit.towerId))), or(sqlLike(notices.title, pattern), sqlLike(notices.body, pattern)))).limit(6),
       db.select().from(discussions).where(and(eq(discussions.societyId, ctx.society.id), eq(discussions.status, "published"), or(sqlLike(discussions.title, pattern), sqlLike(discussions.body, pattern)))).limit(6),
       db.select().from(helpdeskTickets).where(and(eq(helpdeskTickets.societyId, ctx.society.id), eq(helpdeskTickets.unitId, ctx.unit.id), or(sqlLike(helpdeskTickets.subject, pattern), sqlLike(helpdeskTickets.description, pattern)))).limit(6),
       db.select().from(amenities).where(and(eq(amenities.societyId, ctx.society.id), or(sqlLike(amenities.name, pattern), sqlLike(amenities.description!, pattern)))).limit(4),
-      db.select().from(documents).where(and(eq(documents.societyId, ctx.society.id), sqlLike(documents.title, pattern))).limit(4),
+      db.select().from(documents).where(and(eq(documents.societyId, ctx.society.id), inArray(documents.visibility, documentVisibilities), sqlLike(documents.title, pattern))).limit(4),
       db.select().from(classifieds).where(and(eq(classifieds.societyId, ctx.society.id), eq(classifieds.status, "active"), or(sqlLike(classifieds.title, pattern), sqlLike(classifieds.description, pattern)))).limit(4),
     ]);
     if (n.length) results.push({ group: "Notices", icon: Megaphone, items: n.map((x) => ({ title: x.title, meta: "Notice · " + x.category, href: `/app/community/notices/${x.id}` })) });

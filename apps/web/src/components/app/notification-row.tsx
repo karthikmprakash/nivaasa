@@ -15,7 +15,7 @@ export function NotificationRow({ id, title, body, type, link, read, createdAt }
   const Icon = icons[type] ?? Bell;
   async function markRead() {
     if (read) return;
-    await fetch("/api/notifications/read", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }).catch(() => null);
+    await fetch("/api/notifications/read", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }), keepalive: true }).catch(() => null);
     router.refresh();
   }
   const content = (

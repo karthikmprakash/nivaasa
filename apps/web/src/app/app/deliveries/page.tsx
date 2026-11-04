@@ -7,6 +7,7 @@ import { CopyCode } from "@/components/app/copy-code";
 import { requireResident } from "@/lib/queries";
 import { db } from "@/db";
 import { deliveries } from "@/db/schema";
+import { communityMonthStart } from "@/lib/datetime";
 import { formatDate, formatTime, timeAgo } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Deliveries" };
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 export default async function DeliveriesPage() {
   const ctx = await requireResident();
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const monthStart = communityMonthStart();
   const all = await db.select().from(deliveries).where(eq(deliveries.unitId, ctx.unit.id)).orderBy(desc(deliveries.createdAt));
   const active = all.filter((d) => ["arrived", "left_at_gate"].includes(d.status));
   const past = all.filter((d) => !["arrived", "left_at_gate"].includes(d.status));

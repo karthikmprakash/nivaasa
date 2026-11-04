@@ -19,7 +19,7 @@ export async function cancelBooking(formData: FormData) {
   if (refundable && booking.paymentId) {
     await db.update(payments).set({ status: "refunded" }).where(eq(payments.id, booking.paymentId));
   }
-  const admins = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, ctx.society.id), inArray(memberships.role, ["admin", "manager"])));
+  const admins = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, ctx.society.id), eq(memberships.status, "active"), inArray(memberships.role, ["admin", "manager"])));
   if (admins.length) {
     await db.insert(notifications).values(admins.map((a) => ({
       id: crypto.randomUUID(), userId: a.userId, societyId: ctx.society.id,

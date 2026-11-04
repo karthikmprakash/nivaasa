@@ -33,6 +33,7 @@ export function CreateListingDialog() {
           <Field label="Description"><Textarea name="description" required rows={3} placeholder="Size, age, condition, pickup details…" /></Field>
           <Field label="Image URL (optional)"><Input name="imageUrl" type="url" placeholder="https://…" /></Field>
           {state.error ? <p className="text-caption text-[#c43d4d]">{state.error}</p> : null}
+          {state.fieldErrors ? <p className="text-caption text-[#c43d4d]">{Object.values(state.fieldErrors)[0]}</p> : null}
           <Button type="submit" className="w-full" disabled={pending}>{pending ? "Publishing…" : "Publish listing"}</Button>
         </form>
       </Dialog>

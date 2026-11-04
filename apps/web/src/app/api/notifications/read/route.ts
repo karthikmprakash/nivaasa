@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   if (parsed.data.all) {
     await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.userId, session.user.id), eq(notifications.societyId, session.membership.societyId), isNull(notifications.readAt)));
   } else if (parsed.data.id) {
-    await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.id, parsed.data.id), eq(notifications.userId, session.user.id)));
+    await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.id, parsed.data.id), eq(notifications.userId, session.user.id), eq(notifications.societyId, session.membership.societyId)));
   }
   return NextResponse.json({ ok: true });
 }

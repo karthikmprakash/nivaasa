@@ -9,6 +9,7 @@ import {
 import { requireAdmin } from "@/lib/queries";
 import { canManageBilling } from "@/lib/auth";
 import { filterRecipientsByPref } from "@/lib/notifications";
+import { communityDayEnd, communityDayStart } from "@/lib/datetime";
 import { todayISO } from "@/lib/utils";
 
 export type BillingState = { error?: string; ok?: boolean; count?: number; message?: string };
@@ -41,7 +42,13 @@ export async function runBilling(_prev: BillingState, formData: FormData): Promi
   const dueDate = String(formData.get("dueDate") ?? "");
   const headIds = formData.getAll("headIds").map(String);
   if (!periodStart || !periodEnd || !issueDate || !dueDate) return { error: "Choose the billing period and dates." };
-  if (new Date(dueDate + "T23:59:59") < new Date(issueDate + "T00:00:00")) return { error: "The due date must be after the issue date." };
+  const periodStartBoundary = communityDayStart(periodStart);
+  const periodEndBoundary = communityDayEnd(periodEnd);
+  const issueBoundary = communityDayStart(issueDate);
+  const dueBoundary = communityDayEnd(dueDate);
+  if (!periodStartBoundary || !periodEndBoundary || !issueBoundary || !dueBoundary) return { error: "Choose valid billing dates." };
+  if (periodEndBoundary < periodStartBoundary) return { error: "The billing period must end on or after it starts." };
+  if (dueBoundary < issueBoundary) return { error: "The due date must be after the issue date." };
   if (!headIds.length) return { error: "Select at least one billing head." };
 
   const heads = await db.select().from(billingHeads).where(and(eq(billingHeads.societyId, societyId), inArray(billingHeads.id, headIds), eq(billingHeads.active, true)));
@@ -49,9 +56,15 @@ export async function runBilling(_prev: BillingState, formData: FormData): Promi
 
   const includeVacant = formData.get("includeVacant") === "on";
   const allUnits = await db.select().from(units).where(eq(units.societyId, societyId));
-  const existing = await db.select({ unitId: invoices.unitId }).from(invoices).where(and(eq(invoices.societyId, societyId), eq(invoices.periodStart, periodStart)));
+  const residentUnitRows = await db.selectDistinct({ unitId: memberships.unitId }).from(memberships).where(and(
+    eq(memberships.societyId, societyId),
+    eq(memberships.status, "active"),
+    inArray(memberships.role, ["owner", "tenant", "committee", "family"]),
+  ));
+  const residentUnitIds = new Set(residentUnitRows.map((row) => row.unitId).filter((id): id is string => !!id));
+  const existing = await db.select({ unitId: invoices.unitId }).from(invoices).where(and(eq(invoices.societyId, societyId), eq(invoices.periodStart, periodStart), inArray(invoices.status, ["due", "overdue", "partially_paid", "paid"])));
   const existingSet = new Set(existing.map((e) => e.unitId));
-  const targetUnits = allUnits.filter((u) => (includeVacant || u.status === "occupied") && !existingSet.has(u.id));
+  const targetUnits = allUnits.filter((u) => (includeVacant || u.status === "occupied" || residentUnitIds.has(u.id)) && !existingSet.has(u.id));
   if (!targetUnits.length) return { error: existingSet.size ? "Invoices already exist for this period. Choose a different period." : "There are no occupied homes to bill. Add residents first, or choose to include vacant homes." };
 
   let seq = await nextInvoiceSequence(societyId);
@@ -65,23 +78,28 @@ export async function runBilling(_prev: BillingState, formData: FormData): Promi
       return { head: h, amount };
     });
     const subtotal = items.reduce((s, i) => s + i.amount, 0);
+    const gstAmount = items.reduce((sum, item) => sum + Math.round(item.amount * item.head.gstRate / 100), 0);
     const invoiceId = crypto.randomUUID();
     const prefix = society.name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-    const number = `${prefix}/${new Date(issueDate).getFullYear()}-${String(new Date(issueDate).getFullYear() + 1).slice(-2)}/${String(seq++).padStart(4, "0")}`;
+    const issueYear = Number(issueDate.slice(0, 4));
+    const issueMonth = Number(issueDate.slice(5, 7));
+    const fiscalYear = issueMonth >= 4 ? issueYear : issueYear - 1;
+    const number = `${prefix}/${fiscalYear}-${String(fiscalYear + 1).slice(-2)}/${String(seq++).padStart(4, "0")}`;
     await db.insert(invoices).values({
       id: invoiceId, societyId: societyId, unitId: unit.id, number, title,
-      periodStart, periodEnd, issueDate, dueDate, subtotal, gstAmount: 0, penalty: 0, discount: 0,
-      total: subtotal, amountPaid: 0, status: "due", createdBy: ctx.user.id, createdAt: now,
+      periodStart, periodEnd, issueDate, dueDate, subtotal, gstAmount, penalty: 0, discount: 0,
+      total: subtotal + gstAmount, amountPaid: 0, status: "due", createdBy: ctx.user.id, createdAt: now,
     });
     await db.insert(invoiceItems).values(items.map((i) => ({
       id: crypto.randomUUID(), invoiceId, headId: i.head.id, description: i.head.name,
-      quantity: i.head.basis === "per_sqft" ? unit.areaSqft : 1, rate: i.head.defaultAmount, amount: i.amount,
+      quantity: i.head.basis === "per_sqft" ? unit.areaSqft : i.head.basis === "per_unit" ? unit.parkingSlots : 1,
+      rate: i.head.defaultAmount, amount: i.amount,
     })));
     count++;
   }
 
   // In-app notice to every resident with a flat who still wants payment updates.
-  const residentRows = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, societyId), inArray(memberships.role, ["owner", "tenant", "committee"])));
+  const residentRows = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, societyId), eq(memberships.status, "active"), inArray(memberships.role, ["owner", "tenant", "committee"])));
   const residents = await filterRecipientsByPref(societyId, residentRows, "payments");
   if (residents.length) {
     await db.insert(notifications).values(residents.map((r) => ({
@@ -169,10 +187,16 @@ export async function createExpense(_prev: ExpenseState, formData: FormData): Pr
   const amountRupees = Number(formData.get("amount") ?? 0);
   const date = String(formData.get("date") ?? "");
   const vendorId = String(formData.get("vendorId") ?? "") || null;
-  const status = String(formData.get("status") ?? "paid") as "pending" | "approved" | "paid";
+  const statusValue = String(formData.get("status") ?? "paid");
+  if (!["pending", "approved", "paid"].includes(statusValue)) return { error: "Choose a valid expense status." };
+  const status = statusValue as "pending" | "approved" | "paid";
   if (!description) return { error: "Add a description." };
-  if (!amountRupees || amountRupees <= 0) return { error: "Enter a valid amount." };
-  if (!date) return { error: "Choose the expense date." };
+  if (!Number.isFinite(amountRupees) || amountRupees <= 0) return { error: "Enter a valid amount." };
+  if (!communityDayStart(date)) return { error: "Choose a valid expense date." };
+  if (vendorId) {
+    const [vendor] = await db.select({ id: vendors.id }).from(vendors).where(and(eq(vendors.id, vendorId), eq(vendors.societyId, societyId))).limit(1);
+    if (!vendor) return { error: "Choose a vendor from this society." };
+  }
   const now = new Date();
   await db.insert(expenses).values({
     id: crypto.randomUUID(), societyId: societyId, vendorId, category, description,
@@ -233,32 +257,39 @@ export async function verifyPayment(formData: FormData) {
 
 export async function createBillingHead(_prev: BillingState, formData: FormData): Promise<BillingState> {
   const ctx = await requireAdmin();
-  if (!ctx.society || !ctx.membership || !["admin", "manager", "accountant"].includes(ctx.membership.role)) return { error: "Permission denied." };
+  if (!ctx.society || (ctx.user.globalRole !== "super_admin" && !["admin", "manager", "accountant"].includes(ctx.membership?.role ?? ""))) return { error: "Permission denied." };
   const societyId = ctx.society.id;
   const name = String(formData.get("name") ?? "").trim();
   const code = String(formData.get("code") ?? "").trim().toUpperCase() || name.slice(0, 3).toUpperCase();
-  const basis = String(formData.get("basis") ?? "fixed") as "fixed" | "per_sqft" | "per_unit" | "meter";
+  const basisValue = String(formData.get("basis") ?? "fixed");
+  if (!["fixed", "per_sqft", "per_unit"].includes(basisValue)) return { error: "Choose a valid billing basis." };
+  const basis = basisValue as "fixed" | "per_sqft" | "per_unit" | "meter";
   const amount = Number(formData.get("amount") ?? 0);
   if (!name) return { error: "Give the billing head a name." };
-  if (amount < 0) return { error: "Amount can't be negative." };
-  await db.insert(billingHeads).values({ id: crypto.randomUUID(), societyId: societyId, name, code, basis, defaultAmount: Math.round(amount * 100), gstRate: Number(formData.get("gstRate") ?? 0), recurring: true, active: true, sortOrder: 99 });
+  if (!Number.isFinite(amount) || amount < 0) return { error: "Enter a valid amount." };
+  const gstRate = Math.max(0, Math.min(28, Number(formData.get("gstRate") ?? 0) || 0));
+  await db.insert(billingHeads).values({ id: crypto.randomUUID(), societyId: societyId, name, code, basis, defaultAmount: Math.round(amount * 100), gstRate, recurring: true, active: true, sortOrder: 99 });
+  await db.insert(auditLogs).values({ id: crypto.randomUUID(), societyId, actorId: ctx.user.id, actorName: ctx.user.name, action: "billing_head.created", entity: "billing_head", metadata: { name, code, basis, amount, gstRate }, createdAt: new Date() });
   revalidatePath("/admin/billing");
   return { ok: true, message: "Billing head added." };
 }
 
 export async function addVendor(_prev: BillingState, formData: FormData): Promise<BillingState> {
   const ctx = await requireAdmin();
-  if (!ctx.society || !ctx.membership || !["admin", "manager", "accountant"].includes(ctx.membership.role)) return { error: "Permission denied." };
+  if (!ctx.society || (ctx.user.globalRole !== "super_admin" && !["admin", "manager", "accountant", "committee"].includes(ctx.membership?.role ?? ""))) return { error: "Permission denied." };
   const societyId = ctx.society.id;
   const name = String(formData.get("name") ?? "").trim();
+  const monthlyValue = Number(formData.get("monthlyValue") ?? 0);
   if (!name) return { error: "Enter the vendor name." };
+  if (!Number.isFinite(monthlyValue) || monthlyValue < 0) return { error: "Enter a valid monthly value." };
   await db.insert(vendors).values({
     id: crypto.randomUUID(), societyId: societyId, name, category: String(formData.get("category") ?? "Services"),
     contactPerson: String(formData.get("contactPerson") ?? "") || null, phone: String(formData.get("phone") ?? "") || null,
     email: String(formData.get("email") ?? "") || null, gstin: String(formData.get("gstin") ?? "") || null,
     contractStart: String(formData.get("contractStart") ?? "") || null, contractEnd: String(formData.get("contractEnd") ?? "") || null,
-    monthlyValue: Math.round(Number(formData.get("monthlyValue") ?? 0) * 100), status: "active", createdAt: new Date(),
+    monthlyValue: Math.round(monthlyValue * 100), status: "active", createdAt: new Date(),
   });
+  await db.insert(auditLogs).values({ id: crypto.randomUUID(), societyId, actorId: ctx.user.id, actorName: ctx.user.name, action: "vendor.created", entity: "vendor", metadata: { name, category: String(formData.get("category") ?? "Services") }, createdAt: new Date() });
   revalidatePath("/admin/vendors");
   return { ok: true, message: "Vendor added." };
 }

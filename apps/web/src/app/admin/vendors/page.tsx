@@ -3,7 +3,7 @@ import { and, desc, eq, lte } from "drizzle-orm";
 import { AlertTriangle, ArrowUpRight, BadgeCheck, Building2, CalendarClock, IndianRupee, Package, ShieldCheck, Star, Truck, Wrench } from "lucide-react";
 import { Badge, Card, CardHeader, EmptyState, PageHeader, Stat } from "@/components/ui/primitives";
 import { AddAssetDialog, AddVendorDialog } from "@/components/admin/vendor-dialogs";
-import { requireAdmin } from "@/lib/queries";
+import { requireAdminRole } from "@/lib/queries";
 import { db } from "@/db";
 import { assets, expenses, vendors } from "@/db/schema";
 import { formatDate, formatINR } from "@/lib/utils";
@@ -13,7 +13,7 @@ export const metadata = { title: "Vendors & assets" };
 export const dynamic = "force-dynamic";
 
 export default async function VendorsPage() {
-  const ctx = await requireAdmin();
+  const ctx = await requireAdminRole(["admin", "manager", "accountant", "committee"]);
   const societyId = ctx.society!.id;
   const soon = new Date(); soon.setDate(soon.getDate() + 30);
   const [vendorRows, assetRows, spendRows] = await Promise.all([
@@ -24,8 +24,8 @@ export default async function VendorsPage() {
   const spendByVendor = new Map<string, number>();
   for (const e of spendRows) if (e.vendorId) spendByVendor.set(e.vendorId, (spendByVendor.get(e.vendorId) ?? 0) + e.amount);
   const assetValue = assetRows.reduce((s, a) => s + (a.asset.value ?? 0), 0);
-  const expiring = vendorRows.filter((v) => v.contractEnd && new Date(v.contractEnd) <= soon);
-  const amcDue = assetRows.filter((a) => a.asset.amcDue && new Date(a.asset.amcDue) <= soon);
+  const expiring = vendorRows.filter((v) => v.status === "active" && v.contractEnd && new Date(v.contractEnd) <= soon);
+  const amcDue = assetRows.filter((a) => a.asset.condition !== "retired" && a.asset.amcDue && new Date(a.asset.amcDue) <= soon);
   return (
     <div>
       <PageHeader eyebrow="Procurement & assets" title="Vendors & assets" description="Every contract, every AMC and every piece of equipment — with the money and renewals in view." actions={<><AddVendorDialog /><AddAssetDialog vendors={vendorRows.map((v) => ({ id: v.id, name: v.name }))} /></>} />
@@ -42,7 +42,7 @@ export default async function VendorsPage() {
         <div className="min-w-0 space-y-4">
           <Card>
             <CardHeader title="Vendor register" description="Contracts, contacts and spend" icon={<Building2 className="size-4" />} action={<AddVendorDialog />} />
-            <div className="overflow-x-auto border-t border-line"><table className="w-full min-w-[720px]"><thead><tr className="bg-[#fbfcff]">{["Vendor", "Category", "Contact", "Contract", "Monthly", "Spend", "Rating"].map((h) => <th key={h} className="border-b border-line px-4 py-2.5 text-left text-caption font-bold uppercase tracking-[0.1em] text-muted">{h}</th>)}</tr></thead><tbody>{vendorRows.map((v) => <tr key={v.id} className="border-b border-line/70 last:border-0"><td className="px-4 py-3"><p className="text-caption font-semibold text-ink">{v.name}</p><p className="text-caption text-muted">{v.gstin ?? "GST not recorded"}</p></td><td className="px-4 py-3 text-caption text-ink-soft">{v.category}</td><td className="px-4 py-3"><p className="text-caption text-ink-soft">{v.contactPerson}</p><p className="text-caption text-muted">{v.phone}</p></td><td className="px-4 py-3"><p className="text-caption text-ink-soft">{formatDate(v.contractStart)}</p><p className={`text-caption ${v.contractEnd && new Date(v.contractEnd) <= soon ? "font-semibold text-[#c43d4d]" : "text-muted"}`}>to {formatDate(v.contractEnd)}</p></td><td className="px-4 py-3 text-caption font-medium text-ink">{v.monthlyValue ? formatINR(v.monthlyValue) : "—"}</td><td className="px-4 py-3 text-caption text-ink-soft">{formatINR(spendByVendor.get(v.id) ?? 0)}</td><td className="px-4 py-3"><span className="inline-flex items-center gap-1 text-caption font-semibold text-amber-ink"><Star className="size-4 fill-current" /> {v.rating?.toFixed(1)}</span></td></tr>)}</tbody></table></div>
+            <div className="overflow-x-auto border-t border-line"><table className="w-full min-w-[720px]"><thead><tr className="bg-[#fbfcff]">{["Vendor", "Category", "Contact", "Contract", "Monthly", "Spend", "Rating"].map((h) => <th key={h} className="border-b border-line px-4 py-2.5 text-left text-caption font-bold uppercase tracking-[0.1em] text-muted">{h}</th>)}</tr></thead><tbody>{vendorRows.map((v) => <tr key={v.id} className="border-b border-line/70 last:border-0"><td className="px-4 py-3"><p className="text-caption font-semibold text-ink">{v.name}</p><p className="text-caption text-muted">{v.gstin ?? "GST not recorded"}</p></td><td className="px-4 py-3 text-caption text-ink-soft">{v.category}</td><td className="px-4 py-3"><p className="text-caption text-ink-soft">{v.contactPerson}</p><p className="text-caption text-muted">{v.phone}</p></td><td className="px-4 py-3"><p className="text-caption text-ink-soft">{formatDate(v.contractStart)}</p><p className={`text-caption ${v.contractEnd && new Date(v.contractEnd) <= soon ? "font-semibold text-[#c43d4d]" : "text-muted"}`}>to {formatDate(v.contractEnd)}</p></td><td className="px-4 py-3 text-caption font-medium text-ink">{v.monthlyValue ? formatINR(v.monthlyValue) : "—"}</td><td className="px-4 py-3 text-caption text-ink-soft">{formatINR(spendByVendor.get(v.id) ?? 0)}</td><td className="px-4 py-3"><span className="inline-flex items-center gap-1 text-caption font-semibold text-amber-ink"><Star className="size-4 fill-current" /> {v.rating ? v.rating.toFixed(1) : "New"}</span></td></tr>)}</tbody></table></div>
           </Card>
 
           <Card>

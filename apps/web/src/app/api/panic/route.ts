@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   const now = new Date();
   const message = parsed.data.category === "medical" ? "Medical emergency — need help immediately" : parsed.data.category === "fire" ? "Fire emergency" : parsed.data.message;
   await db.insert(panicAlerts).values({ id, societyId: session.membership.societyId, userId: session.user.id, unitId: session.membership.unitId, message, status: "open", createdAt: now });
-  const responders = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, session.membership.societyId), inArray(memberships.role, ["guard", "security_manager", "admin", "manager"])));
+  const responders = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, session.membership.societyId), eq(memberships.status, "active"), inArray(memberships.role, ["guard", "security_manager", "admin", "manager"])));
   if (responders.length) {
     await db.insert(notifications).values(responders.map((r) => ({
       id: crypto.randomUUID(), userId: r.userId, societyId: session.membership!.societyId,

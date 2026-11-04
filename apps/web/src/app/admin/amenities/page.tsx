@@ -3,10 +3,11 @@ import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { CalendarCheck2, CalendarHeart, CheckCircle2, Clock3, Dumbbell, IndianRupee, Power, Star, Users, Waves, XCircle } from "lucide-react";
 import { Badge, Card, CardHeader, EmptyState, PageHeader, Stat } from "@/components/ui/primitives";
 import { CreateAmenityDialog } from "@/components/admin/amenity-dialog";
-import { requireAdmin } from "@/lib/queries";
+import { requireAdminRole } from "@/lib/queries";
 import { db } from "@/db";
 import { amenities, amenityBookings, units, users } from "@/db/schema";
 import { adminCancelBooking, toggleAmenity } from "@/lib/actions/admin";
+import { communityMonthStart } from "@/lib/datetime";
 import { formatDate, formatINR, todayISO } from "@/lib/utils";
 
 export const metadata = { title: "Amenities" };
@@ -14,10 +15,10 @@ export const metadata = { title: "Amenities" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminAmenitiesPage() {
-  const ctx = await requireAdmin();
+  const ctx = await requireAdminRole(["admin", "manager", "committee"]);
   const societyId = ctx.society!.id;
   const today = todayISO();
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const monthStart = communityMonthStart();
   const [amenityRows, bookingRows] = await Promise.all([
     db.select().from(amenities).where(eq(amenities.societyId, societyId)).orderBy(amenities.sortOrder),
     db.select({ booking: amenityBookings, amenity: amenities.name, unit: units.number, user: users.name }).from(amenityBookings).innerJoin(amenities, eq(amenityBookings.amenityId, amenities.id)).innerJoin(units, eq(amenityBookings.unitId, units.id)).innerJoin(users, eq(amenityBookings.userId, users.id)).where(eq(amenityBookings.societyId, societyId)).orderBy(desc(amenityBookings.date)),

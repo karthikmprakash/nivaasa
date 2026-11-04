@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { amenities, auditLogs, billingHeads, memberships, notices, societies, towers, units, users } from "@/db/schema";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { createSessionToken, SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth";
+import { todayISO } from "@/lib/utils";
 
 export type OnboardingState = { error?: string; fieldErrors?: Record<string, string> };
 
@@ -50,7 +51,7 @@ export async function createCommunity(_prev: OnboardingState, formData: FormData
   const totalUnits = towerCount * unitsPerTower;
   await db.insert(societies).values({
     id: societyId, name, slug, tagline: "A community, coming together", address, city, state, pincode,
-    unitsCount: totalUnits, establishedYear: new Date().getFullYear(), primaryColor: "#3155d8", accentColor: "#ef7fa4",
+    unitsCount: totalUnits, establishedYear: Number(todayISO().slice(0, 4)), primaryColor: "#3155d8", accentColor: "#ef7fa4",
     settings: { visitorApproval: true, visitorPassTtlHours: 24, discussionApproval: true, allowResidentClassifieds: true, lateFeePercent: 2, graceDays: 5, paymentGateway: "demo", helpdeskSlaHours: 24 },
     createdAt: now,
   });

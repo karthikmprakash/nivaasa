@@ -24,7 +24,7 @@ const typeLabel: Record<string, string> = {
   guest: "Guest", delivery: "Delivery", cab: "Cab", domestic_help: "Daily help", vendor: "Vendor", other: "Visitor",
 };
 
-export function VisitorApprovalCard({ visitor, compact = false }: { visitor: Visitor; compact?: boolean }) {
+export function VisitorApprovalCard({ visitor, compact = false, readOnly = false }: { visitor: Visitor; compact?: boolean; readOnly?: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [done, setDone] = useState<"approve" | "deny" | "leave_at_gate" | null>(null);
@@ -82,7 +82,7 @@ export function VisitorApprovalCard({ visitor, compact = false }: { visitor: Vis
       </div>
       {visitor.vehicleNo ? <p className="mt-2 rounded-lg bg-canvas px-2.5 py-1.5 text-caption font-medium text-ink-soft">Vehicle · {visitor.vehicleNo}</p> : null}
       {visitor.notes ? <p className="mt-2 line-clamp-2 text-caption leading-relaxed text-muted">{visitor.notes}</p> : null}
-      <div className={cn("mt-4 grid gap-2", visitor.type === "delivery" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-2")}>
+      {readOnly ? <p className="mt-4 rounded-lg bg-canvas px-3 py-2 text-caption text-muted">Read-only view. A resident or security manager can approve this request.</p> : <div className={cn("mt-4 grid gap-2", visitor.type === "delivery" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-2")}>
         <Button variant="dangerSoft" size="md"
           onClick={() => respond("deny")}
           disabled={!!busy}
@@ -106,7 +106,7 @@ export function VisitorApprovalCard({ visitor, compact = false }: { visitor: Vis
             {busy === "leave_at_gate" ? <Loader2 className="size-4 animate-spin" /> : <><PackageOpen className="size-4" /><span>Leave at gate</span></>}
           </Button>
         ) : null}
-      </div>
+      </div>}
     </div>
   );
 }

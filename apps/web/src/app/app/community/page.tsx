@@ -1,7 +1,7 @@
 import { QueryTabs } from "@/components/ui/query-tabs";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { and, count, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
 import {
   ArrowRight, CalendarDays, CalendarPlus, CheckCircle2, ChevronRight, Clock3, Heart, MapPin, MessageCircle,
   MessageSquare, Pin, Plus, Sparkles, Users, Vote, Info, PartyPopper, Megaphone,
@@ -43,7 +43,7 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
   const userId = ctx.user.id;
 
   const [noticeRows, discussionRows, pendingMine, commentCounts, pollRows, votes, myVotes, eventRows, rsvpCounts, myRsvps] = await Promise.all([
-    db.select({ notice: notices, author: users }).from(notices).leftJoin(users, eq(notices.authorId, users.id)).where(and(eq(notices.societyId, societyId), inArray(notices.audience, noticeAudiencesForRole(ctx.membership.role)))).orderBy(desc(notices.pinned), desc(notices.publishedAt)),
+    db.select({ notice: notices, author: users }).from(notices).leftJoin(users, eq(notices.authorId, users.id)).where(and(eq(notices.societyId, societyId), or(inArray(notices.audience, noticeAudiencesForRole(ctx.membership.role)), and(eq(notices.audience, "tower"), eq(notices.towerId, ctx.unit.towerId))))).orderBy(desc(notices.pinned), desc(notices.publishedAt)),
     db.select({ discussion: discussions, author: users }).from(discussions).innerJoin(users, eq(discussions.authorId, users.id)).where(and(eq(discussions.societyId, societyId), eq(discussions.status, "published"))).orderBy(desc(discussions.pinned), desc(discussions.createdAt)),
     db.select({ discussion: discussions }).from(discussions).where(and(eq(discussions.societyId, societyId), eq(discussions.authorId, userId), eq(discussions.status, "pending"))).orderBy(desc(discussions.createdAt)),
     db.select({ discussionId: discussionComments.discussionId, c: count() }).from(discussionComments).groupBy(discussionComments.discussionId),
@@ -167,7 +167,7 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
                   const open = pollIsOpen(p.status, p.endsAt);
                   const canVote = open && canVoteInPollAudience(ctx.membership.role, p.audience);
                   return (
-                    <PollCard key={p.id} pollId={p.id} question={p.question} description={p.description} options={p.options} counts={votesBy[p.id] ?? {}} total={totals[p.id] ?? 0} userVote={myVoteBy.get(p.id)} status={open ? "active" : "closed"} endsLabel={open && p.endsAt ? `Closes ${formatDate(p.endsAt)}` : "Closed"} audience={p.audience} secret={p.secret} hideResults={p.hideResults} canVote={canVote} />
+                    <PollCard key={p.id} pollId={p.id} question={p.question} description={p.description} options={p.options} counts={votesBy[p.id] ?? {}} total={totals[p.id] ?? 0} userVote={myVoteBy.get(p.id)} status={open ? "active" : "closed"} endsLabel={open ? (p.endsAt ? `Closes ${formatDate(p.endsAt)}` : "Open until closed") : "Closed"} audience={p.audience} secret={p.secret} hideResults={p.hideResults} canVote={canVote} />
                   );
                 })}
               </div>
@@ -187,7 +187,7 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
                     <div className="flex gap-3">
                       <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-blush-50 text-center">
                         <span className="text-caption font-bold uppercase text-blush-500">{formatDate(e.startAt, { month: "short" })}</span>
-                        <span className="text-base font-bold leading-none text-ink">{new Date(e.startAt).getDate()}</span>
+                        <span className="text-base font-bold leading-none text-ink">{formatDate(e.startAt, { day: "numeric" })}</span>
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-caption font-semibold leading-snug text-ink">{e.title}</p>

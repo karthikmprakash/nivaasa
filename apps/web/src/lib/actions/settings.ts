@@ -16,8 +16,7 @@ export async function updateProfile(_prev: SettingsState, formData: FormData): P
   if (name.length < 2) return { error: "Enter your full name." };
   if (!/^[+\d][\d\s-]{6,}$/.test(phone)) return { error: "Enter a valid phone number." };
   await db.update(users).set({ name, phone }).where(eq(users.id, ctx.user.id));
-  revalidatePath("/app/settings");
-  revalidatePath("/app");
+  for (const path of ["/app/settings", "/app", "/app/directory", "/app/my-home", "/app/community", "/admin/settings", "/admin/residents", "/admin/helpdesk", "/gate"]) revalidatePath(path);
   return { ok: true, message: "Profile updated." };
 }
 

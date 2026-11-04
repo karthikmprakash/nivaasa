@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Check, LockKeyhole, Users, Vote } from "lucide-react";
@@ -31,6 +31,12 @@ export function PollCard({ pollId, question, description, options, counts, total
   const [busy, setBusy] = useState<string | null>(null);
   const [showResults, setShowResults] = useState(status !== "active" || (!hideResults && !!userVote));
   const closed = status !== "active";
+  useEffect(() => {
+    setLocalCounts(counts);
+    setLocalTotal(total);
+    setSelected(userVote ?? null);
+    setShowResults(status !== "active" || (!hideResults && !!userVote));
+  }, [counts, total, userVote, status, hideResults]);
 
   async function vote(optionId: string) {
     if (selected || busy || closed) return;
@@ -58,7 +64,7 @@ export function PollCard({ pollId, question, description, options, counts, total
       <div className="flex items-start gap-3">
         <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600"><Vote className="size-4" /></span>
         <div className="min-w-0 flex-1">
-          <p className="text-caption font-semibold uppercase tracking-[0.1em] text-brand-600">{closed ? "Poll closed" : "Open poll"} · {audience === "owners" ? "Owners" : "All residents"}</p>
+          <p className="text-caption font-semibold uppercase tracking-[0.1em] text-brand-600">{closed ? "Poll closed" : "Open poll"} · {audience === "owners" ? "Owners" : audience === "tenants" ? "Tenants" : "All residents"}</p>
           <p className="mt-1 text-body font-semibold leading-snug text-ink">{question}</p>
           {description ? <p className="mt-1 text-caption leading-relaxed text-muted">{description}</p> : null}
         </div>

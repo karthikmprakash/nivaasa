@@ -14,7 +14,7 @@ export function CancelBookingButton({ bookingId, refundable }: { bookingId: stri
       <Dialog open={open} onOpenChange={setOpen} title="Cancel this booking?" description={refundable ? "You're more than 24 hours away, so the amount will be refunded to the original payment method." : "This booking is within 24 hours, so the amount is not refundable."} className="max-w-md">
         <div className="flex gap-2">
           <Button variant="outline" className="flex-1" onClick={() => setOpen(false)}>Keep booking</Button>
-          <form action={cancelBooking} className="flex-1"><input type="hidden" name="bookingId" value={bookingId} /><Button type="submit" variant="danger" className="w-full"><CalendarX2 className="size-4" /> Cancel booking</Button></form>
+          <form action={cancelBooking} onSubmit={() => setOpen(false)} className="flex-1"><input type="hidden" name="bookingId" value={bookingId} /><Button type="submit" variant="danger" className="w-full"><CalendarX2 className="size-4" /> Cancel booking</Button></form>
         </div>
       </Dialog>
     </>

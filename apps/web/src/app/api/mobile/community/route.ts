@@ -1,18 +1,20 @@
 import { NextResponse } from "next/server";
-import { and, count, desc, eq, gte, inArray } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
-import { discussionComments, discussions, eventRsvps, events, notices, pollVotes, polls, users } from "@/db/schema";
+import { discussionComments, discussions, eventRsvps, events, notices, pollVotes, polls, units, users } from "@/db/schema";
 import { getSession } from "@/lib/auth";
+import { noticeAudiencesForRole, pollAudiencesForRole } from "@/lib/community-access";
 
 export async function GET() {
   const session = await getSession();
   if (!session?.membership || !session.society) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const societyId = session.society.id;
+  const [unit] = session.membership.unitId ? await db.select({ towerId: units.towerId }).from(units).where(eq(units.id, session.membership.unitId)).limit(1) : [];
   const [noticeRows, discussionRows, commentCounts, pollRows, voteRows, myVotes, eventRows, rsvpRows, myRsvps] = await Promise.all([
-    db.select({ notice: notices, author: users.name }).from(notices).leftJoin(users, eq(notices.authorId, users.id)).where(and(eq(notices.societyId, societyId), eq(notices.audience, "all"))).orderBy(desc(notices.pinned), desc(notices.publishedAt)).limit(20),
+    db.select({ notice: notices, author: users.name }).from(notices).leftJoin(users, eq(notices.authorId, users.id)).where(and(eq(notices.societyId, societyId), or(inArray(notices.audience, noticeAudiencesForRole(session.membership.role)), and(eq(notices.audience, "tower"), eq(notices.towerId, unit?.towerId ?? ""))))).orderBy(desc(notices.pinned), desc(notices.publishedAt)).limit(20),
     db.select({ discussion: discussions, author: users.name, color: users.avatarColor }).from(discussions).innerJoin(users, eq(discussions.authorId, users.id)).where(and(eq(discussions.societyId, societyId), eq(discussions.status, "published"))).orderBy(desc(discussions.createdAt)).limit(20),
     db.select({ id: discussionComments.discussionId, c: count() }).from(discussionComments).groupBy(discussionComments.discussionId),
-    db.select().from(polls).where(eq(polls.societyId, societyId)).orderBy(desc(polls.createdAt)).limit(10),
+    db.select().from(polls).where(and(eq(polls.societyId, societyId), eq(polls.status, "active"), inArray(polls.audience, pollAudiencesForRole(session.membership.role)), or(isNull(polls.endsAt), gte(polls.endsAt, new Date())))).orderBy(desc(polls.createdAt)).limit(10),
     db.select({ pollId: pollVotes.pollId, optionId: pollVotes.optionId, c: count() }).from(pollVotes).where(inArray(pollVotes.pollId, db.select({ id: polls.id }).from(polls).where(eq(polls.societyId, societyId)))).groupBy(pollVotes.pollId, pollVotes.optionId),
     db.select().from(pollVotes).where(eq(pollVotes.userId, session.user.id)),
     db.select().from(events).where(and(eq(events.societyId, societyId), gte(events.startAt, new Date()))).orderBy(events.startAt).limit(10),

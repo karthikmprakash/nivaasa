@@ -9,7 +9,7 @@ import { Avatar, buttonClass } from "@/components/ui/primitives";
 import { Dropdown, DropdownItem, DropdownLabel, DropdownSeparator, Sheet } from "@/components/ui/client";
 import { logoutAction } from "@/lib/actions/auth";
 import { switchSocietyAction } from "@/lib/actions/societies";
-import type { SocietyOption } from "@/lib/society-access";
+import { stableSwitchPath, type SocietyOption } from "@/lib/society-access";
 import { cn } from "@/lib/utils";
 import { isNavigationActive, navigationTitle, type NavigationGroup, type NavigationItem } from "./navigation";
 import { SocietySwitcher } from "./society-switcher";
@@ -113,7 +113,7 @@ export function ApplicationShell({ children, variant, user, society, societies =
                 const current = option.id === currentSocietyId;
                 return <DropdownItem key={option.id} onClick={() => {
                   if (current || switchingSociety) return;
-                  startSocietySwitch(() => { void switchSocietyAction(option.slug, pathname); });
+                  startSocietySwitch(() => { void switchSocietyAction(option.slug, stableSwitchPath(pathname)); });
                 }} className={cn(current && "bg-brand-50/70")}>
                   <Building2 className="size-4 shrink-0 text-muted" />
                   <span className="min-w-0 flex-1 truncate">{option.name}</span>

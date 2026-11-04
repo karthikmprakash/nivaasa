@@ -12,5 +12,6 @@ export async function POST(req: Request) {
   if (token) await db.delete(sessions).where(eq(sessions.tokenHash, createHash("sha256").update(token).digest("hex")));
   const res = NextResponse.json({ ok: true });
   res.cookies.delete(SESSION_COOKIE);
+  res.cookies.delete("nivaasa_society");
   return res;
 }

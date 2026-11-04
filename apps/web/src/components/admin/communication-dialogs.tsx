@@ -23,7 +23,7 @@ export function PublishNoticeDialog() {
           <div className="grid gap-3 sm:grid-cols-2"><Field label="Category"><Select name="category"><option value="general">General</option><option value="maintenance">Maintenance</option><option value="security">Security</option><option value="event">Event</option><option value="finance">Finance</option><option value="emergency">Emergency</option></Select></Field><Field label="Audience"><Select name="audience"><option value="all">All residents</option><option value="owners">Owners only</option><option value="tenants">Tenants only</option></Select></Field></div>
           <Field label="Message"><Textarea name="body" required rows={6} placeholder="What do residents need to know?" /></Field>
           <label className="flex items-center gap-2 rounded-xl border border-line bg-[#fbfcff] px-3 py-2.5"><input type="checkbox" name="pinned" className="size-4 accent-[#3155d8]" /><span className="text-caption text-ink-soft">Pin to the top of the community feed</span></label>
-          {state.fieldErrors?.title || state.fieldErrors?.body ? <p className="text-caption text-[#c43d4d]">{state.fieldErrors?.title ?? state.fieldErrors?.body}</p> : null}
+          {state.fieldErrors ? <p className="text-caption text-[#c43d4d]">{Object.values(state.fieldErrors)[0]}</p> : null}
           {state.error ? <p className="text-caption text-[#c43d4d]">{state.error}</p> : null}
           <Button type="submit" className="w-full" disabled={pending}>{pending ? "Publishing…" : "Publish & notify residents"}</Button>
         </form>
@@ -53,7 +53,7 @@ export function CreatePollDialog() {
           <div className="grid gap-3 sm:grid-cols-2"><Field label="Audience"><Select name="audience"><option value="all">All residents</option><option value="owners">Owners only</option><option value="tenants">Tenants only</option></Select></Field><Field label="Closes on"><Input type="date" name="endsAt" defaultValue={todayISO(7)} /></Field></div>
           <div className="flex flex-wrap gap-3"><label className="flex items-center gap-2 text-caption text-ink-soft"><input type="checkbox" name="secret" className="size-4 accent-[#3155d8]" /> Secret ballot</label><label className="flex items-center gap-2 text-caption text-ink-soft"><input type="checkbox" name="hideResults" className="size-4 accent-[#3155d8]" /> Hide results until close</label></div>
           {state.error ? <p className="text-caption text-[#c43d4d]">{state.error}</p> : null}
-          {state.fieldErrors?.question ? <p className="text-caption text-[#c43d4d]">{state.fieldErrors.question}</p> : null}
+          {state.fieldErrors ? <p className="text-caption text-[#c43d4d]">{Object.values(state.fieldErrors)[0]}</p> : null}
           <Button type="submit" className="w-full" disabled={pending}>{pending ? "Publishing…" : "Publish poll"}</Button>
         </form>
       </Dialog>

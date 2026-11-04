@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { CalendarDays, CheckCircle2, ChevronLeft, Clock3, Loader2, Sparkles, Users } from "lucide-react";
 import { Dialog } from "@/components/ui/client";
 import { Button, Field, Input, Textarea } from "@/components/ui/primitives";
-import { cn, formatINR, todayISO } from "@/lib/utils";
+import { cn, formatDate, formatINR, todayISO } from "@/lib/utils";
 
 type Amenity = { id: string; name: string; price: number; deposit: number; capacity: number; slotMinutes: number; openTime: string; closeTime: string; rules: string | null; location: string | null };
 type Slot = { start: string; end: string; available: boolean; label: string };
@@ -58,7 +58,7 @@ export function BookAmenityButton({ amenity, variant = "primary", label = "Book"
           <div className="py-2 text-center">
             <span className="mx-auto grid size-14 place-items-center rounded-full bg-mint-50 text-mint-600"><CheckCircle2 className="size-7" /></span>
             <p className="mt-4 text-[19px] font-semibold text-ink">See you there</p>
-            <p className="mt-1 text-body text-muted">{amenity.name} · {new Date(date).toLocaleDateString("en-IN", { day: "numeric", month: "long" })} · {slot?.start}–{slot?.end}</p>
+            <p className="mt-1 text-body text-muted">{amenity.name} · {formatDate(date, { day: "numeric", month: "long" })} · {slot?.start}–{slot?.end}</p>
             {done.amount > 0 ? <p className="mt-2 text-caption font-semibold text-ink">{formatINR(done.amount)} paid · receipt in Payments</p> : <p className="mt-2 text-caption text-mint-600">No payment required</p>}
             <div className="mt-5 flex gap-2"><Button variant="outline" className="flex-1" onClick={() => setOpen(false)}>Done</Button><Button className="flex-1" onClick={() => { setOpen(false); router.push("/app/amenities#bookings"); }}>My bookings</Button></div>
           </div>

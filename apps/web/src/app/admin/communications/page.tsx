@@ -3,7 +3,7 @@ import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { CalendarDays, CheckCircle2, ChevronRight, Eye, Flag, Heart, Megaphone, MessageSquare, Pin, ShoppingBag, Trash2, Vote, XCircle } from "lucide-react";
 import { Avatar, Badge, Card, CardHeader, EmptyState, PageHeader, Stat } from "@/components/ui/primitives";
 import { PublishNoticeDialog, CreatePollDialog, CreateEventDialog } from "@/components/admin/communication-dialogs";
-import { requireAdmin } from "@/lib/queries";
+import { requireAdminRole } from "@/lib/queries";
 import { db } from "@/db";
 import { classifieds, discussions, eventRsvps, events, notices, pollVotes, polls, users } from "@/db/schema";
 import { closePoll, deleteNotice, moderateDiscussion, removeClassified } from "@/lib/actions/communications";
@@ -14,7 +14,7 @@ export const metadata = { title: "Communications" };
 export const dynamic = "force-dynamic";
 
 export default async function CommunicationsPage() {
-  const ctx = await requireAdmin();
+  const ctx = await requireAdminRole(["admin", "manager", "committee"]);
   const societyId = ctx.society!.id;
   const [noticeRows, pendingRows, allDiscussionRows, pollRows, voteRows, eventRows, rsvpRows, classifiedRows] = await Promise.all([
     db.select({ notice: notices, author: users }).from(notices).leftJoin(users, eq(notices.authorId, users.id)).where(eq(notices.societyId, societyId)).orderBy(desc(notices.pinned), desc(notices.publishedAt)).limit(10),
@@ -64,7 +64,7 @@ export default async function CommunicationsPage() {
               {pollRows.map((p) => (
                 <div key={p.id} className="border-b border-line/70 px-5 py-3.5 last:border-0">
                   <div className="flex items-start justify-between gap-2"><div><div className="flex items-center gap-1.5"><Badge variant={p.status === "active" ? "success" : "neutral"}>{p.status}</Badge>{p.secret ? <Badge variant="outline">Secret</Badge> : null}<span className="text-caption text-muted">{p.audience}</span></div><p className="mt-1 text-caption font-semibold text-ink">{p.question}</p></div><div className="text-right"><p className="text-body font-semibold text-ink">{voteBy.get(p.id) ?? 0}</p><p className="text-caption text-muted">votes</p></div></div>
-                  <div className="mt-2 flex items-center justify-between"><span className="text-caption text-muted">{p.status === "active" && p.endsAt ? `Closes ${formatDate(p.endsAt)}` : "Closed"}</span>{p.status === "active" ? <form action={closePoll}><input type="hidden" name="id" value={p.id} /><button className="text-caption font-semibold text-[#c43d4d]">Close poll</button></form> : null}</div>
+                  <div className="mt-2 flex items-center justify-between"><span className="text-caption text-muted">{p.status === "active" ? p.endsAt ? `Closes ${formatDate(p.endsAt)}` : "Open until closed" : "Closed"}</span>{p.status === "active" ? <form action={closePoll}><input type="hidden" name="id" value={p.id} /><button className="text-caption font-semibold text-[#c43d4d]">Close poll</button></form> : null}</div>
                 </div>
               ))}
             </div>
@@ -73,7 +73,7 @@ export default async function CommunicationsPage() {
           <Card>
             <CardHeader title="Events" description="Upcoming and recent community moments" icon={<CalendarDays className="size-4" />} action={<CreateEventDialog />} />
             <div className="border-t border-line">
-              {eventRows.map((e) => <div key={e.id} className="flex items-center gap-3 border-b border-line/70 px-5 py-3 last:border-0"><div className="grid size-9 shrink-0 place-items-center rounded-xl bg-blush-50 text-center"><span className="text-caption font-bold uppercase text-blush-500">{formatDate(e.startAt, { month: "short" })}</span><span className="text-caption font-bold leading-none text-ink">{new Date(e.startAt).getDate()}</span></div><div className="min-w-0 flex-1"><p className="truncate text-caption font-semibold text-ink">{e.title}</p><p className="text-caption text-muted">{formatDate(e.startAt)} · {formatTime(e.startAt)} · {e.location}</p></div><span className="text-caption text-muted">{rsvpBy.get(e.id) ?? 0} RSVP</span></div>)}
+              {eventRows.map((e) => <div key={e.id} className="flex items-center gap-3 border-b border-line/70 px-5 py-3 last:border-0"><div className="grid size-9 shrink-0 place-items-center rounded-xl bg-blush-50 text-center"><span className="text-caption font-bold uppercase text-blush-500">{formatDate(e.startAt, { month: "short" })}</span><span className="text-caption font-bold leading-none text-ink">{formatDate(e.startAt, { day: "numeric" })}</span></div><div className="min-w-0 flex-1"><p className="truncate text-caption font-semibold text-ink">{e.title}</p><p className="text-caption text-muted">{formatDate(e.startAt)} · {formatTime(e.startAt)} · {e.location}</p></div><span className="text-caption text-muted">{rsvpBy.get(e.id) ?? 0} RSVP</span></div>)}
             </div>
           </Card>
         </div>

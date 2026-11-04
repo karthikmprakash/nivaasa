@@ -30,10 +30,13 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
     }
   }
   if (!invoice && !payment) notFound();
+  if (!payment && invoice && invoice.status !== "paid") notFound();
   const items = invoice ? await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoice.id)) : [];
   const total = invoice?.total ?? payment.amount;
   const receiptNo = payment?.receiptNo ?? invoice?.number ?? "—";
   const paidAmount = payment?.amount ?? invoice?.amountPaid ?? 0;
+  const paymentStatus = payment?.status ?? "success";
+  const isPaid = paymentStatus === "success";
 
   return (
     <div className="receipt-page mx-auto max-w-2xl">
@@ -47,17 +50,17 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
             <LogoMark size={42} />
             <div><p className="text-[16px] font-extrabold tracking-[-0.04em] text-ink">nivaasa<span className="text-blush-400">.</span></p><p className="text-caption text-muted">Community, in one place</p></div>
           </div>
-          <div className="text-right"><p className="text-caption font-bold uppercase tracking-[0.14em] text-muted">Payment receipt</p><p className="mt-1 text-caption font-semibold text-ink">{receiptNo}</p><p className="text-caption text-muted">{formatDate(payment?.paidAt ?? invoice?.createdAt)}</p></div>
+          <div className="text-right"><p className="text-caption font-bold uppercase tracking-[0.14em] text-muted">{isPaid ? "Payment receipt" : "Payment intimation"}</p><p className="mt-1 text-caption font-semibold text-ink">{receiptNo}</p><p className="text-caption text-muted">{formatDate(payment?.paidAt ?? invoice?.createdAt)}</p></div>
         </div>
         <div className="grid gap-5 px-6 py-6 sm:grid-cols-2 sm:px-8">
           <div>
-            <p className="text-caption font-bold uppercase tracking-[0.12em] text-muted">Received from</p>
+            <p className="text-caption font-bold uppercase tracking-[0.12em] text-muted">{isPaid ? "Received from" : "Intimated by"}</p>
             <p className="mt-1.5 text-body font-semibold text-ink">{ctx.user.name}</p>
             <p className="text-caption text-muted">Home {ctx.unit.number} · {ctx.society.name}</p>
             <p className="text-caption text-muted">{ctx.society.address}, {ctx.society.city}</p>
           </div>
           <div className="sm:text-right">
-            <p className="text-caption font-bold uppercase tracking-[0.12em] text-muted">Paid to</p>
+            <p className="text-caption font-bold uppercase tracking-[0.12em] text-muted">{isPaid ? "Paid to" : "Payable to"}</p>
             <p className="mt-1.5 text-body font-semibold text-ink">{ctx.society.name} RWA</p>
             <p className="text-caption text-muted">Reg. {ctx.society.registrationNo ?? "—"}</p>
             <p className="text-caption text-muted">GSTIN {ctx.society.gstin ?? "Not applicable"}</p>
@@ -71,7 +74,9 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
             )) : (
               <div className="grid grid-cols-[1fr_auto] border-t border-line/70 px-4 py-3 text-caption"><div><p className="font-medium text-ink">{payment?.kind === "amenity" ? "Amenity booking" : payment?.invoiceId ? "Maintenance payment" : "Advance payment"}</p><p className="text-caption text-muted">{payment?.note}</p></div><p className="font-semibold text-ink">{formatINR(total)}</p></div>
             )}
+            {invoice && invoice.gstAmount ? <div className="grid grid-cols-[1fr_auto] border-t border-line/70 px-4 py-2 text-caption"><span>GST</span><span>{formatINR(invoice.gstAmount)}</span></div> : null}
             {invoice && invoice.penalty ? <div className="grid grid-cols-[1fr_auto] border-t border-line/70 px-4 py-2 text-caption text-[#c43d4d]"><span>Late payment fee</span><span>{formatINR(invoice.penalty)}</span></div> : null}
+            {invoice && invoice.discount ? <div className="grid grid-cols-[1fr_auto] border-t border-line/70 px-4 py-2 text-caption text-mint-600"><span>Discount</span><span>−{formatINR(invoice.discount)}</span></div> : null}
           </div>
         </div>
         <div className="flex flex-col gap-3 px-6 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-8">
@@ -81,12 +86,12 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
             <p className="mt-0.5"><span className="font-semibold text-ink-soft">Date</span> · {formatDateTime(payment?.paidAt ?? invoice?.createdAt)}</p>
           </div>
           <div className="flex items-center gap-3 sm:flex-col sm:items-end">
-            <div className="flex items-center gap-2"><span className="print:hidden"><SuccessCheck size={34} /></span><Badge variant="success"><CheckCircle2 className="size-4" /> Paid</Badge></div>
-            <div className="text-right"><p className="text-caption font-bold uppercase tracking-[0.12em] text-muted">Amount received</p><p className="text-[24px] font-semibold tracking-[-0.03em] text-ink">{formatINR(paidAmount)}</p>{invoice && paidAmount < total ? <p className="text-caption text-muted">of {formatINR(total)}</p> : null}</div>
+            <div className="flex items-center gap-2"><span className="print:hidden">{isPaid ? <SuccessCheck size={34} /> : null}</span><Badge variant={isPaid ? "success" : paymentStatus === "rejected" ? "danger" : "warning"}>{isPaid ? <CheckCircle2 className="size-4" /> : null} {isPaid ? "Paid" : paymentStatus === "pending" ? "Awaiting verification" : paymentStatus}</Badge></div>
+            <div className="text-right"><p className="text-caption font-bold uppercase tracking-[0.12em] text-muted">{isPaid ? "Amount received" : paymentStatus === "pending" ? "Awaiting verification" : "Amount not received"}</p><p className="text-[24px] font-semibold tracking-[-0.03em] text-ink">{formatINR(paidAmount)}</p>{invoice && paidAmount < total ? <p className="text-caption text-muted">of {formatINR(total)}</p> : null}</div>
           </div>
         </div>
         <div className="border-t border-line bg-[#fbfcff] px-6 py-4 text-center text-caption leading-relaxed text-muted sm:px-8">
-          This is a computer-generated receipt from Nivaasa for {ctx.society.name}. For queries, raise a helpdesk request or write to the society accounts team. · {receiptNo}
+          {isPaid ? "This is a computer-generated receipt from Nivaasa for " : "This is a payment intimation, not a receipt. The accounts team will verify it for "}{ctx.society.name}. For queries, raise a helpdesk request or write to the society accounts team. · {receiptNo}
         </div>
       </div>
     </div>

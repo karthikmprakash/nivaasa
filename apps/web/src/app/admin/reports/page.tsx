@@ -3,19 +3,19 @@ import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { ArrowDownToLine, ArrowUpRight, ChartNoAxesCombined, Clock3, DoorOpen, FileSpreadsheet, IndianRupee, ShieldCheck, Star, Users, Wallet, Wrench } from "lucide-react";
 import { Badge, Card, CardHeader, ProgressBar, Stat } from "@/components/ui/primitives";
 import { CollectionsChart } from "@/components/admin/collections-chart";
-import { requireAdmin, getAdminSnapshot } from "@/lib/queries";
+import { requireAdminRole, getAdminSnapshot } from "@/lib/queries";
 import { db } from "@/db";
 import { amenities, amenityBookings, expenses, helpdeskTickets, invoices, payments, units, visitors } from "@/db/schema";
-import { formatDate, formatINR } from "@/lib/utils";
+import { communityMonthKey } from "@/lib/datetime";
+import { formatDate, formatINR, todayISO } from "@/lib/utils";
 
 export const metadata = { title: "Reports" };
 
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
-  const ctx = await requireAdmin();
+  const ctx = await requireAdminRole(["admin", "manager", "accountant", "committee", "auditor"]);
   const societyId = ctx.society!.id;
-  const start6 = new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1);
   const [snapshot, invoiceRows, paymentRows, expenseRows, ticketRows, visitorRows, bookingRows, unitRows] = await Promise.all([
     getAdminSnapshot(societyId),
     db.select({ invoice: invoices, unit: units.number }).from(invoices).innerJoin(units, eq(invoices.unitId, units.id)).where(eq(invoices.societyId, societyId)),
@@ -26,23 +26,26 @@ export default async function ReportsPage() {
     db.select({ booking: amenityBookings, amenity: amenities.name }).from(amenityBookings).innerJoin(amenities, eq(amenityBookings.amenityId, amenities.id)).where(eq(amenityBookings.societyId, societyId)),
     db.select().from(units).where(eq(units.societyId, societyId)),
   ]);
+  const [currentYear, currentMonth] = todayISO().split("-").map(Number);
   const monthly = Array.from({ length: 6 }).map((_, i) => {
-    const d = new Date(new Date().getFullYear(), new Date().getMonth() - (5 - i), 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const d = new Date(currentYear, currentMonth - 1 - (5 - i), 1);
+    const key = communityMonthKey(d);
     return {
-      month: d.toLocaleDateString("en-IN", { month: "short" }),
-      collected: paymentRows.filter((p) => p.paidAt.toISOString().slice(0, 7) === key).reduce((s, p) => s + p.amount, 0) / 100,
+      month: d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", month: "short" }),
+      collected: paymentRows.filter((p) => communityMonthKey(p.paidAt) === key).reduce((s, p) => s + p.amount, 0) / 100,
       expenses: expenseRows.filter((e) => e.date.slice(0, 7) === key).reduce((s, e) => s + e.amount, 0) / 100,
     };
   });
-  const totalBilled = invoiceRows.reduce((s, i) => s + i.invoice.total, 0);
-  const totalCollected = invoiceRows.reduce((s, i) => s + i.invoice.amountPaid, 0);
+  const billableInvoices = invoiceRows.filter(({ invoice }) => invoice.status !== "cancelled");
+  const totalBilled = billableInvoices.reduce((s, i) => s + i.invoice.total, 0);
+  const totalCollected = billableInvoices.reduce((s, i) => s + i.invoice.amountPaid, 0);
   const collectionRate = totalBilled ? Math.round((totalCollected / totalBilled) * 100) : 0;
-  const defaulters = invoiceRows.filter((i) => ["overdue", "partially_paid", "due"].includes(i.invoice.status)).reduce<Record<string, number>>((acc, i) => { acc[i.unit] = (acc[i.unit] ?? 0) + (i.invoice.total - i.invoice.amountPaid); return acc; }, {});
+  const defaulters = billableInvoices.filter((i) => ["overdue", "partially_paid", "due"].includes(i.invoice.status)).reduce<Record<string, number>>((acc, i) => { acc[i.unit] = (acc[i.unit] ?? 0) + (i.invoice.total - i.invoice.amountPaid); return acc; }, {});
   const topDefaulters = Object.entries(defaulters).sort((a, b) => b[1] - a[1]).slice(0, 10);
   const expensesByCategory = Object.entries(expenseRows.reduce<Record<string, number>>((acc, e) => { acc[e.category] = (acc[e.category] ?? 0) + e.amount; return acc; }, {})).sort((a, b) => b[1] - a[1]);
   const ticketByCategory = Object.entries(ticketRows.reduce<Record<string, number>>((acc, t) => { acc[t.category] = (acc[t.category] ?? 0) + 1; return acc; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 6);
-  const amenityUsage = Object.entries(bookingRows.reduce<Record<string, number>>((acc, b) => { acc[b.amenity] = (acc[b.amenity] ?? 0) + 1; return acc; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const activeBookings = bookingRows.filter(({ booking }) => booking.status !== "cancelled");
+  const amenityUsage = Object.entries(activeBookings.reduce<Record<string, number>>((acc, b) => { acc[b.amenity] = (acc[b.amenity] ?? 0) + 1; return acc; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 6);
   const maxExpense = Math.max(1, ...expensesByCategory.map((e) => e[1]));
   const resolved = ticketRows.filter((t) => ["resolved", "closed"].includes(t.status));
   const rated = ticketRows.filter((t) => t.rating);
@@ -93,8 +96,8 @@ export default async function ReportsPage() {
         <Card className="lg:col-span-2">
           <CardHeader title="Community operations" description="Gate, amenities and occupancy" icon={<ShieldCheck className="size-4" />} />
           <div className="grid grid-cols-2 gap-px border-t border-line bg-line sm:grid-cols-4">{[
-            { l: "Gate entries", v: visitorRows.length, i: DoorOpen },
-            { l: "Amenity bookings", v: bookingRows.length, i: CalendarIcon },
+            { l: "Gate entries", v: visitorRows.filter((visitor) => !!visitor.enteredAt).length, i: DoorOpen },
+            { l: "Amenity bookings", v: activeBookings.length, i: CalendarIcon },
             { l: "Occupied homes", v: `${unitRows.filter((u) => u.status === "occupied").length}/${unitRows.length}`, i: Users },
             { l: "Online payments", v: `${paymentRows.length ? Math.round((onlinePayments / paymentRows.length) * 100) : 0}%`, i: Wallet },
           ].map((s) => <div key={s.l} className="bg-white px-4 py-4"><s.i className="size-3.5 text-brand-500" /><p className="mt-2 text-[16px] font-semibold text-ink">{s.v}</p><p className="text-caption text-muted">{s.l}</p></div>)}</div>

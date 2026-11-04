@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { ArrowLeft, Car, CheckCircle2, Dog, Home, MoveRight, PawPrint, Phone, ReceiptText, ShieldCheck, Users, Wallet, Wrench } from "lucide-react";
 import { Avatar, Badge, Card, CardHeader, EmptyState, Stat } from "@/components/ui/primitives";
-import { requireAdmin } from "@/lib/queries";
+import { requireAdminRole } from "@/lib/queries";
 import { db } from "@/db";
 import { familyMembers, helpdeskTickets, invoices, memberships, moveRequests, pets, staff, towers, units, users, vehicles, visitors } from "@/db/schema";
 import { formatDate, formatINR, timeAgo } from "@/lib/utils";
@@ -11,7 +11,7 @@ import { formatDate, formatINR, timeAgo } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export default async function UnitDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const ctx = await requireAdmin();
+  const ctx = await requireAdminRole(["admin", "manager", "committee", "security_manager", "auditor"]);
   const { id } = await params;
   const [row] = await db.select({ unit: units, tower: towers }).from(units).innerJoin(towers, eq(units.towerId, towers.id)).where(and(eq(units.id, id), eq(units.societyId, ctx.society!.id))).limit(1);
   if (!row) notFound();

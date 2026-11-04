@@ -12,6 +12,7 @@ import { getSession } from "@/lib/auth";
 import { logoutAction } from "@/lib/actions/auth";
 import { db } from "@/db";
 import { helpdeskTickets, invoices, memberships, payments, societies, units, users, visitors } from "@/db/schema";
+import { communityMonthStart } from "@/lib/datetime";
 import { formatINR, timeAgo } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Portfolio" };
@@ -25,11 +26,11 @@ export default async function PortfolioPage() {
   const allSocieties = await db.select().from(societies).orderBy(desc(societies.createdAt));
   const [unitRows, invoiceRows, paymentRows, ticketRows, visitorRows, admins] = await Promise.all([
     db.select({ societyId: units.societyId, c: count(), occupied: sql<number>`sum(case when status='occupied' then 1 else 0 end)` }).from(units).groupBy(units.societyId),
-    db.select({ societyId: invoices.societyId, total: sql<number>`coalesce(sum(case when status in ('due','overdue','partially_paid') then total - amount_paid else 0 end),0)`, billed: sql<number>`coalesce(sum(total),0)`, paid: sql<number>`coalesce(sum(amount_paid),0)`, c: sql<number>`sum(case when status in ('due','overdue','partially_paid') then 1 else 0 end)` }).from(invoices).groupBy(invoices.societyId),
+    db.select({ societyId: invoices.societyId, total: sql<number>`coalesce(sum(case when status in ('due','overdue','partially_paid') then total - amount_paid else 0 end),0)`, billed: sql<number>`coalesce(sum(case when status != 'cancelled' then total else 0 end),0)`, paid: sql<number>`coalesce(sum(case when status != 'cancelled' then amount_paid else 0 end),0)`, c: sql<number>`sum(case when status in ('due','overdue','partially_paid') then 1 else 0 end)` }).from(invoices).groupBy(invoices.societyId),
     db.select({ societyId: payments.societyId, total: sql<number>`coalesce(sum(amount),0)` }).from(payments).where(eq(payments.status, "success")).groupBy(payments.societyId),
     db.select({ societyId: helpdeskTickets.societyId, c: count() }).from(helpdeskTickets).where(inArray(helpdeskTickets.status, ["open", "assigned", "in_progress", "reopened"])).groupBy(helpdeskTickets.societyId),
-    db.select({ societyId: visitors.societyId, c: count() }).from(visitors).where(gte(visitors.createdAt, new Date(new Date().getFullYear(), new Date().getMonth(), 1))).groupBy(visitors.societyId),
-    db.select({ societyId: memberships.societyId, name: users.name, color: users.avatarColor }).from(memberships).innerJoin(users, eq(memberships.userId, users.id)).where(inArray(memberships.role, ["admin", "manager"])),
+    db.select({ societyId: visitors.societyId, c: count() }).from(visitors).where(gte(visitors.enteredAt, communityMonthStart())).groupBy(visitors.societyId),
+    db.select({ societyId: memberships.societyId, name: users.name, color: users.avatarColor }).from(memberships).innerJoin(users, eq(memberships.userId, users.id)).where(and(eq(memberships.status, "active"), inArray(memberships.role, ["admin", "manager"]))),
   ]);
   const unitBy = new Map(unitRows.map((u) => [u.societyId, u]));
   const invBy = new Map(invoiceRows.map((i) => [i.societyId, i]));

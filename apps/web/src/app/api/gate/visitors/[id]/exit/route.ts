@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { deliveries, visitors } from "@/db/schema";
+import { auditLogs, deliveries, visitors } from "@/db/schema";
 import { gateSession } from "@/lib/gate";
 
 export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -21,6 +21,11 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
         eq(deliveries.otp, visitor.code), eq(deliveries.status, "arrived"),
       )).run();
     }
+    tx.insert(auditLogs).values({
+      id: crypto.randomUUID(), societyId, actorId: session.user.id, actorName: session.user.name,
+      action: "visitor.exited", entity: "visitor", entityId: visitor.id,
+      metadata: { name: visitor.name, unit: visitor.unitId }, createdAt: now,
+    }).run();
     return true;
   }, { behavior: "immediate" });
   if (!exited) return NextResponse.json({ error: "This visitor is not currently checked in." }, { status: 409 });

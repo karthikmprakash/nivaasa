@@ -4,7 +4,8 @@ import { invoices, payments } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 
 function csvEscape(v: string | number | null | undefined) {
-  const s = String(v ?? "");
+  let s = String(v ?? "");
+  if (/^[=+\-@]/.test(s)) s = `'${s}`;
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 

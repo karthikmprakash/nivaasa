@@ -7,7 +7,9 @@ import {
   auditLogs, dailyHelpReviews, familyMembers, memberships, moveRequests, notifications, pets, staff, units, users, vehicles,
 } from "@/db/schema";
 import { requireResident } from "@/lib/queries";
+import { communityDayStart } from "@/lib/datetime";
 import { phoneKey, validVisitorPhone } from "@/lib/visitor-pass-rules";
+import { todayISO } from "@/lib/utils";
 
 export type HouseholdState = { error?: string; ok?: boolean; message?: string };
 
@@ -21,7 +23,10 @@ export async function updateContacts(_prev: HouseholdState, formData: FormData):
   const secondary = String(formData.get("intercomSecondary") ?? "").trim();
   const emergencyName = String(formData.get("emergencyName") ?? "").trim();
   const emergencyContact = String(formData.get("emergencyContact") ?? "").trim();
-  if (primary && !/^[+\d][\d\s-]{6,}$/.test(primary)) return { error: "Enter a valid primary e-Intercom number." };
+  const phonePattern = /^[+\d][\d\s-]{6,}$/;
+  if (primary && !phonePattern.test(primary)) return { error: "Enter a valid primary e-Intercom number." };
+  if (secondary && !phonePattern.test(secondary)) return { error: "Enter a valid secondary number." };
+  if (emergencyContact && !phonePattern.test(emergencyContact)) return { error: "Enter a valid emergency contact number." };
   await db.update(units).set({ intercomPrimary: primary || null, intercomSecondary: secondary || null, emergencyName: emergencyName || null, emergencyContact: emergencyContact || null }).where(eq(units.id, ctx.unit.id));
   await audit(ctx, "household.contacts.updated", "unit", ctx.unit.id);
   revalidatePath("/app/my-home");
@@ -33,10 +38,13 @@ export async function addFamilyMember(_prev: HouseholdState, formData: FormData)
   const name = String(formData.get("name") ?? "").trim();
   const relation = String(formData.get("relation") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
-  const age = Number(formData.get("age") ?? 0) || null;
+  const ageValue = Number(formData.get("age") ?? 0);
   const hasApp = formData.get("hasApp") === "on";
   if (!name) return { error: "Enter their name." };
   if (!relation) return { error: "Enter their relationship to you." };
+  if (phone && !/^[+\d][\d\s-]{6,}$/.test(phone)) return { error: "Enter a valid phone number." };
+  if (!Number.isFinite(ageValue) || ageValue < 0 || ageValue > 120) return { error: "Enter an age between 0 and 120." };
+  const age = ageValue || null;
   const id = crypto.randomUUID();
   await db.insert(familyMembers).values({ id, membershipId: ctx.membership.id, name, relation, phone: phone || null, age, hasApp });
   await audit(ctx, "household.family.added", "family_member", id, { name, relation });
@@ -56,7 +64,9 @@ export async function addVehicle(_prev: HouseholdState, formData: FormData): Pro
   const registrationNo = String(formData.get("registrationNo") ?? "").trim().toUpperCase();
   const make = String(formData.get("make") ?? "").trim();
   const model = String(formData.get("model") ?? "").trim();
-  const type = String(formData.get("type") ?? "car") as "car" | "bike" | "ev" | "bicycle";
+  const typeValue = String(formData.get("type") ?? "car");
+  if (!["car", "bike", "ev", "bicycle"].includes(typeValue)) return { error: "Choose a valid vehicle type." };
+  const type = typeValue as "car" | "bike" | "ev" | "bicycle";
   const color = String(formData.get("color") ?? "").trim();
   const parkingSlot = String(formData.get("parkingSlot") ?? "").trim();
   if (!registrationNo || !make || !model) return { error: "Registration number, make and model are required." };
@@ -81,13 +91,18 @@ export async function removeVehicle(formData: FormData) {
 export async function addPet(_prev: HouseholdState, formData: FormData): Promise<HouseholdState> {
   const ctx = await requireResident();
   const name = String(formData.get("name") ?? "").trim();
-  const species = String(formData.get("species") ?? "Dog");
+  const speciesValue = String(formData.get("species") ?? "Dog");
+  if (!["Dog", "Cat", "Bird", "Fish", "Other"].includes(speciesValue)) return { error: "Choose a valid species." };
+  const species = speciesValue;
   const breed = String(formData.get("breed") ?? "").trim();
-  const ageYears = Number(formData.get("ageYears") ?? 0) || null;
+  const ageValue = Number(formData.get("ageYears") ?? 0);
   const vaccinationDue = String(formData.get("vaccinationDue") ?? "") || null;
   if (!name) return { error: "Enter your pet's name." };
+  if (!Number.isFinite(ageValue) || ageValue < 0 || ageValue > 100) return { error: "Enter a valid age." };
+  if (vaccinationDue && !communityDayStart(vaccinationDue)) return { error: "Choose a valid vaccination date." };
+  const ageYears = ageValue || null;
   const id = crypto.randomUUID();
-  await db.insert(pets).values({ id, societyId: ctx.society.id, unitId: ctx.unit.id, name, species, breed: breed || null, ageYears, vaccinationDue, vaccinated: !!vaccinationDue, notes: String(formData.get("notes") ?? "") || null });
+  await db.insert(pets).values({ id, societyId: ctx.society.id, unitId: ctx.unit.id, name, species, breed: breed || null, ageYears, vaccinationDue, vaccinated: !!vaccinationDue && vaccinationDue >= todayISO(), notes: String(formData.get("notes") ?? "") || null });
   await audit(ctx, "household.pet.added", "pet", id, { name, species });
   revalidatePath("/app/my-home");
   revalidatePath("/app/directory");
@@ -108,7 +123,9 @@ export async function addDailyHelp(_prev: HouseholdState, formData: FormData): P
   const role = String(formData.get("role") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const shift = String(formData.get("shift") ?? "").trim();
+  const monthlyRate = Number(formData.get("monthlyRate") ?? 0);
   if (!name || name.length > 80 || !role || role.length > 80) return { error: "Enter a name and role, up to 80 characters each." };
+  if (!Number.isFinite(monthlyRate) || monthlyRate < 0) return { error: "Enter a valid monthly pay." };
   if (!validVisitorPhone(phone)) return { error: "Enter the phone number they will give at the gate." };
   const id = crypto.randomUUID();
   const registered = db.transaction((tx) => {
@@ -119,12 +136,12 @@ export async function addDailyHelp(_prev: HouseholdState, formData: FormData): P
     tx.insert(staff).values({
     id, societyId: ctx.society.id, unitId: ctx.unit.id, name, kind: "daily_help", role, phone,
     photoColor: "#c2547e", shift: shift || "Flexible",
-    rating: null, policeVerified: false, active: true, monthlyRate: Math.round(Number(formData.get("monthlyRate") ?? 0) * 100) || null, joinedAt: new Date(),
+    rating: null, policeVerified: false, active: true, monthlyRate: monthlyRate > 0 ? Math.round(monthlyRate * 100) : null, joinedAt: new Date(),
     }).run();
     return true;
   }, { behavior: "immediate" });
   if (!registered) return { error: "That phone number is already registered for daily help at your home." };
-  const guards = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, ctx.society.id), inArray(memberships.role, ["guard", "security_manager"])));
+  const guards = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, ctx.society.id), eq(memberships.status, "active"), inArray(memberships.role, ["guard", "security_manager"])));
   if (guards.length) {
     await db.insert(notifications).values(guards.map((g) => ({ id: crypto.randomUUID(), userId: g.userId, societyId: ctx.society.id, title: "New daily help added", body: `${ctx.user.name} added ${name} (${role}) for Home ${ctx.unit.number}. Verification pending.`, type: "security" as const, link: "/gate", createdAt: new Date() })));
   }
@@ -168,13 +185,16 @@ export async function reviewDailyHelp(_prev: HouseholdState, formData: FormData)
 
 export async function createMoveRequest(_prev: HouseholdState, formData: FormData): Promise<HouseholdState> {
   const ctx = await requireResident();
-  const type = String(formData.get("type") ?? "move_out") as "move_in" | "move_out";
+  const typeValue = String(formData.get("type") ?? "move_out");
+  if (!["move_in", "move_out"].includes(typeValue)) return { error: "Choose a valid move type." };
+  const type = typeValue as "move_in" | "move_out";
   const date = String(formData.get("date") ?? "");
   const notes = String(formData.get("notes") ?? "").trim();
-  if (!date) return { error: "Choose a move date." };
+  if (!communityDayStart(date)) return { error: "Choose a valid move date." };
+  if (date < todayISO()) return { error: "Choose today or a future move date." };
   const id = crypto.randomUUID();
   await db.insert(moveRequests).values({ id, societyId: ctx.society.id, unitId: ctx.unit.id, userId: ctx.user.id, type, date, notes: notes || null, status: "pending", createdAt: new Date() });
-  const admins = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, ctx.society.id), inArray(memberships.role, ["admin", "manager"])));
+  const admins = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, ctx.society.id), eq(memberships.status, "active"), inArray(memberships.role, ["admin", "manager"])));
   if (admins.length) {
     await db.insert(notifications).values(admins.map((a) => ({ id: crypto.randomUUID(), userId: a.userId, societyId: ctx.society.id, title: "Move request needs approval", body: `${ctx.user.name} requested a ${type.replace("_", "-")} for Home ${ctx.unit.number} on ${date}.`, type: "system" as const, link: "/admin/residents", createdAt: new Date() })));
   }

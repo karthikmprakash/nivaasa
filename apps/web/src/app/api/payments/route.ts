@@ -6,11 +6,12 @@ import { db } from "@/db";
 import { auditLogs, invoices, memberships, notifications, payments } from "@/db/schema";
 import { getSession, isAdminRole } from "@/lib/auth";
 import { filterRecipientsByPref } from "@/lib/notifications";
+import { todayISO } from "@/lib/utils";
 
 const schema = z.object({
   invoiceId: z.string().optional(),
   amount: z.number().int().positive().optional(),
-  method: z.enum(["upi", "card", "netbanking", "cash", "cheque", "neft"]).default("upi"),
+  method: z.enum(["upi", "card", "netbanking"]).default("upi"),
   reference: z.string().max(120).optional(),
   advance: z.boolean().optional(),
   note: z.string().max(400).optional(),
@@ -32,7 +33,11 @@ export async function POST(req: Request) {
     const isAdmin = isAdminRole(session.membership.role);
     if (!isOwner && !isAdmin) return NextResponse.json({ error: "This invoice belongs to another home." }, { status: 403 });
     if (invoice.status === "paid") return NextResponse.json({ error: "This invoice is already paid." }, { status: 409 });
+    if (invoice.status === "cancelled") return NextResponse.json({ error: "This invoice has been cancelled." }, { status: 409 });
+    const [pendingPayment] = await db.select({ id: payments.id }).from(payments).where(and(eq(payments.invoiceId, invoice.id), eq(payments.status, "pending"))).limit(1);
+    if (pendingPayment) return NextResponse.json({ error: "A payment for this invoice is already awaiting verification." }, { status: 409 });
   }
+  if (!invoice && !advance) return NextResponse.json({ error: "Choose an invoice or an advance payment." }, { status: 400 });
   if (advance && !session.membership.unitId) return NextResponse.json({ error: "No flat linked to this account." }, { status: 400 });
 
   const outstanding = invoice ? invoice.total - invoice.amountPaid : 0;
@@ -42,12 +47,12 @@ export async function POST(req: Request) {
   if (amount > 500000000) return NextResponse.json({ error: "For amounts above ₹50 lakh, please use bank transfer." }, { status: 400 });
 
   const [{ c }] = await db.select({ c: sql<number>`count(*)` }).from(payments).where(eq(payments.societyId, session.membership.societyId));
-  const receiptNo = `RCPT-${new Date().getFullYear()}-${String((c ?? 0) + 1).padStart(5, "0")}`;
+  const receiptNo = `RCPT-${todayISO().slice(0, 4)}-${String((c ?? 0) + 1).padStart(5, "0")}`;
   const paymentId = crypto.randomUUID();
   const now = new Date();
   const referenceNo = reference || (method === "upi" ? `UPI/${Date.now()}` : method === "card" ? `CARD/${Date.now()}` : `${method.toUpperCase()}/${Date.now()}`);
   await db.insert(payments).values({
-    id: paymentId, societyId: session.membership.societyId, unitId: session.membership.unitId ?? invoice?.unitId ?? "",
+    id: paymentId, societyId: session.membership.societyId, unitId: invoice?.unitId ?? session.membership.unitId ?? "",
     invoiceId: invoice?.id ?? null, userId: session.user.id, receiptNo, kind: advance ? "advance" : "invoice", amount, method,
     reference: referenceNo, status: "success", note: note ?? (advance ? "Advance payment" : "Paid via Nivaasa demo gateway"),
     paidAt: now, createdAt: now,
@@ -59,7 +64,7 @@ export async function POST(req: Request) {
     await db.update(invoices).set({ amountPaid, status }).where(eq(invoices.id, invoice.id));
   }
 
-  const admins = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, session.membership.societyId), inArray(memberships.role, ["admin", "manager", "accountant"])));
+  const admins = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, session.membership.societyId), eq(memberships.status, "active"), inArray(memberships.role, ["admin", "manager", "accountant"])));
   if (admins.length) {
     await db.insert(notifications).values(admins.map((a) => ({
       id: crypto.randomUUID(), userId: a.userId, societyId: session.membership!.societyId,

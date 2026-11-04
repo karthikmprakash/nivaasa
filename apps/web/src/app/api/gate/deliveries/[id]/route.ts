@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { deliveries, notifications } from "@/db/schema";
+import { auditLogs, deliveries, notifications } from "@/db/schema";
 import { gateSession, residentsOfUnit } from "@/lib/gate";
 import { filterRecipientsByPref } from "@/lib/notifications";
 
@@ -27,6 +27,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const hosts = await filterRecipientsByPref(session.society!.id, await residentsOfUnit(delivery.unitId, session.society!.id), "visitors");
     if (hosts.length) await db.insert(notifications).values(hosts.map((h) => ({ id: crypto.randomUUID(), userId: h.userId, societyId: session.society!.id, title: parsed.data.action === "leave" ? "Parcel kept at the gate" : "Parcel delivered", body: `${delivery.company} parcel ${parsed.data.action === "leave" ? "is safe at Gate 1. Collect with your code." : "was handed over."}`, type: "delivery" as const, link: "/app/deliveries", createdAt: now })));
   }
+  await db.insert(auditLogs).values({
+    id: crypto.randomUUID(), societyId: session.society!.id, actorId: session.user.id, actorName: session.user.name,
+    action: parsed.data.action === "leave" ? "delivery.left_at_gate" : "delivery.delivered",
+    entity: "delivery", entityId: delivery.id, metadata: { company: delivery.company, unit: delivery.unitId }, createdAt: now,
+  });
   revalidatePath("/gate"); revalidatePath("/app/deliveries"); revalidatePath("/admin/security");
   return NextResponse.json({ ok: true });
 }

@@ -34,7 +34,7 @@ export default async function GatePage() {
     db.select({ person: staff, unit: units.number }).from(staff).leftJoin(units, eq(staff.unitId, units.id)).where(and(eq(staff.societyId, society.id), eq(staff.active, true))).orderBy(staff.kind, staff.name),
     db.select().from(staffAttendance).where(and(eq(staffAttendance.societyId, society.id), eq(staffAttendance.date, today))),
     db.select().from(patrolCheckpoints).where(eq(patrolCheckpoints.societyId, society.id)).orderBy(patrolCheckpoints.sortOrder),
-    db.select().from(patrolRounds).where(and(eq(patrolRounds.societyId, society.id), gte(patrolRounds.scannedAt, new Date(today)))),
+    db.select().from(patrolRounds).where(and(eq(patrolRounds.societyId, society.id), gte(patrolRounds.scannedAt, start))),
     db.select({ v: visitors, unit: units.number }).from(visitors).leftJoin(units, eq(visitors.unitId, units.id)).where(eq(visitors.societyId, society.id)).orderBy(desc(visitors.createdAt)).limit(12),
     db.select({ alert: panicAlerts, unit: units.number, user: users.name }).from(panicAlerts).leftJoin(units, eq(panicAlerts.unitId, units.id)).leftJoin(users, eq(panicAlerts.userId, users.id)).where(and(eq(panicAlerts.societyId, society.id), inArray(panicAlerts.status, ["open", "acknowledged"]))).orderBy(desc(panicAlerts.createdAt)),
     db.select({ count: sql<number>`count(*)` }).from(helpdeskTickets).where(and(eq(helpdeskTickets.societyId, society.id), inArray(helpdeskTickets.status, ["open", "assigned", "in_progress", "reopened"]))),
@@ -78,7 +78,7 @@ export default async function GatePage() {
       <main className="mx-auto max-w-[1360px] px-4 pb-10 pt-5 sm:px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="flex items-center gap-1.5 text-caption font-medium text-muted"><span className="size-1.5 rounded-full bg-mint-600" /> {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })} · Gate operations</p>
+            <p className="flex items-center gap-1.5 text-caption font-medium text-muted"><span className="size-1.5 rounded-full bg-mint-600" /> {formatDate(new Date(), { weekday: "long", day: "numeric", month: "long" })} · Gate operations</p>
             <h1 className="mt-1 text-title font-semibold leading-tight text-ink sm:text-[30px]">Namaste, {firstName}.</h1>
             <p className="mt-1.5 text-caption text-ink-soft">A calm gate is a safe gate. Log every entry, verify every pass.</p>
           </div>

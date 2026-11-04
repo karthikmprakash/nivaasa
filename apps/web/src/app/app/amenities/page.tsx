@@ -34,7 +34,9 @@ export default async function AmenitiesPage() {
     db.select().from(amenities).where(and(eq(amenities.societyId, ctx.society.id), eq(amenities.active, true))).orderBy(asc(amenities.sortOrder)),
     db.select({ booking: amenityBookings, amenity: amenities }).from(amenityBookings).innerJoin(amenities, eq(amenityBookings.amenityId, amenities.id)).where(eq(amenityBookings.unitId, ctx.unit.id)).orderBy(desc(amenityBookings.date)),
   ]);
-  const upcoming = bookings.filter((b) => b.booking.status === "confirmed" && b.booking.date >= today);
+  const upcoming = bookings
+    .filter((b) => b.booking.status === "confirmed" && b.booking.date >= today)
+    .sort((a, b) => a.booking.date.localeCompare(b.booking.date) || a.booking.startTime.localeCompare(b.booking.startTime));
   const past = bookings.filter((b) => b.booking.status !== "confirmed" || b.booking.date < today);
   const grouped = categoryOrder.map((c) => ({ category: c, items: list.filter((a) => categoryFor(a.name) === c) })).filter((g) => g.items.length);
   const spend = bookings.filter((b) => b.booking.paymentStatus === "paid").reduce((s, b) => s + b.booking.amount, 0);

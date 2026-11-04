@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { ArrowLeft, CalendarDays, Eye, Megaphone, Pin, UserRound } from "lucide-react";
 import { Avatar, Badge } from "@/components/ui/primitives";
+import { NoticeViewTracker } from "@/components/app/notice-view-tracker";
 import { ShareNoticeButton } from "@/components/app/share-notice";
 import { requireResident } from "@/lib/queries";
 import { db } from "@/db";
@@ -18,11 +19,11 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
   const ctx = await requireResident();
   const { id } = await params;
   const [row] = await db.select({ notice: notices, author: users }).from(notices).leftJoin(users, eq(notices.authorId, users.id)).where(eq(notices.id, id)).limit(1);
-  if (!row || row.notice.societyId !== ctx.society.id || !canViewNoticeAudience(ctx.membership.role, row.notice.audience)) notFound();
-  await db.update(notices).set({ views: row.notice.views + 1 }).where(eq(notices.id, id));
+  if (!row || row.notice.societyId !== ctx.society.id || !canViewNoticeAudience(ctx.membership.role, row.notice.audience, row.notice.towerId, ctx.unit.towerId)) notFound();
   const n = row.notice;
   return (
     <div className="mx-auto max-w-3xl">
+      <NoticeViewTracker id={n.id} />
       <Link href="/app/community?tab=notices" className="mb-5 inline-flex items-center gap-1.5 text-caption font-semibold text-muted hover:text-ink"><ArrowLeft className="size-4" /> Back to community</Link>
       <article className="overflow-hidden rounded-[24px] border border-line bg-white shadow-soft">
         <div className="border-b border-line bg-gradient-to-br from-brand-50 via-white to-blush-50 px-6 py-7 sm:px-8 sm:py-9">
@@ -34,7 +35,7 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
           <h1 className="mt-4 text-[27px] font-semibold leading-[1.15] tracking-[-0.035em] text-ink sm:text-[34px]">{n.title}</h1>
           <div className="mt-4 flex flex-wrap items-center gap-4 text-caption text-muted">
             <span className="inline-flex items-center gap-1.5"><UserRound className="size-4" /> {row.author?.name ?? "Community office"}</span>
-            <span className="inline-flex items-center gap-1.5"><Eye className="size-4" /> {n.views + 1} views</span>
+            <span className="inline-flex items-center gap-1.5"><Eye className="size-4" /> {n.views} views</span>
             <span className="inline-flex items-center gap-1.5"><CalendarDays className="size-4" /> {formatDateTime(n.publishedAt)}</span>
           </div>
         </div>

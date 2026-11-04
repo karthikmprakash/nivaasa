@@ -11,7 +11,7 @@ import { AdvanceButton, PaidOfflineButton, PayNowButton } from "@/components/app
 import { requireResident, getDuesSummary } from "@/lib/queries";
 import { db } from "@/db";
 import { invoiceItems, invoices, payments } from "@/db/schema";
-import { formatDate, formatINR } from "@/lib/utils";
+import { formatDate, formatINR, todayISO } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Payments" };
 
@@ -35,14 +35,15 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
     db.select().from(payments).where(eq(payments.unitId, ctx.unit.id)).orderBy(desc(payments.createdAt)),
   ]);
   const advance = paymentsRows.filter((p) => p.kind === "advance" && p.status === "success").reduce((s, p) => s + p.amount, 0);
-  const now = new Date();
-  const financialYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  const [currentYear, currentMonth] = todayISO().split("-").map(Number);
+  const financialYear = currentMonth >= 4 ? currentYear : currentYear - 1;
   const yearStart = new Date(`${financialYear}-04-01T00:00:00+05:30`);
   const paidThisYear = paymentsRows.filter((p) => p.status === "success" && p.paidAt >= yearStart).reduce((s, p) => s + p.amount, 0);
   const pendingInvoiceIds = new Set(paymentsRows.filter((p) => p.status === "pending" && p.invoiceId).map((p) => p.invoiceId));
   const dueInvoices = invoicesRows.filter((i) => ["due", "overdue", "partially_paid"].includes(i.status));
-  const oldestDue = dueInvoices[dueInvoices.length - 1];
-  const latestInvoice = invoicesRows[0] ?? null;
+  const payableDueInvoices = dueInvoices.filter((invoice) => !pendingInvoiceIds.has(invoice.id));
+  const oldestDue = payableDueInvoices[payableDueInvoices.length - 1];
+  const latestInvoice = invoicesRows.find((invoice) => invoice.status !== "cancelled") ?? invoicesRows[0] ?? null;
   const breakdown = latestInvoice
     ? await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, latestInvoice.id))
     : [];
@@ -115,7 +116,9 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
                     <div className="flex items-center justify-between gap-4 sm:justify-end">
                       <div className="text-right"><p className="text-base font-semibold tracking-[-0.02em] text-ink">{formatINR(inv.total)}</p>{inv.amountPaid > 0 && inv.status !== "paid" ? <p className="text-caption text-muted">{formatINR(inv.amountPaid)} paid</p> : null}</div>
                       <div className="flex items-center gap-1">
-                        {["due", "overdue", "partially_paid"].includes(inv.status) ? (
+                        {pending ? (
+                          <span className="rounded-lg bg-amber-soft px-2.5 py-1.5 text-caption font-semibold text-amber-ink">Awaiting verification</span>
+                        ) : ["due", "overdue", "partially_paid"].includes(inv.status) ? (
                           <>
                             <PaidOfflineButton invoice={inv} />
                             <PayNowButton invoice={inv} />
@@ -136,6 +139,9 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
               <CardHeader title="What you're paying for" description={latestInvoice ? `${latestInvoice.title} · ${latestInvoice.number}` : "No invoice issued yet"} icon={<Wallet className="size-4" />} />
               <div className="border-t border-line px-5 py-4">
                 {breakdown.length ? breakdown.map((item) => <div key={item.id} className="flex items-center justify-between border-b border-line/60 py-2 last:border-0"><span className="text-caption text-ink-soft">{item.description}</span><span className="text-caption font-semibold text-ink">{formatINR(item.amount)}</span></div>) : <p className="py-3 text-caption text-muted">The committee has not issued a breakdown for this invoice yet.</p>}
+                {latestInvoice?.gstAmount ? <div className="flex items-center justify-between border-b border-line/60 py-2"><span className="text-caption text-ink-soft">GST</span><span className="text-caption font-semibold text-ink">{formatINR(latestInvoice.gstAmount)}</span></div> : null}
+                {latestInvoice?.penalty ? <div className="flex items-center justify-between border-b border-line/60 py-2"><span className="text-caption text-ink-soft">Late fee</span><span className="text-caption font-semibold text-[#c43d4d]">{formatINR(latestInvoice.penalty)}</span></div> : null}
+                {latestInvoice?.discount ? <div className="flex items-center justify-between border-b border-line/60 py-2"><span className="text-caption text-ink-soft">Discount</span><span className="text-caption font-semibold text-mint-600">−{formatINR(latestInvoice.discount)}</span></div> : null}
                 {latestInvoice ? <div className="mt-2 flex items-center justify-between"><span className="text-caption font-semibold text-ink">Total</span><span className="text-body font-semibold text-ink">{formatINR(latestInvoice.total)}</span></div> : null}
                 <p className="mt-1 text-caption text-muted">{latestInvoice && latestInvoice.gstAmount > 0 ? `Includes GST of ${formatINR(latestInvoice.gstAmount)}` : "No GST applied"} · amounts are taken from the invoice on record</p>
               </div>

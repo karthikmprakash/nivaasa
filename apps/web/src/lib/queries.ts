@@ -8,6 +8,8 @@ import {
   payments, polls, pollVotes, societies, units, visitors, deliveries, familyMembers, vehicles, pets,
 } from "@/db/schema";
 import { getSession, isAdminRole, type AuthContext } from "./auth";
+import { noticeAudiencesForRole, pollAudiencesForRole } from "./community-access";
+import { communityMonthStart } from "./datetime";
 import type { SocietyOption } from "./society-access";
 
 export type ResidentContext = AuthContext & { unit: NonNullable<AuthContext["unit"]>; society: NonNullable<AuthContext["society"]>; membership: NonNullable<AuthContext["membership"]> };
@@ -38,6 +40,7 @@ export async function requireResident(): Promise<ResidentContext> {
 export async function requireAdmin() {
   const session = await getSession();
   if (!session) redirect("/login");
+  if (!session.society) redirect(session.user.globalRole === "super_admin" ? "/portfolio" : "/login");
   if (session.user.globalRole === "super_admin") return session;
   if (!session.membership || !isAdminRole(session.membership.role)) redirect("/app");
   if (session.membership.role === "guard") redirect("/gate");
@@ -64,12 +67,20 @@ export async function getSocietyOptions(ctx: AuthContext): Promise<SocietyOption
     .orderBy(desc(memberships.isPrimary), memberships.joinedAt);
 }
 
+/** Enforce the same role set used by the admin navigation for direct URLs. */
+export async function requireAdminRole(roles: readonly string[]) {
+  const ctx = await requireAdmin();
+  if (ctx.user.globalRole === "super_admin") return ctx;
+  if (!ctx.membership || !roles.includes(ctx.membership.role)) redirect("/admin");
+  return ctx;
+}
+
 export async function requireGuard() {
   const session = await getSession();
   if (!session) redirect("/login");
   const role = session.membership?.role;
   if (role !== "guard" && role !== "security_manager" && role !== "admin" && session.user.globalRole !== "super_admin") redirect("/app");
-  if (!session.society) redirect("/login");
+  if (!session.society) redirect(session.user.globalRole === "super_admin" ? "/portfolio" : "/login");
   return session;
 }
 
@@ -84,7 +95,7 @@ export async function getUnreadCount(userId: string, societyId: string) {
 export async function getResidentCounts(unitId: string, societyId: string, userId: string) {
   const [visitorRow, deliveryRow, unread] = await Promise.all([
     db.select({ count: sql<number>`count(*)` }).from(visitors).where(and(eq(visitors.unitId, unitId), eq(visitors.societyId, societyId), eq(visitors.status, "pending"))),
-    db.select({ count: sql<number>`count(*)` }).from(deliveries).where(and(eq(deliveries.unitId, unitId), eq(deliveries.societyId, societyId), inArray(deliveries.status, ["arrived"]))),
+    db.select({ count: sql<number>`count(*)` }).from(deliveries).where(and(eq(deliveries.unitId, unitId), eq(deliveries.societyId, societyId), inArray(deliveries.status, ["arrived", "left_at_gate"]))),
     getUnreadCount(userId, societyId),
   ]);
   return { visitors: visitorRow[0]?.count ?? 0, deliveries: deliveryRow[0]?.count ?? 0, unread };
@@ -110,9 +121,9 @@ export async function getResidentHomeData(ctx: ResidentContext) {
   const [dues, pendingVisitors, noticesRows, eventsRows, activePolls, openTickets, upcomingBookings, deliveriesRows, recentPayments, pollVotesRows, familyCount, vehicleCount, petCount] = await Promise.all([
     getDuesSummary(unitId, societyId),
     db.select().from(visitors).where(and(eq(visitors.unitId, unitId), eq(visitors.status, "pending"))).orderBy(desc(visitors.createdAt)),
-    db.select().from(notices).where(and(eq(notices.societyId, societyId), or(eq(notices.audience, "all"), eq(notices.audience, "owners")))).orderBy(desc(notices.pinned), desc(notices.publishedAt)).limit(4),
+    db.select().from(notices).where(and(eq(notices.societyId, societyId), or(inArray(notices.audience, noticeAudiencesForRole(ctx.membership.role)), and(eq(notices.audience, "tower"), eq(notices.towerId, ctx.unit.towerId))))).orderBy(desc(notices.pinned), desc(notices.publishedAt)).limit(4),
     db.select().from(events).where(and(eq(events.societyId, societyId), gte(events.startAt, now))).orderBy(events.startAt).limit(3),
-    db.select().from(polls).where(and(eq(polls.societyId, societyId), eq(polls.status, "active"))).orderBy(desc(polls.createdAt)),
+    db.select().from(polls).where(and(eq(polls.societyId, societyId), eq(polls.status, "active"), inArray(polls.audience, pollAudiencesForRole(ctx.membership.role)), or(isNull(polls.endsAt), gte(polls.endsAt, now)))).orderBy(desc(polls.createdAt)),
     db.select().from(helpdeskTickets).where(and(eq(helpdeskTickets.unitId, unitId), inArray(helpdeskTickets.status, ["open", "assigned", "in_progress", "reopened"]))).orderBy(desc(helpdeskTickets.updatedAt)).limit(3),
     db.select({ booking: amenityBookings, amenity: amenities }).from(amenityBookings).innerJoin(amenities, eq(amenityBookings.amenityId, amenities.id)).where(and(eq(amenityBookings.unitId, unitId), eq(amenityBookings.status, "confirmed"), gte(amenityBookings.date, todayISO()))).orderBy(amenityBookings.date).limit(2),
     db.select().from(deliveries).where(and(eq(deliveries.unitId, unitId), inArray(deliveries.status, ["arrived", "left_at_gate"]))).orderBy(desc(deliveries.createdAt)),
@@ -133,15 +144,16 @@ export async function getNotifications(userId: string, societyId: string, limit 
 }
 
 export async function getAdminSnapshot(societyId: string) {
-  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const startOfMonth = communityMonthStart();
+  const monthStartKey = `${todayISO().slice(0, 7)}-01`;
   const [collections, outstanding, openTickets, visitorCount, bookingCount, unitCount, expenseTotal, slaRisk] = await Promise.all([
     db.select({ total: sql<number>`coalesce(sum(${payments.amount}),0)` }).from(payments).where(and(eq(payments.societyId, societyId), eq(payments.status, "success"), gte(payments.paidAt, startOfMonth))),
     db.select({ total: sql<number>`coalesce(sum(${invoices.total} - ${invoices.amountPaid}),0)`, count: sql<number>`count(*)` }).from(invoices).where(and(eq(invoices.societyId, societyId), inArray(invoices.status, ["due", "overdue", "partially_paid"]))),
     db.select({ count: sql<number>`count(*)` }).from(helpdeskTickets).where(and(eq(helpdeskTickets.societyId, societyId), inArray(helpdeskTickets.status, ["open", "assigned", "in_progress", "reopened"]))),
-    db.select({ count: sql<number>`count(*)` }).from(visitors).where(and(eq(visitors.societyId, societyId), gte(visitors.createdAt, startOfMonth))),
+    db.select({ count: sql<number>`count(*)` }).from(visitors).where(and(eq(visitors.societyId, societyId), gte(visitors.enteredAt, startOfMonth))),
     db.select({ count: sql<number>`count(*)` }).from(amenityBookings).where(and(eq(amenityBookings.societyId, societyId), eq(amenityBookings.status, "confirmed"))),
     db.select({ count: sql<number>`count(*)` }).from(units).where(eq(units.societyId, societyId)),
-    db.select({ total: sql<number>`coalesce(sum(${expenses.amount}),0)` }).from(expenses).where(and(eq(expenses.societyId, societyId), gte(expenses.createdAt, startOfMonth))),
+    db.select({ total: sql<number>`coalesce(sum(${expenses.amount}),0)` }).from(expenses).where(and(eq(expenses.societyId, societyId), gte(expenses.date, monthStartKey))),
     db.select({ count: sql<number>`count(*)` }).from(helpdeskTickets).where(and(eq(helpdeskTickets.societyId, societyId), inArray(helpdeskTickets.status, ["open", "assigned", "in_progress", "reopened"]), lte(helpdeskTickets.slaDueAt, new Date(Date.now() + 4 * 3600 * 1000)))),
   ]);
   return {

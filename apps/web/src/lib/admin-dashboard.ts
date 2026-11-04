@@ -3,17 +3,20 @@ import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { amenities, amenityBookings, deliveries, discussions, expenses, helpdeskTickets, invoices, moveRequests, panicAlerts, patrolRounds, payments, staff, staffAttendance, units, users, visitors } from "@/db/schema";
 import { getAdminSnapshot } from "@/lib/queries";
+import { communityMonthKey, communityMonthStart } from "@/lib/datetime";
 import { todayISO } from "@/lib/utils";
 
 /** Fetch and compose the dashboard on the server; the route owns presentation. */
 export async function getAdminDashboardData(societyId: string) {
   const now = new Date();
-  const start6 = new Date(now.getFullYear(), now.getMonth() - 5, 1);
   const today = todayISO();
+  const [currentYear, currentMonth] = today.split("-").map(Number);
+  const start6 = communityMonthStart(new Date(currentYear, currentMonth - 1 - 5, 1));
+  const start6Key = communityMonthKey(start6);
   const [snapshot, payRows, expRows, topDues, pendingPayments, pendingDiscussions, pendingMoves, openPanics, recentVisitors, ticketCats, patrolRows, staffToday, staffCount, bookingRows, deliveryToday, avgClosureRows] = await Promise.all([
     getAdminSnapshot(societyId),
     db.select({ paidAt: payments.paidAt, amount: payments.amount }).from(payments).where(and(eq(payments.societyId, societyId), eq(payments.status, "success"), gte(payments.paidAt, start6))),
-    db.select({ date: expenses.date, amount: expenses.amount }).from(expenses).where(and(eq(expenses.societyId, societyId), gte(expenses.createdAt, start6))),
+    db.select({ date: expenses.date, amount: expenses.amount }).from(expenses).where(and(eq(expenses.societyId, societyId), gte(expenses.date, `${start6Key}-01`))),
     db.select({ unit: units.number, total: sql<number>`coalesce(sum(${invoices.total} - ${invoices.amountPaid}),0)` }).from(invoices).innerJoin(units, eq(invoices.unitId, units.id)).where(and(eq(invoices.societyId, societyId), inArray(invoices.status, ["due", "overdue", "partially_paid"]))).groupBy(units.number).orderBy(desc(sql`sum(${invoices.total} - ${invoices.amountPaid})`)).limit(6),
     db.select({ payment: payments, unit: units.number, user: users.name }).from(payments).leftJoin(units, eq(payments.unitId, units.id)).leftJoin(users, eq(payments.userId, users.id)).where(and(eq(payments.societyId, societyId), eq(payments.status, "pending"))).orderBy(desc(payments.createdAt)).limit(4),
     db.select({ discussion: discussions, user: users.name }).from(discussions).innerJoin(users, eq(discussions.authorId, users.id)).where(and(eq(discussions.societyId, societyId), eq(discussions.status, "pending"))).orderBy(desc(discussions.createdAt)).limit(4),
@@ -30,11 +33,11 @@ export async function getAdminDashboardData(societyId: string) {
   ]);
   const avgClosure = avgClosureRows[0]?.avg ?? 0;
   const monthly = Array.from({ length: 6 }).map((_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const collected = payRows.filter((p) => p.paidAt.toISOString().slice(0, 7) === key).reduce((s, p) => s + p.amount, 0) / 100;
+    const d = new Date(currentYear, currentMonth - 1 - (5 - i), 1);
+    const key = communityMonthKey(d);
+    const collected = payRows.filter((p) => communityMonthKey(p.paidAt) === key).reduce((s, p) => s + p.amount, 0) / 100;
     const spent = expRows.filter((e) => e.date.slice(0, 7) === key).reduce((s, e) => s + e.amount, 0) / 100;
-    return { month: d.toLocaleDateString("en-IN", { month: "short" }), collected, expenses: spent };
+    return { month: d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", month: "short" }), collected, expenses: spent };
   });
   const thisMonth = monthly[5]?.collected ?? 0;
   const prevMonth = monthly[4]?.collected ?? 0;

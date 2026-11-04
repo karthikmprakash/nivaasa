@@ -13,6 +13,7 @@ import { requireResident } from "@/lib/queries";
 import { db } from "@/db";
 import { staff, staffAttendance, visitors } from "@/db/schema";
 import { cancelPreApproval } from "@/lib/actions/visitors";
+import { communityMonthKey } from "@/lib/datetime";
 import { formatDate, formatTime, timeAgo, todayISO } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Visitors" };
@@ -35,7 +36,7 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
   const upcoming = all.filter((v) => v.preApproved && ["approved", "pending"].includes(v.status) && (!v.validTo || v.validTo >= now));
   const created = upcoming.find((pass) => pass.id === params.created);
   const history = all.filter((v) => ["entered", "exited", "denied", "expired"].includes(v.status) || (v.validTo && v.validTo < now));
-  const entriesThisMonth = all.filter((v) => v.enteredAt && v.enteredAt.getMonth() === now.getMonth() && v.enteredAt.getFullYear() === now.getFullYear()).length;
+  const entriesThisMonth = all.filter((v) => v.enteredAt && communityMonthKey(v.enteredAt) === communityMonthKey(now)).length;
   const dailyHelp = await db.select({ attendance: staffAttendance, person: staff }).from(staffAttendance).innerJoin(staff, eq(staffAttendance.staffId, staff.id)).where(and(eq(staffAttendance.unitId, ctx.unit.id), eq(staffAttendance.date, todayISO()), eq(staff.kind, "daily_help"), eq(staff.active, true)));
 
   return (

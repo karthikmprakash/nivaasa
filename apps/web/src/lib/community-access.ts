@@ -14,10 +14,16 @@ export function isTenantAudience(role?: string | null) {
   return !!role && TENANT_ROLES.has(role);
 }
 
-export function canViewNoticeAudience(role: string | null | undefined, audience: string) {
-  if (audience === "all" || audience === "tower") return true;
+export function canViewNoticeAudience(
+  role: string | null | undefined,
+  audience: string,
+  noticeTowerId?: string | null,
+  memberTowerId?: string | null,
+) {
+  if (audience === "all") return true;
   if (audience === "owners") return isOwnerAudience(role);
   if (audience === "tenants") return isTenantAudience(role);
+  if (audience === "tower") return !!noticeTowerId && noticeTowerId === memberTowerId;
   return false;
 }
 

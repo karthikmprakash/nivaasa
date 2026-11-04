@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { invoices, memberships, notifications, payments } from "@/db/schema";
+import { auditLogs, invoices, memberships, notifications, payments } from "@/db/schema";
 import { getSession } from "@/lib/auth";
+import { todayISO } from "@/lib/utils";
 
 const schema = z.object({
   invoiceId: z.string(),
@@ -21,10 +22,14 @@ export async function POST(req: Request) {
   const [invoice] = await db.select().from(invoices).where(and(eq(invoices.id, parsed.data.invoiceId), eq(invoices.societyId, session.membership.societyId))).limit(1);
   if (!invoice || invoice.unitId !== session.membership.unitId) return NextResponse.json({ error: "Invoice not found." }, { status: 404 });
   if (invoice.status === "paid") return NextResponse.json({ error: "This invoice is already paid." }, { status: 409 });
+  if (invoice.status === "cancelled") return NextResponse.json({ error: "This invoice has been cancelled." }, { status: 409 });
+  if (parsed.data.paidOn && (!/^\d{4}-\d{2}-\d{2}$/.test(parsed.data.paidOn) || parsed.data.paidOn > todayISO())) {
+    return NextResponse.json({ error: "Choose a valid payment date." }, { status: 400 });
+  }
   const [pending] = await db.select().from(payments).where(and(eq(payments.invoiceId, invoice.id), eq(payments.status, "pending"))).limit(1);
   if (pending) return NextResponse.json({ error: "You already have a payment awaiting verification for this invoice." }, { status: 409 });
   const [{ c }] = await db.select({ c: sql<number>`count(*)` }).from(payments).where(eq(payments.societyId, session.membership.societyId));
-  const receiptNo = `RCPT-${new Date().getFullYear()}-${String((c ?? 0) + 1).padStart(5, "0")}`;
+  const receiptNo = `RCPT-${todayISO().slice(0, 4)}-${String((c ?? 0) + 1).padStart(5, "0")}`;
   const now = new Date();
   const amount = invoice.total - invoice.amountPaid;
   await db.insert(payments).values({
@@ -39,5 +44,10 @@ export async function POST(req: Request) {
       title: "Offline payment needs verification", body: `${session.user.name} recorded a ${parsed.data.method.toUpperCase()} payment of ₹${(amount / 100).toLocaleString("en-IN")} for ${invoice.title}.`, type: "payment" as const, link: "/admin/billing", createdAt: now,
     })));
   }
+  await db.insert(auditLogs).values({
+    id: crypto.randomUUID(), societyId: session.membership.societyId, actorId: session.user.id, actorName: session.user.name,
+    action: "payment.intimated", entity: "payment", entityId: receiptNo,
+    metadata: { invoice: invoice.number, amount, method: parsed.data.method, reference: parsed.data.reference ?? null }, createdAt: now,
+  });
   return NextResponse.json({ ok: true, receiptNo });
 }

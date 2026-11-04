@@ -3,6 +3,7 @@ import { and, count, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { deliveries, panicAlerts, patrolCheckpoints, patrolRounds, staff, staffAttendance, units, users, visitors } from "@/db/schema";
 import { getSession } from "@/lib/auth";
+import { communityDayStart } from "@/lib/datetime";
 import { todayISO } from "@/lib/utils";
 
 export async function GET() {
@@ -10,6 +11,7 @@ export async function GET() {
   if (!session?.membership || !session.society) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!["guard", "security_manager", "admin", "manager"].includes(session.membership.role) && session.user.globalRole !== "super_admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const today = todayISO();
+  const dayStart = communityDayStart(today) ?? new Date();
   const [queue, passRows, deliveryRows, staffRows, attendance, checkpoints, rounds, alerts] = await Promise.all([
     db.select({ visitor: visitors, unit: units.number, hostPhone: users.phone }).from(visitors).leftJoin(units, eq(visitors.unitId, units.id)).leftJoin(users, eq(visitors.hostUserId, users.id)).where(and(eq(visitors.societyId, session.society.id), eq(visitors.preApproved, false), eq(visitors.leaveAtGate, false), inArray(visitors.status, ["pending", "approved"]), gte(visitors.createdAt, new Date(Date.now() - 24 * 3600 * 1000)))).orderBy(desc(visitors.createdAt)).limit(30),
     db.select({ visitor: visitors, unit: units.number }).from(visitors).leftJoin(units, eq(visitors.unitId, units.id)).where(and(eq(visitors.societyId, session.society.id), eq(visitors.preApproved, true), eq(visitors.status, "approved"))).limit(20),
@@ -17,7 +19,7 @@ export async function GET() {
     db.select({ person: staff, unit: units.number }).from(staff).leftJoin(units, eq(staff.unitId, units.id)).where(and(eq(staff.societyId, session.society.id), eq(staff.active, true))),
     db.select().from(staffAttendance).where(and(eq(staffAttendance.societyId, session.society.id), eq(staffAttendance.date, today))),
     db.select().from(patrolCheckpoints).where(eq(patrolCheckpoints.societyId, session.society.id)).orderBy(patrolCheckpoints.sortOrder),
-    db.select().from(patrolRounds).where(and(eq(patrolRounds.societyId, session.society.id), gte(patrolRounds.scannedAt, new Date(today)))),
+    db.select().from(patrolRounds).where(and(eq(patrolRounds.societyId, session.society.id), gte(patrolRounds.scannedAt, dayStart))),
     db.select({ alert: panicAlerts, unit: units.number, user: users.name }).from(panicAlerts).leftJoin(units, eq(panicAlerts.unitId, units.id)).leftJoin(users, eq(panicAlerts.userId, users.id)).where(and(eq(panicAlerts.societyId, session.society.id), inArray(panicAlerts.status, ["open", "acknowledged"]))),
   ]);
   return NextResponse.json({

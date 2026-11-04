@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { memberships, societies } from "@/db/schema";
 import type { AuthContext } from "@/lib/auth";
-import { resolveSwitchPath, societyHomePath } from "@/lib/society-access";
+import { resolveSwitchPath, societyHomePath, stableSwitchPath } from "@/lib/society-access";
 
 export const SOCIETY_COOKIE = "nivaasa_society";
 const SOCIETY_COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
@@ -43,6 +43,6 @@ export async function switchSocietyForSession(session: AuthContext, slug: string
     role: row.membership.role,
     hasUnit: !!row.membership.unitId,
     isSuper: session.user.globalRole === "super_admin",
-    next,
+    next: next ? stableSwitchPath(next) : next,
   });
 }

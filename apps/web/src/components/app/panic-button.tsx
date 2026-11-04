@@ -33,7 +33,7 @@ export function PanicButton() {
     <>
       <button onClick={() => { setDone(false); setOpen(true); }} className="group flex w-full items-center justify-between rounded-[20px] border border-[#f0c7cc] bg-gradient-to-r from-[#fdf1f3] to-[#fff7f8] p-4 text-left transition-all hover:border-[#e7a6ae]">
         <div className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-full bg-[#d94a5a] text-white pulse-ring"><ShieldAlert className="size-5" /></span><div><p className="text-body font-semibold text-ink">Emergency panic button</p><p className="mt-0.5 text-caption text-[#9e4a55]">Alerts the guard and community team instantly</p></div></div>
-        <span className="rounded-full bg-[#d94a5a] px-3 py-1.5 text-caption font-bold text-white">Hold to alert</span>
+        <span className="rounded-full bg-[#d94a5a] px-3 py-1.5 text-caption font-bold text-white">Open alert</span>
       </button>
       <Dialog open={open} onOpenChange={setOpen} title={done ? "Help is on the way" : "Send an emergency alert"} description={done ? "The security team has been alerted. Stay where you are if it is safe." : "Only use this for a real emergency. The guard and community team will be notified immediately."} className="max-w-md">
         {done ? (

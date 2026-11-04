@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
+import { communityTimeNow } from "@/lib/datetime";
 import { todayISO } from "@/lib/utils";
 import { db } from "@/db";
 import { amenities, amenityBookings } from "@/db/schema";
@@ -24,6 +25,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const [amenity] = await db.select().from(amenities).where(and(eq(amenities.id, id), eq(amenities.societyId, session.membership.societyId))).limit(1);
   if (!amenity) return NextResponse.json({ error: "Amenity not found" }, { status: 404 });
   const booked = await db.select().from(amenityBookings).where(and(eq(amenityBookings.amenityId, id), eq(amenityBookings.date, date), inArray(amenityBookings.status, ["confirmed", "completed"])));
+  const nowTime = date === todayISO() && amenity.slotMinutes < 1440 ? communityTimeNow() : null;
 
   if (amenity.slotMinutes >= 1440) {
     return NextResponse.json({ slots: [{ start: amenity.openTime, end: amenity.closeTime, available: booked.length === 0, label: "Full day · check-in 12 PM" }] });
@@ -35,7 +37,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const start = toTime(t);
     const end = toTime(t + amenity.slotMinutes);
     const conflict = booked.some((b) => toMinutes(b.startTime) < t + amenity.slotMinutes && toMinutes(b.endTime) > t);
-    slots.push({ start, end, available: !conflict, label: `${start} – ${end}` });
+    slots.push({ start, end, available: !conflict && (!nowTime || start > nowTime), label: `${start} – ${end}` });
   }
   return NextResponse.json({ slots, booked: booked.map((b) => ({ start: b.startTime, end: b.endTime })) });
 }

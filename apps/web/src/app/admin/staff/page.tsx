@@ -3,7 +3,7 @@ import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { BadgeCheck, CheckCircle2, Clock3, IndianRupee, ShieldCheck, Star, UserCheck, UserX, UsersRound } from "lucide-react";
 import { Avatar, Badge, Card, CardHeader, EmptyState, PageHeader, Stat } from "@/components/ui/primitives";
 import { AddStaffDialog } from "@/components/admin/staff-dialog";
-import { requireAdmin } from "@/lib/queries";
+import { requireAdminRole } from "@/lib/queries";
 import { db } from "@/db";
 import { staff, staffAttendance, units } from "@/db/schema";
 import { markStaffAttendance, toggleStaffActive, toggleStaffVerification } from "@/lib/actions/admin";
@@ -14,8 +14,9 @@ export const metadata = { title: "Staff & attendance" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminStaffPage({ searchParams }: { searchParams: Promise<{ kind?: string }> }) {
-  const ctx = await requireAdmin();
+  const ctx = await requireAdminRole(["admin", "manager", "committee", "security_manager"]);
   const societyId = ctx.society!.id;
+  const canManageStaff = ["admin", "manager", "security_manager"].includes(ctx.membership?.role ?? "") || ctx.user.globalRole === "super_admin";
   const { kind = "all" } = await searchParams;
   const today = todayISO();
   const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
@@ -34,7 +35,7 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: P
   const attendanceRate = activeStaff.length ? Math.round((weekRows.filter((row) => activeStaff.some((person) => person.id === row.staffId)).length / (activeStaff.length * 7)) * 100) : 0;
   return (
     <div>
-      <PageHeader eyebrow="People operations" title="Staff & attendance" description="Society staff, security and daily help — verified, present and paid on time." actions={<AddStaffDialog />} />
+      <PageHeader eyebrow="People operations" title="Staff & attendance" description="Society staff, security and daily help — verified, present and paid on time." actions={canManageStaff ? <AddStaffDialog /> : <Badge variant="outline">Read-only access</Badge>} />
       <div className="mt-5 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         <Stat label="Team size" value={activeStaff.length} hint={`${staffRows.filter((s) => s.kind === "daily_help").length} daily help`} tone="blue" icon={<UsersRound className="size-4" />} />
         <Stat label="Present today" value={presentIds.size} hint={`${activeStaff.length ? Math.round((presentIds.size / activeStaff.length) * 100) : 0}% of team`} tone="green" icon={<UserCheck className="size-4" />} />
@@ -53,16 +54,16 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: P
                 <Card key={s.id} className="p-4">
                   <div className="flex items-start gap-2.5">
                     <Avatar name={s.name} color={s.photoColor} size="md" />
-                    <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-1"><p className="text-caption font-semibold text-ink">{s.name}</p>{s.policeVerified ? <BadgeCheck className="size-4 text-mint-600" /> : null}</div><p className="text-caption text-muted">{s.role} · {s.kind === "daily_help" ? `Home ${unitRows.find((u) => u.id === s.unitId)?.number ?? "—"}` : s.kind}</p><div className="mt-0.5 flex items-center gap-1 text-caption text-amber-ink"><Star className="size-4 fill-current" /> {s.rating?.toFixed(1)} <span className="text-muted">· {s.shift ?? "Flexible"}</span></div></div>
+                    <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-1"><p className="text-caption font-semibold text-ink">{s.name}</p>{s.policeVerified ? <BadgeCheck className="size-4 text-mint-600" /> : null}</div><p className="text-caption text-muted">{s.role} · {s.kind === "daily_help" ? `Home ${unitRows.find((u) => u.id === s.unitId)?.number ?? "—"}` : s.kind}</p><div className="mt-0.5 flex items-center gap-1 text-caption text-amber-ink"><Star className="size-4 fill-current" /> {s.rating ? s.rating.toFixed(1) : "New"} <span className="text-muted">· {s.shift ?? "Flexible"}</span></div></div>
                     <Badge variant={s.active ? "success" : "neutral"}>{s.active ? "Active" : "Inactive"}</Badge>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-2.5">
                     <span className={`text-caption font-medium ${a ? "text-mint-600" : "text-muted"}`}>{a ? <><CheckCircle2 className="mr-1 inline size-4" />In {formatTime(a.checkInAt)}{a.checkOutAt ? ` · Out ${formatTime(a.checkOutAt)}` : ""}</> : "Not checked in"}</span>
-                    <div className="flex flex-wrap items-center gap-1.5">
+                    {canManageStaff ? <div className="flex flex-wrap items-center gap-1.5">
                       {!a?.checkOutAt && (a?.checkInAt || (s.active && (s.kind !== "daily_help" || s.policeVerified))) ? <form action={markStaffAttendance}><input type="hidden" name="staffId" value={s.id} /><input type="hidden" name="action" value={a?.checkInAt ? "out" : "in"} /><button className="rounded-full bg-brand-50 px-2 py-1 text-caption font-semibold text-brand-700">{a ? "Check out" : "Mark present"}</button></form> : null}
                       <form action={toggleStaffVerification}><input type="hidden" name="id" value={s.id} /><button className="rounded-full bg-canvas px-2 py-1 text-caption font-semibold text-ink-soft">{s.policeVerified ? "Verified" : "Verify ID"}</button></form>
                       <form action={toggleStaffActive}><input type="hidden" name="id" value={s.id} /><button aria-label={`${s.active ? "Deactivate" : "Activate"} ${s.name}`} className="grid size-10 place-items-center rounded-lg bg-canvas text-muted">{s.active ? <UserX className="size-4" /> : <UserCheck className="size-4" />}</button></form>
-                    </div>
+                    </div> : <Badge variant="outline">Read only</Badge>}
                   </div>
                 </Card>
               );
@@ -79,7 +80,7 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: P
         <aside className="min-w-0 space-y-4">
           <Card>
             <CardHeader title="Verification queue" description={`${pendingVerification.length} profiles need ID review`} icon={<ShieldCheck className="size-4" />} />
-            <div className="border-t border-line">{pendingVerification.map((s) => <div key={s.id} className="flex items-center gap-2 border-b border-line/70 px-4 py-2.5 last:border-0"><Avatar name={s.name} color={s.photoColor} size="xs" /><div className="min-w-0 flex-1"><p className="truncate text-caption font-semibold text-ink">{s.name}</p><p className="text-caption text-muted">{s.role} · {s.idType ?? "ID"} {s.idLast4 ? `••${s.idLast4}` : ""}</p></div><form action={toggleStaffVerification}><input type="hidden" name="id" value={s.id} /><button className="rounded-full bg-mint-50 px-2 py-1 text-caption font-bold text-mint-600">Verify</button></form></div>)}{!pendingVerification.length ? <p className="px-4 py-6 text-center text-caption text-muted">Everyone is verified.</p> : null}</div>
+            <div className="border-t border-line">{pendingVerification.map((s) => <div key={s.id} className="flex items-center gap-2 border-b border-line/70 px-4 py-2.5 last:border-0"><Avatar name={s.name} color={s.photoColor} size="xs" /><div className="min-w-0 flex-1"><p className="truncate text-caption font-semibold text-ink">{s.name}</p><p className="text-caption text-muted">{s.role} · {s.idType ?? "ID"} {s.idLast4 ? `••${s.idLast4}` : ""}</p></div>{canManageStaff ? <form action={toggleStaffVerification}><input type="hidden" name="id" value={s.id} /><button className="rounded-full bg-mint-50 px-2 py-1 text-caption font-bold text-mint-600">Verify</button></form> : <span className="text-caption text-muted">Pending</span>}</div>)}{!pendingVerification.length ? <p className="px-4 py-6 text-center text-caption text-muted">Everyone is verified.</p> : null}</div>
           </Card>
           <Card>
             <CardHeader title="Payroll overview" description="Monthly cost by team" icon={<IndianRupee className="size-4" />} />

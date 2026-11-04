@@ -2,7 +2,7 @@ import Link from "next/link";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { AlertTriangle, ArrowDownToLine, ChevronRight, Clock3, Search, Star, Wrench } from "lucide-react";
 import { Avatar, Badge, Card, EmptyState, PageHeader, Stat } from "@/components/ui/primitives";
-import { requireAdmin } from "@/lib/queries";
+import { requireAdminRole } from "@/lib/queries";
 import { db } from "@/db";
 import { helpdeskTickets, units, users } from "@/db/schema";
 import { formatDate, timeAgo } from "@/lib/utils";
@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 const statusMeta: Record<string, { l: string; v: "blue" | "warning" | "success" | "danger" | "neutral" | "purple" }> = { open: { l: "Open", v: "blue" }, assigned: { l: "Assigned", v: "purple" }, in_progress: { l: "In progress", v: "warning" }, resolved: { l: "Resolved", v: "success" }, closed: { l: "Closed", v: "neutral" }, reopened: { l: "Reopened", v: "danger" } };
 
 export default async function AdminHelpdeskPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string; category?: string }> }) {
-  const ctx = await requireAdmin();
+  const ctx = await requireAdminRole(["admin", "manager", "committee", "helpdesk_manager"]);
   const societyId = ctx.society!.id;
   const params = await searchParams;
   const status = params.status ?? "all";

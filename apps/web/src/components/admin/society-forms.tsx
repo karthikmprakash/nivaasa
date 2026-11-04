@@ -48,15 +48,16 @@ export function SocietyPreferenceForm({ settings }: { settings: { visitorApprova
 
 export function InviteTeamDialog() {
   const [open, setOpen] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const router = useRouter();
   const [state, action, pending] = useActionState<SocietyState, FormData>(inviteTeamMember, {});
   const [copied, setCopied] = useState(false);
-  useEffect(() => { if (state.ok) router.refresh(); }, [state.ok, router]);
+  useEffect(() => { if (state.ok) { setShowSuccess(true); router.refresh(); } }, [state.ok, router]);
   return (
     <>
-      <Button size="sm" onClick={() => { setOpen(true); setCopied(false); }}><UserPlus className="size-4" /> Add team member</Button>
-      <Dialog open={open} onOpenChange={setOpen} title={state.ok ? "Team member added" : "Add a team member"} description={state.ok ? undefined : "Give a committee member or staff lead access to the admin console."}>
-        {state.ok ? (
+      <Button size="sm" onClick={() => { setOpen(true); setCopied(false); setShowSuccess(false); }}><UserPlus className="size-4" /> Add team member</Button>
+      <Dialog open={open} onOpenChange={setOpen} title={showSuccess ? "Team member added" : "Add a team member"} description={showSuccess ? undefined : "Give a committee member or staff lead access to the admin console."}>
+        {showSuccess ? (
           <div><div className="rounded-2xl border border-mint-600/20 bg-mint-50 p-4"><p className="flex items-center gap-2 text-body font-semibold text-mint-600"><Check className="size-4" /> {state.message}</p>{state.tempPassword ? null : <p className="mt-1.5 text-caption leading-relaxed text-ink-soft">They can sign in with their existing Nivaasa password. No new credentials were created.</p>}</div>{state.tempPassword ? <div className="mt-4 rounded-xl border border-line bg-[#fbfcff] p-4"><p className="flex items-center gap-1.5 text-caption font-bold uppercase tracking-[0.12em] text-muted"><KeyRound className="size-4" /> Temporary password</p><p className="mt-1 font-mono text-[18px] font-bold tracking-[0.1em] text-ink">{state.tempPassword}</p><button onClick={async () => { await navigator.clipboard.writeText(state.tempPassword ?? ""); setCopied(true); toast.success("Copied"); }} className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-line bg-white px-2.5 py-1.5 text-caption font-semibold text-ink-soft">{copied ? <Check className="size-4 text-mint-600" /> : <Copy className="size-4" />} {copied ? "Copied" : "Copy"}</button></div> : null}<Button className="mt-4 w-full" onClick={() => setOpen(false)}>Done</Button></div>
         ) : (
           <form action={action} className="space-y-4">

@@ -9,8 +9,7 @@ export const metadata: Metadata = { title: "Raise a request" };
 export const dynamic = "force-dynamic";
 
 export default async function NewTicketPage() {
-  const ctx = await requireResident();
-  const sla = ctx.society.settings?.helpdeskSlaHours ?? 24;
+  await requireResident();
   return (
     <div className="mx-auto max-w-5xl">
       <Link href="/app/helpdesk" className="mb-5 inline-flex items-center gap-1.5 text-caption font-semibold text-muted hover:text-ink"><ArrowLeft className="size-4" /> Back to helpdesk</Link>
@@ -29,7 +28,7 @@ export default async function NewTicketPage() {
               {[
                 ["The right team is assigned", "Your request goes to the helpdesk manager based on category."],
                 ["You get an ETA", "Once assigned, you'll see who's coming and when."],
-                ["We follow up", `If no action is taken within ${sla} hours, it escalates automatically.`],
+                ["We follow up", `If no action is taken within its priority SLA, it escalates automatically.`],
               ].map(([t, d], i) => <li key={t} className="flex gap-2.5"><span className="grid size-5 shrink-0 place-items-center rounded-full bg-white/15 text-caption font-bold">{i + 1}</span><div><p className="text-caption font-semibold">{t}</p><p className="mt-0.5 text-caption leading-relaxed text-white/80">{d}</p></div></li>)}
             </ol>
           </div>

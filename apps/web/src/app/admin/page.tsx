@@ -22,7 +22,25 @@ const statusTone: Record<string, string> = {
 
 export default async function AdminDashboard() {
   const ctx = await requireAdmin();
-  const { now, snapshot, monthly, growth, pendingPayments, pendingDiscussions, pendingMoves, openPanics, recentVisitors, ticketCats, patrolScanned, patrolMissed, staffToday, staffCount, bookingRows, deliveryToday, avgClosure, topDues, maxCategory, attention } = await getAdminDashboardData(ctx.society!.id);
+  const role = ctx.membership?.role ?? "";
+  const isSuper = ctx.user.globalRole === "super_admin";
+  const canRunBilling = ["admin", "manager", "accountant"].includes(role) || isSuper;
+  const canPublish = ["admin", "manager", "committee"].includes(role) || isSuper;
+  const canSeeBilling = ["admin", "manager", "accountant", "committee", "auditor"].includes(role) || isSuper;
+  const canSeeComms = ["admin", "manager", "committee"].includes(role) || isSuper;
+  const canSeeSecurity = ["admin", "manager", "committee", "security_manager", "auditor"].includes(role) || isSuper;
+  const canRespondSecurity = ["admin", "manager", "security_manager"].includes(role) || isSuper;
+  const canSeeHelpdesk = ["admin", "manager", "committee", "helpdesk_manager"].includes(role) || isSuper;
+  const canSeeAmenities = ["admin", "manager", "committee"].includes(role) || isSuper;
+  const canApproveMoves = ["admin", "manager", "committee"].includes(role) || isSuper;
+  const { now, snapshot, monthly, growth, pendingPayments, pendingDiscussions, pendingMoves, openPanics, recentVisitors, ticketCats, patrolScanned, patrolMissed, staffToday, staffCount, bookingRows, deliveryToday, avgClosure, topDues, maxCategory } = await getAdminDashboardData(ctx.society!.id);
+  const visibleAttention = (canSeeSecurity ? openPanics.length : 0) + (canApproveMoves ? pendingMoves.length : 0) + (canRunBilling ? pendingPayments.length : 0) + (canSeeComms ? pendingDiscussions.length : 0) + (canSeeHelpdesk && snapshot.slaRisk ? 1 : 0);
+  const quickActions = [
+    { l: "Run the monthly billing", h: "/admin/billing", icon: Wallet, show: canRunBilling },
+    { l: "Review helpdesk SLAs", h: "/admin/helpdesk", icon: Wrench, show: canSeeHelpdesk },
+    { l: "Publish a notice", h: "/admin/communications", icon: Megaphone, show: canPublish },
+    { l: "Open financial reports", h: "/admin/reports", icon: ScrollText, show: canSeeBilling },
+  ].filter((action) => action.show);
   const firstName = ctx.user.name.split(" ")[0];
   const hour = Number(now.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", hour12: false }));
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -31,69 +49,69 @@ export default async function AdminDashboard() {
     <div>
       <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-end md:justify-between">
         <div>
-          <p className="flex items-center gap-2 text-caption font-medium text-muted"><span className="inline-flex size-1.5 rounded-lg bg-brand-500" /> {now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })} · {ctx.society!.name}</p>
+          <p className="flex items-center gap-2 text-caption font-medium text-muted"><span className="inline-flex size-1.5 rounded-lg bg-brand-500" /> {formatDate(now, { weekday: "long", day: "numeric", month: "long" })} · {ctx.society!.name}</p>
           <h1 className="mt-1 text-[26px] font-semibold leading-tight tracking-[-0.04em] text-ink sm:text-[30px]">{greeting}, {firstName}.</h1>
-          <p className="mt-1.5 text-body text-ink-soft">Here&apos;s the pulse of your community. {attention ? <span className="font-medium text-ink">{attention} things need your attention.</span> : "Everything looks calm."}</p>
+          <p className="mt-1.5 text-body text-ink-soft">Here&apos;s the pulse of your community. {visibleAttention ? <span className="font-medium text-ink">{visibleAttention} things need your attention.</span> : "Everything looks calm."}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link href="/admin/billing" className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-line-strong bg-white px-3.5 text-caption font-semibold text-ink-soft hover:bg-canvas"><Wallet className="size-4 shrink-0" /> Run billing</Link>
-          <Link href="/admin/communications" className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-brand-600 px-3.5 text-caption font-semibold text-white hover:bg-brand-700"><BellRing className="size-4 shrink-0" /> Publish notice</Link>
+          {canRunBilling ? <Link href="/admin/billing" className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-line-strong bg-white px-3.5 text-caption font-semibold text-ink-soft hover:bg-canvas"><Wallet className="size-4 shrink-0" /> Run billing</Link> : null}
+          {canPublish ? <Link href="/admin/communications" className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-brand-600 px-3.5 text-caption font-semibold text-white hover:bg-brand-700"><BellRing className="size-4 shrink-0" /> Publish notice</Link> : null}
         </div>
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <Stat label="Collected this month" value={formatINR(snapshot.collections)} hint={growth === null ? "No previous month to compare" : `${growth >= 0 ? "+" : ""}${growth.toFixed(1)}% vs last month`} tone="blue" />
-        <Stat label="Outstanding" value={formatINR(snapshot.outstanding)} hint={`${snapshot.outstandingCount} open invoices`} />
-        <Stat label="Open requests" value={snapshot.openTickets} hint={`${snapshot.slaRisk} approaching or past SLA`} />
-        <Stat label="Gate entries this month" value={snapshot.visitors} hint={`${deliveryToday[0]?.count ?? 0} deliveries today`} />
+        {canSeeBilling ? <Stat label="Collected this month" value={formatINR(snapshot.collections)} hint={growth === null ? "No previous month to compare" : `${growth >= 0 ? "+" : ""}${growth.toFixed(1)}% vs last month`} tone="blue" /> : null}
+        {canSeeBilling ? <Stat label="Outstanding" value={formatINR(snapshot.outstanding)} hint={`${snapshot.outstandingCount} open invoices`} /> : null}
+        {canSeeHelpdesk ? <Stat label="Open requests" value={snapshot.openTickets} hint={`${snapshot.slaRisk} approaching or past SLA`} /> : null}
+        {canSeeSecurity ? <Stat label="Gate entries this month" value={snapshot.visitors} hint={`${deliveryToday[0]?.count ?? 0} deliveries today`} /> : null}
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-3">
-        <Card className="order-2 xl:order-1 xl:col-span-2">
+        {canSeeBilling ? <Card className="order-2 xl:order-1 xl:col-span-2">
           <CardHeader title="Collections vs expenses" description="The last six months, at a glance" icon={<TrendingUp className="size-4" />} action={<Link href="/admin/reports" className="inline-flex items-center gap-1 text-caption font-semibold text-brand-600">Full report <ArrowUpRight className="size-4" /></Link>} />
           <div className="flex flex-wrap items-center gap-4 px-5 pb-1"><span className="flex items-center gap-1.5 text-caption text-muted"><span className="size-2 rounded-lg bg-brand-500" /> Collected</span><span className="flex items-center gap-1.5 text-caption text-muted"><span className="size-2 rounded-lg bg-[#8491a8]" /> Spent</span><span className="ml-auto text-caption font-semibold text-ink">{formatINR(snapshot.collections)} <span className="font-normal text-muted">this month</span></span></div>
           <div className="px-2 pb-4 pr-4"><CollectionsChart data={monthly} /></div>
-        </Card>
+        </Card> : null}
 
         <Card className="order-1 xl:order-2">
-          <CardHeader title="Needs attention" description={`${attention} open items`} icon={<Zap className="size-4" />}  />
+          <CardHeader title="Needs attention" description={`${visibleAttention} open items`} icon={<Zap className="size-4" />}  />
           <div className="border-t border-line">
-            {openPanics.map((p) => (
+            {canSeeSecurity ? openPanics.map((p) => (
               <Link key={p.alert.id} href="/admin/security" className="flex items-start gap-2.5 border-b border-line/70 bg-[#fdf1f3] px-5 py-3 last:border-0">
                 <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-[#d94a5a] text-white"><AlertTriangle className="size-4" /></span>
                 <div className="min-w-0 flex-1"><p className="text-caption font-semibold text-ink">Panic alert · Home {p.unit}</p><p className="truncate text-caption text-[#9e4a55]">{p.user} · {timeAgo(p.alert.createdAt)}</p></div>
-                <Badge variant="danger">Respond</Badge>
+                <Badge variant="danger">{canRespondSecurity ? "Respond" : "View"}</Badge>
               </Link>
-            ))}
-            {pendingPayments.map((p) => (
+            )) : null}
+            {canRunBilling ? pendingPayments.map((p) => (
               <Link key={p.payment.id} href="/admin/billing" className="flex items-center gap-2.5 border-b border-line/70 px-5 py-3 last:border-0 hover:bg-[#fbfcff]">
                 <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-amber-soft text-amber-ink"><IndianRupee className="size-4" /></span>
                 <div className="min-w-0 flex-1"><p className="truncate text-caption font-semibold text-ink">Verify {p.payment.method.toUpperCase()} payment</p><p className="truncate text-caption text-muted">{p.user} · {p.unit} · {formatINR(p.payment.amount)}</p></div>
                 <ChevronRight className="size-4 text-muted" />
               </Link>
-            ))}
-            {pendingDiscussions.map((d) => (
+            )) : null}
+            {canSeeComms ? pendingDiscussions.map((d) => (
               <Link key={d.discussion.id} href="/admin/communications" className="flex items-center gap-2.5 border-b border-line/70 px-5 py-3 last:border-0 hover:bg-[#fbfcff]">
                 <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-600"><MessageSquare className="size-4" /></span>
                 <div className="min-w-0 flex-1"><p className="truncate text-caption font-semibold text-ink">Review discussion</p><p className="truncate text-caption text-muted">{d.user} · {d.discussion.title}</p></div>
                 <ChevronRight className="size-4 text-muted" />
               </Link>
-            ))}
-            {pendingMoves.map((m) => (
+            )) : null}
+            {canApproveMoves ? pendingMoves.map((m) => (
               <Link key={m.request.id} href="/admin/residents" className="flex items-center gap-2.5 border-b border-line/70 px-5 py-3 last:border-0 hover:bg-[#fbfcff]">
                 <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-[#f2effc] text-[#6a54c8]"><Building2 className="size-4" /></span>
                 <div className="min-w-0 flex-1"><p className="truncate text-caption font-semibold text-ink capitalize">Approve {m.request.type.replace("_", " ")}</p><p className="truncate text-caption text-muted">Home {m.unit} · {m.user} · {formatDate(m.request.date)}</p></div>
                 <ChevronRight className="size-4 text-muted" />
               </Link>
-            ))}
-            {snapshot.slaRisk > 0 ? <Link href="/admin/helpdesk" className="flex items-center gap-3 border-b border-line px-5 py-4 text-body hover:bg-canvas/50"><Clock3 className="size-5 shrink-0 text-amber-ink" /><div className="flex-1"><p className="font-semibold">{snapshot.slaRisk} requests need follow-up</p><p className="text-caption text-muted">Approaching or past their service deadline</p></div><ChevronRight className="size-4 text-muted" /></Link> : null}
-            {!attention ? <div className="px-5 py-10 text-center"><CheckCircle2 className="mx-auto size-6 text-mint-600" /><p className="mt-2 text-caption font-semibold text-ink">All clear</p><p className="text-caption text-muted">Nothing needs you right now.</p></div> : null}
+            )) : null}
+            {canSeeHelpdesk && snapshot.slaRisk > 0 ? <Link href="/admin/helpdesk" className="flex items-center gap-3 border-b border-line px-5 py-4 text-body hover:bg-canvas/50"><Clock3 className="size-5 shrink-0 text-amber-ink" /><div className="flex-1"><p className="font-semibold">{snapshot.slaRisk} requests need follow-up</p><p className="text-caption text-muted">Approaching or past their service deadline</p></div><ChevronRight className="size-4 text-muted" /></Link> : null}
+            {!visibleAttention ? <div className="px-5 py-10 text-center"><CheckCircle2 className="mx-auto size-6 text-mint-600" /><p className="mt-2 text-caption font-semibold text-ink">All clear</p><p className="text-caption text-muted">Nothing needs you right now.</p></div> : null}
           </div>
         </Card>
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-3">
-        <Card>
+        {canSeeHelpdesk ? <Card>
           <CardHeader title="Helpdesk load" description="Open requests by category" icon={<Wrench className="size-4" />} action={<Link href="/admin/helpdesk" className="text-caption font-semibold text-brand-600">Manage</Link>} />
           <div className="border-t border-line px-5 py-4">
             <div className="space-y-3">
@@ -107,10 +125,10 @@ export default async function AdminDashboard() {
             </div>
             <div className="mt-4 flex items-center justify-between rounded-xl bg-canvas px-3 py-2.5"><span className="text-caption text-muted">Avg. closure time</span><span className="text-caption font-semibold text-ink">{avgClosure ? `${avgClosure.toFixed(1)}h` : "—"} <span className="text-caption font-normal text-muted">resolved</span></span></div>
           </div>
-        </Card>
+        </Card> : null}
 
-        <Card>
-          <CardHeader title="Recent gate activity" description="Latest visitor records" icon={<ShieldCheck className="size-4" />} action={<Link href="/admin/security" className="text-caption font-semibold text-brand-600">Live view</Link>} />
+        {canSeeSecurity ? <Card>
+          <CardHeader title="Recent gate activity" description="Latest visitor records" icon={<ShieldCheck className="size-4" />} action={canSeeSecurity ? <Link href="/admin/security" className="text-caption font-semibold text-brand-600">Live view</Link> : undefined} />
           <div className="border-t border-line">
             {recentVisitors.map(({ visitor: v, unit }) => (
               <div key={v.id} className="flex items-center gap-2.5 border-b border-line/70 px-5 py-2.5 last:border-0">
@@ -120,22 +138,22 @@ export default async function AdminDashboard() {
               </div>
             ))}
           </div>
-        </Card>
+        </Card> : null}
 
-        <Card>
-          <CardHeader title="Top outstanding homes" description="Homes with the largest unpaid balances" icon={<Wallet className="size-4" />} action={<Link href="/admin/billing" className="text-caption font-semibold text-brand-600">Billing</Link>} />
+        {canSeeBilling ? <Card>
+          <CardHeader title="Top outstanding homes" description="Homes with the largest unpaid balances" icon={<Wallet className="size-4" />} action={canSeeBilling ? <Link href="/admin/billing" className="text-caption font-semibold text-brand-600">Billing</Link> : undefined} />
           <div className="border-t border-line">
             {topDues.map((d, i) => (
               <div key={d.unit} className="flex items-center gap-2.5 border-b border-line/70 px-5 py-2.5 last:border-0">
                 <span className="grid size-6 place-items-center rounded-lg bg-canvas text-caption font-bold text-muted">{i + 1}</span>
                 <p className="flex-1 text-caption font-semibold text-ink">Home {d.unit}</p>
                 <span className="text-caption font-semibold text-ink">{formatINR(d.total)}</span>
-                <Link href="/admin/billing" className="text-caption font-semibold text-brand-600">Review</Link>
+                {canSeeBilling ? <Link href="/admin/billing" className="text-caption font-semibold text-brand-600">Review</Link> : null}
               </div>
             ))}
             {!topDues.length ? <p className="px-5 py-6 text-center text-caption text-muted">No outstanding dues. Beautiful.</p> : null}
           </div>
-        </Card>
+        </Card> : null}
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-3">
@@ -151,33 +169,28 @@ export default async function AdminDashboard() {
           </div>
         </Card>
 
-        <Card>
+        {canSeeAmenities ? <Card>
           <CardHeader title="Upcoming at the clubhouse" description="Confirmed bookings" icon={<CalendarHeart className="size-4" />} action={<Link href="/admin/amenities" className="text-caption font-semibold text-brand-600">All</Link>} />
           <div className="border-t border-line">
             {bookingRows.map((b) => (
               <div key={b.booking.id} className="flex items-center gap-2.5 border-b border-line/70 px-5 py-2.5 last:border-0">
-                <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-blush-50 text-center"><span className="text-caption font-bold uppercase text-blush-500">{formatDate(b.booking.date, { month: "short" })}</span><span className="text-caption font-bold leading-none text-ink">{new Date(b.booking.date + "T00:00").getDate()}</span></div>
+                <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-blush-50 text-center"><span className="text-caption font-bold uppercase text-blush-500">{formatDate(b.booking.date, { month: "short" })}</span><span className="text-caption font-bold leading-none text-ink">{formatDate(b.booking.date, { day: "numeric" })}</span></div>
                 <div className="min-w-0 flex-1"><p className="truncate text-caption font-semibold text-ink">{b.amenity}</p><p className="text-caption text-muted">Home {b.unit} · {b.booking.startTime}–{b.booking.endTime}</p></div>
               </div>
             ))}
             {!bookingRows.length ? <p className="px-5 py-6 text-center text-caption text-muted">No upcoming bookings.</p> : null}
           </div>
-        </Card>
+        </Card> : null}
 
-        <Card className="bg-gradient-to-br from-[#fbfcff] to-brand-50/50">
+        {quickActions.length ? <Card className="bg-gradient-to-br from-[#fbfcff] to-brand-50/50">
           <div className="p-5">
             <div className="flex items-center justify-between"><span className="grid size-8 place-items-center rounded-lg bg-white text-brand-600 shadow-sm"><Zap className="size-4" /></span><Badge variant="blue">Quick actions</Badge></div>
             <p className="mt-3 text-body font-semibold text-ink">Keep the day moving</p>
             <div className="mt-3 space-y-2">
-              {[
-                { l: "Run the monthly billing", h: "/admin/billing", icon: Wallet },
-                { l: "Review helpdesk SLAs", h: "/admin/helpdesk", icon: Wrench },
-                { l: "Publish a notice", h: "/admin/communications", icon: Megaphone },
-                { l: "Open financial reports", h: "/admin/reports", icon: ScrollText },
-              ].map((a) => <Link key={a.l} href={a.h} className="flex items-center gap-2 rounded-lg border border-line bg-white px-2.5 py-2 text-caption font-medium text-ink-soft transition-colors hover:border-brand-200 hover:text-ink"><a.icon className="size-3.5 text-brand-500" /><span className="flex-1">{a.l}</span><ChevronRight className="size-4 text-muted" /></Link>)}
+              {quickActions.map((a) => <Link key={a.l} href={a.h} className="flex items-center gap-2 rounded-lg border border-line bg-white px-2.5 py-2 text-caption font-medium text-ink-soft transition-colors hover:border-brand-200 hover:text-ink"><a.icon className="size-3.5 text-brand-500" /><span className="flex-1">{a.l}</span><ChevronRight className="size-4 text-muted" /></Link>)}
             </div>
           </div>
-        </Card>
+        </Card> : null}
       </div>
     </div>
   );

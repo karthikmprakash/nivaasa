@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { Dialog } from "@/components/ui/client";
 import { Button, Field, Input, Select, Textarea } from "@/components/ui/primitives";
-import { formatINR, todayISO } from "@/lib/utils";
+import { formatDate, formatINR, todayISO } from "@/lib/utils";
 
 type Invoice = {
   id: string;
@@ -70,7 +70,7 @@ export function PayNowButton({ invoice, className, label = "Pay now" }: { invoic
             <div className="rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 p-5 text-white">
               <p className="text-caption font-medium text-white/80">Amount to pay</p>
               <p className="mt-1 text-[32px] font-semibold tracking-[-0.04em]">{formatINR(balance)}</p>
-              <div className="mt-2 flex items-center justify-between text-caption text-white/80"><span>{invoice.number}</span><span>Due {new Date(invoice.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span></div>
+              <div className="mt-2 flex items-center justify-between text-caption text-white/80"><span>{invoice.number}</span><span>Due {formatDate(invoice.dueDate, { day: "numeric", month: "short" })}</span></div>
             </div>
             <div className="mt-5">
               <p className="mb-2 text-body font-semibold text-ink-soft">Choose a payment method</p>
@@ -134,7 +134,7 @@ export function PaidOfflineButton({ invoice }: { invoice: Invoice }) {
           <form onSubmit={submit} className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Payment method"><Select value={method} onChange={(e) => setMethod(e.target.value)}><option value="neft">NEFT / IMPS</option><option value="cheque">Cheque</option><option value="cash">Cash</option><option value="upi">Direct UPI</option></Select></Field>
-              <Field label="Paid on"><Input type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} /></Field>
+              <Field label="Paid on"><Input type="date" max={todayISO()} value={paidOn} onChange={(e) => setPaidOn(e.target.value)} /></Field>
             </div>
             <Field label="Reference / transaction number" hint="Cheque number, UTR or UPI reference"><Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="e.g. NEFT/HDFC/88421009" /></Field>
             <Field label="Note for the accounts team"><Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Optional" /></Field>

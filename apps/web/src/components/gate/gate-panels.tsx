@@ -226,8 +226,12 @@ export function GateQueue({ initial }: { initial: QueueItem[] }) {
   const [updated, setUpdated] = useState<Date>(new Date());
 
   async function load() {
-    const res = await fetch("/api/gate/queue", { cache: "no-store" });
-    if (res.ok) { const d = await res.json(); setItems(d.items ?? []); setUpdated(new Date()); }
+    try {
+      const res = await fetch("/api/gate/queue", { cache: "no-store" });
+      if (res.ok) { const d = await res.json(); setItems(d.items ?? []); setUpdated(new Date()); }
+    } catch {
+      // Keep the last successful queue visible while the network recovers.
+    }
   }
   useEffect(() => { const t = setInterval(load, 12000); return () => clearInterval(t); }, []);
   async function enter(id: string) {
@@ -338,12 +342,21 @@ export function GatePatrol({ checkpoints, scannedIds }: { checkpoints: { id: str
   const router = useRouter();
   const [scanned, setScanned] = useState(new Set(scannedIds));
   const [busy, setBusy] = useState<string | null>(null);
+  useEffect(() => { setScanned(new Set(scannedIds)); }, [scannedIds]);
   async function scan(id: string) {
     setBusy(id);
-    const res = await fetch("/api/gate/patrol", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ checkpointId: id }) });
-    const d = await res.json();
-    if (!res.ok) toast.error(d.error ?? "Could not record patrol"); else { setScanned((prev) => new Set(prev).add(id)); toast.success("Checkpoint scanned"); router.refresh(); }
-    setBusy(null);
+    try {
+      const res = await fetch("/api/gate/patrol", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ checkpointId: id }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Could not record patrol");
+      setScanned((prev) => new Set(prev).add(id));
+      toast.success("Checkpoint scanned");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not record patrol");
+    } finally {
+      setBusy(null);
+    }
   }
   return (
     <div className="space-y-2">
@@ -361,12 +374,23 @@ export function GateDeliveries({ deliveries }: { deliveries: { id: string; compa
   const [active, setActive] = useState<string | null>(null);
   const [otp, setOtp] = useState("");
   const [busy, setBusy] = useState(false);
+  useEffect(() => { setItems(deliveries); }, [deliveries]);
   async function deliver(id: string) {
     setBusy(true);
-    const res = await fetch(`/api/gate/deliveries/${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ otp, action: "deliver" }) });
-    const d = await res.json();
-    if (!res.ok) toast.error(d.error ?? "Could not verify"); else { toast.success("Parcel handed over"); setItems((prev) => prev.filter((p) => p.id !== id)); setActive(null); setOtp(""); router.refresh(); }
-    setBusy(false);
+    try {
+      const res = await fetch(`/api/gate/deliveries/${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ otp, action: "deliver" }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Could not verify");
+      toast.success("Parcel handed over");
+      setItems((prev) => prev.filter((p) => p.id !== id));
+      setActive(null);
+      setOtp("");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not verify");
+    } finally {
+      setBusy(false);
+    }
   }
   return (
     <div className="space-y-2">
@@ -379,6 +403,7 @@ export function GateDeliveries({ deliveries }: { deliveries: { id: string; compa
 export function GatePanic({ alerts }: { alerts: { id: string; message: string; unit: string | null; user: string | null; status: string; createdAt: string }[] }) {
   const router = useRouter();
   const [items, setItems] = useState(alerts);
+  useEffect(() => { setItems(alerts); }, [alerts]);
   async function act(id: string, action: "acknowledge" | "resolve") {
     const res = await fetch("/api/gate/panic", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, action }) });
     if (!res.ok) return toast.error("Could not update alert");
@@ -393,5 +418,5 @@ export function GatePanic({ alerts }: { alerts: { id: string; message: string; u
 export function GateExitButton({ id }: { id: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  return <button onClick={async () => { setBusy(true); await fetch(`/api/gate/visitors/${id}/exit`, { method: "POST" }); toast.success("Exit recorded"); router.refresh(); setBusy(false); }} disabled={busy} className="rounded-full bg-canvas px-2 py-1 text-caption font-semibold text-ink-soft">{busy ? "…" : "Record exit"}</button>;
+  return <button onClick={async () => { setBusy(true); try { const res = await fetch(`/api/gate/visitors/${id}/exit`, { method: "POST" }); const data = await res.json().catch(() => ({})); if (!res.ok) throw new Error(data.error ?? "Could not record exit"); toast.success("Exit recorded"); router.refresh(); } catch (error) { toast.error(error instanceof Error ? error.message : "Could not record exit"); } finally { setBusy(false); } }} disabled={busy} className="rounded-full bg-canvas px-2 py-1 text-caption font-semibold text-ink-soft">{busy ? "…" : "Record exit"}</button>;
 }

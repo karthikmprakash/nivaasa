@@ -52,6 +52,7 @@ export async function destroyCurrentSession() {
     await db.delete(sessions).where(eq(sessions.tokenHash, hashToken(token)));
   }
   store.delete(SESSION_COOKIE);
+  store.delete("nivaasa_society");
 }
 
 async function resolveToken(): Promise<string | null> {

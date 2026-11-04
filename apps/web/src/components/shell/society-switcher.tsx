@@ -5,7 +5,7 @@ import { useTransition } from "react";
 import { Building2, Check, ChevronDown, House, Loader2 } from "lucide-react";
 import { Dropdown, DropdownItem, DropdownLabel } from "@/components/ui/client";
 import { switchSocietyAction } from "@/lib/actions/societies";
-import type { SocietyOption } from "@/lib/society-access";
+import { stableSwitchPath, type SocietyOption } from "@/lib/society-access";
 import { cn } from "@/lib/utils";
 
 type SocietySwitcherProps = {
@@ -26,7 +26,7 @@ export function SocietySwitcher({ societies = [], currentId = "", context, varia
   function selectSociety(society: SocietyOption) {
     if (society.id === current.id || pending) return;
     startTransition(() => {
-      void switchSocietyAction(society.slug, pathname);
+      void switchSocietyAction(society.slug, stableSwitchPath(pathname));
     });
   }
 

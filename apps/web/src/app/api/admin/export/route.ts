@@ -3,7 +3,11 @@ import { db } from "@/db";
 import { helpdeskTickets, invoices, memberships, payments, towers, units, users, visitors } from "@/db/schema";
 import { getSession, isAdminRole } from "@/lib/auth";
 
-function esc(v: unknown) { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }
+function esc(v: unknown) {
+  let s = String(v ?? "");
+  if (/^[=+\-@]/.test(s)) s = `'${s}`;
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
 function csv(rows: unknown[][]) { return rows.map((r) => r.map(esc).join(",")).join("\n"); }
 
 export async function GET(req: Request) {

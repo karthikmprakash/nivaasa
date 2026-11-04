@@ -6,8 +6,9 @@ import { avatarForeground, cn, formatDate, formatTime } from "./utils";
 import { adminNavigation, isNavigationActive, navigationTitle, residentNavigation } from "../components/shell/navigation";
 import { Field, Input } from "../components/ui/field";
 import { validatePassRequest } from "./visitor-pass-rules";
-import { isSafeInternalPath, resolveSwitchPath, societyHomePath } from "./society-access";
+import { isSafeInternalPath, resolveSwitchPath, societyHomePath, stableSwitchPath } from "./society-access";
 import { canViewNoticeAudience, canVoteInPollAudience, pollIsOpen } from "./community-access";
+import { communityDayEnd, communityDayStart, communityMonthKey, parseCommunityDateTime } from "./datetime";
 
 test("semantic font sizes preserve button foreground colors", () => {
   assert.match(cn("bg-brand-600 text-white", "text-body"), /text-white/);
@@ -61,6 +62,17 @@ test("society switching only keeps destinations the new role can use", () => {
   assert.equal(resolveSwitchPath({ role: "admin", next: "/admin/../portfolio" }), "/admin");
 });
 
+test("society switching keeps the section but drops cross-society detail IDs", () => {
+  assert.equal(stableSwitchPath("/admin/residents"), "/admin/residents");
+  assert.equal(stableSwitchPath("/admin/residents/abc-123"), "/admin/residents");
+  assert.equal(stableSwitchPath("/admin/helpdesk/abc-123"), "/admin/helpdesk");
+  assert.equal(stableSwitchPath("/app/helpdesk/abc-123"), "/app/helpdesk");
+  assert.equal(stableSwitchPath("/app/community/notices/abc-123"), "/app/community");
+  assert.equal(stableSwitchPath("/app/community/discussions/abc-123"), "/app/community");
+  assert.equal(stableSwitchPath("/app/payments/receipts/abc-123"), "/app/payments");
+  assert.equal(stableSwitchPath("/app/visitors/new"), "/app/visitors/new");
+});
+
 test("society home paths follow the membership role", () => {
   assert.equal(societyHomePath({ role: "owner", hasUnit: true }), "/app");
   assert.equal(societyHomePath({ role: "manager" }), "/admin");
@@ -84,6 +96,9 @@ test("notice and poll audiences respect the resident role", () => {
   assert.equal(canViewNoticeAudience("owner", "tenants"), false);
   assert.equal(canViewNoticeAudience("family", "tenants"), true);
   assert.equal(canViewNoticeAudience("owner", "all"), true);
+  assert.equal(canViewNoticeAudience("owner", "tower", "tower-a", "tower-a"), true);
+  assert.equal(canViewNoticeAudience("owner", "tower", "tower-a", "tower-b"), false);
+  assert.equal(canViewNoticeAudience("owner", "tower", null, "tower-a"), false);
   assert.equal(canVoteInPollAudience("owner", "owners"), true);
   assert.equal(canVoteInPollAudience("tenant", "owners"), false);
   assert.equal(canVoteInPollAudience("tenant", "tenants"), true);
@@ -95,6 +110,16 @@ test("polls close at the end of their configured day", () => {
   assert.equal(pollIsOpen("active", "2026-11-03T18:29:59.999Z", new Date("2026-11-04T10:00:00Z")), false);
   assert.equal(pollIsOpen("active", "2026-11-05T18:29:59.999Z", new Date("2026-11-04T10:00:00Z")), true);
   assert.equal(pollIsOpen("closed", "2026-11-05T18:29:59.999Z", new Date("2026-11-04T10:00:00Z")), false);
+});
+
+test("community datetime values are parsed as Asia/Kolkata, not the server time zone", () => {
+  assert.equal(parseCommunityDateTime("2026-12-20T19:00")?.toISOString(), "2026-12-20T13:30:00.000Z");
+  assert.equal(parseCommunityDateTime("2026-12-20T19:00:00")?.toISOString(), "2026-12-20T13:30:00.000Z");
+  assert.equal(communityDayEnd("2026-12-20")?.toISOString(), "2026-12-20T18:29:59.999Z");
+  assert.equal(communityMonthKey(new Date("2026-11-30T19:00:00Z")), "2026-12");
+  assert.equal(communityDayStart("2026-02-31"), null);
+  assert.equal(communityDayStart("2026-13-01"), null);
+  assert.equal(communityDayEnd("2026-04-31"), null);
 });
 
 test("resident and guard dates use the community time zone across midnight", () => {

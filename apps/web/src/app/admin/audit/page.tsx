@@ -2,7 +2,7 @@ import Link from "next/link";
 import { and, desc, eq, like, or } from "drizzle-orm";
 import { ArrowDownToLine, FileClock, Filter, Search, ShieldCheck } from "lucide-react";
 import { Avatar, Badge, Card, EmptyState, PageHeader, Stat } from "@/components/ui/primitives";
-import { requireAdmin } from "@/lib/queries";
+import { requireAdminRole } from "@/lib/queries";
 import { db } from "@/db";
 import { auditLogs, users } from "@/db/schema";
 import { formatDateTime } from "@/lib/utils";
@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 const actionTone = (action: string) => action.includes("payment") ? "success" : action.includes("visitor") || action.includes("panic") ? "pink" : action.includes("invoice") || action.includes("expense") ? "blue" : action.includes("helpdesk") ? "warning" : "neutral";
 
 export default async function AuditPage({ searchParams }: { searchParams: Promise<{ q?: string; entity?: string }> }) {
-  const ctx = await requireAdmin();
+  const ctx = await requireAdminRole(["admin", "manager", "auditor"]);
   const params = await searchParams;
   const q = params.q ?? "";
   const entity = params.entity ?? "all";

@@ -3,13 +3,14 @@ import { and, count, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { discussions, helpdeskTickets, invoices, memberships, moveRequests, payments, units, users, visitors } from "@/db/schema";
 import { getSession } from "@/lib/auth";
+import { communityMonthStart } from "@/lib/datetime";
 
 export async function GET() {
   const session = await getSession();
   if (!session?.membership || !session.society) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!["admin", "manager", "committee", "accountant", "helpdesk_manager", "security_manager", "auditor"].includes(session.membership.role) && session.user.globalRole !== "super_admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const societyId = session.society.id;
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const monthStart = communityMonthStart();
   const [collected, outstanding, tickets, visitorCount, unitsCount, pendingPayments, pendingDiscussions, moves] = await Promise.all([
     db.select({ total: sql<number>`coalesce(sum(${payments.amount}),0)` }).from(payments).where(and(eq(payments.societyId, societyId), eq(payments.status, "success"), gte(payments.paidAt, monthStart))),
     db.select({ total: sql<number>`coalesce(sum(${invoices.total} - ${invoices.amountPaid}),0)`, c: count() }).from(invoices).where(and(eq(invoices.societyId, societyId), inArray(invoices.status, ["due", "overdue", "partially_paid"]))),
