@@ -27,14 +27,14 @@ docker-compose.dokploy.yml
 If you prefer not to connect the repo, paste that file into the compose editor. Set:
 
 ```env
-NIVAASA_IMAGE=ghcr.io/karthikmprakash/nivaasa:1.0.3
+NIVAASA_IMAGE=ghcr.io/karthikmprakash/nivaasa:1.0.4
 NEXT_PUBLIC_APP_URL=https://nivaasa.karthikmprakash.online
 CORS_ORIGIN=https://nivaasa.karthikmprakash.online
 NEXT_PUBLIC_DEMO_MODE=true
 SEED_DEMO=true
 ```
 
-Use `latest` instead of `1.0.3` only if you want every redeploy to pull the newest main build.
+Use `latest` instead of `1.0.4` only if you want every redeploy to pull the newest main build.
 
 ### Real deployment instead of the demo
 
@@ -79,7 +79,7 @@ The first boot copies nothing and runs `drizzle-kit push`; if the database is ne
 
 ## 6. Updates
 
-1. Push a tag (for example `v1.0.3`); GitHub Actions publishes `ghcr.io/karthikmprakash/nivaasa:1.0.3`.
+1. Push a tag (for example `v1.0.4`); GitHub Actions publishes `ghcr.io/karthikmprakash/nivaasa:1.0.4`.
 2. In Dokploy, change `NIVAASA_IMAGE` to the new tag (or keep `latest`).
 3. Redeploy. The database and uploads volumes survive.
 

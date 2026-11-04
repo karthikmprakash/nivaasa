@@ -1,7 +1,7 @@
 {
   "name": "my-community",
   "private": true,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "MyCommunity — open-source community operating system for gated societies",
   "license": "MIT",
   "workspaces": [
