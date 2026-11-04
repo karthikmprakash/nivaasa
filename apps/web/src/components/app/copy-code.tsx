@@ -4,16 +4,17 @@ import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 
-export function CopyCode({ code, className }: { code: string; className?: string }) {
+export function CopyCode({ code, className, label = "Pickup code" }: { code: string; className?: string; label?: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
       type="button"
+      aria-label={copied ? `${label} copied` : `Copy ${label.toLowerCase()}`}
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(code);
           setCopied(true);
-          toast.success("Pickup code copied");
+          toast.success(`${label} copied`);
           setTimeout(() => setCopied(false), 2000);
         } catch {
           toast.error("Could not copy — note it down instead.");

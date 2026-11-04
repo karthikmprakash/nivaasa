@@ -68,14 +68,32 @@ export async function inviteTeamMember(_prev: SocietyState, formData: FormData):
   const role = String(formData.get("role") ?? "committee") as "admin" | "committee" | "manager" | "accountant" | "helpdesk_manager" | "security_manager" | "auditor";
   if (!name || !email || !phone) return { error: "Name, email and phone are required." };
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: "Enter a valid email." };
-  const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
-  if (existing) return { error: "A user with this email already exists." };
-  const tempPassword = `Nv-${randomBytes(4).toString("hex")}`;
-  const userId = crypto.randomUUID();
+
+  // Existing Nivaasa accounts can join another society's team without a
+  // duplicate account. Only a second membership in *this* society is rejected.
+  const [existing] = await db.select({ id: users.id, name: users.name }).from(users).where(eq(users.email, email)).limit(1);
+  if (existing) {
+    const [alreadyHere] = await db.select({ id: memberships.id, status: memberships.status }).from(memberships).where(and(eq(memberships.userId, existing.id), eq(memberships.societyId, ctx.society.id))).limit(1);
+    if (alreadyHere) return { error: alreadyHere.status === "active" ? "This person is already on the team." : "This person already has a membership record here. Update that record instead of adding a duplicate." };
+  }
+  const [otherMembership] = existing ? await db.select({ id: memberships.id }).from(memberships).where(eq(memberships.userId, existing.id)).limit(1) : [];
+  const isPrimary = !existing || !otherMembership;
+
+  const tempPassword = existing ? null : `Nv-${randomBytes(4).toString("hex")}`;
+  const userId = existing?.id ?? crypto.randomUUID();
+  const displayName = existing?.name ?? name;
   const now = new Date();
-  await db.insert(users).values({ id: userId, name, email, phone, passwordHash: hashPassword(tempPassword), avatarColor: "#3155d8", createdAt: now });
-  await db.insert(memberships).values({ id: crypto.randomUUID(), userId, societyId: ctx.society.id, unitId: null, role, designation: role.replace("_", " "), status: "active", isPrimary: true, joinedAt: now });
-  await db.insert(auditLogs).values({ id: crypto.randomUUID(), societyId: ctx.society.id, actorId: ctx.user.id, actorName: ctx.user.name, action: "team.member.invited", entity: "membership", entityId: userId, metadata: { name, role }, createdAt: now });
+  if (!existing) {
+    await db.insert(users).values({ id: userId, name, email, phone, passwordHash: hashPassword(tempPassword!), avatarColor: "#3155d8", createdAt: now });
+  }
+  await db.insert(memberships).values({ id: crypto.randomUUID(), userId, societyId: ctx.society.id, unitId: null, role, designation: role.replace("_", " "), status: "active", isPrimary, joinedAt: now });
+  await db.insert(auditLogs).values({ id: crypto.randomUUID(), societyId: ctx.society.id, actorId: ctx.user.id, actorName: ctx.user.name, action: existing ? "team.member.linked" : "team.member.invited", entity: "membership", entityId: userId, metadata: { name: displayName, role }, createdAt: now });
   revalidatePath("/admin/settings");
-  return { ok: true, message: `${name} added to the team.`, tempPassword };
+  return {
+    ok: true,
+    message: existing
+      ? `${displayName} now has access to this society's console with their existing Nivaasa account.`
+      : `${displayName} added to the team.`,
+    tempPassword: tempPassword ?? undefined,
+  };
 }

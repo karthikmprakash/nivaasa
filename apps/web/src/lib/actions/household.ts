@@ -4,9 +4,10 @@ import { revalidatePath } from "next/cache";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
-  auditLogs, familyMembers, memberships, moveRequests, notifications, pets, staff, units, users, vehicles,
+  auditLogs, dailyHelpReviews, familyMembers, memberships, moveRequests, notifications, pets, staff, units, users, vehicles,
 } from "@/db/schema";
 import { requireResident } from "@/lib/queries";
+import { phoneKey, validVisitorPhone } from "@/lib/visitor-pass-rules";
 
 export type HouseholdState = { error?: string; ok?: boolean; message?: string };
 
@@ -106,16 +107,23 @@ export async function addDailyHelp(_prev: HouseholdState, formData: FormData): P
   const name = String(formData.get("name") ?? "").trim();
   const role = String(formData.get("role") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
-  const idLast4 = String(formData.get("idLast4") ?? "").trim().slice(-4);
   const shift = String(formData.get("shift") ?? "").trim();
-  if (!name || !role) return { error: "Name and role are required." };
-  if (phone && !/^[+\d][\d\s-]{6,}$/.test(phone)) return { error: "Enter a valid phone number." };
+  if (!name || name.length > 80 || !role || role.length > 80) return { error: "Enter a name and role, up to 80 characters each." };
+  if (!validVisitorPhone(phone)) return { error: "Enter the phone number they will give at the gate." };
   const id = crypto.randomUUID();
-  await db.insert(staff).values({
+  const registered = db.transaction((tx) => {
+    const existing = tx.select({ phone: staff.phone }).from(staff).where(and(
+      eq(staff.unitId, ctx.unit.id), eq(staff.societyId, ctx.society.id), eq(staff.active, true), eq(staff.kind, "daily_help"),
+    )).all();
+    if (existing.some((person) => phoneKey(person.phone) === phoneKey(phone))) return false;
+    tx.insert(staff).values({
     id, societyId: ctx.society.id, unitId: ctx.unit.id, name, kind: "daily_help", role, phone,
-    idType: "Aadhaar", idLast4: idLast4 || null, photoColor: "#c2547e", shift: shift || "Flexible",
-    rating: 4.5, policeVerified: false, active: true, monthlyRate: Math.round(Number(formData.get("monthlyRate") ?? 0) * 100) || null, joinedAt: new Date(),
-  });
+    photoColor: "#c2547e", shift: shift || "Flexible",
+    rating: null, policeVerified: false, active: true, monthlyRate: Math.round(Number(formData.get("monthlyRate") ?? 0) * 100) || null, joinedAt: new Date(),
+    }).run();
+    return true;
+  }, { behavior: "immediate" });
+  if (!registered) return { error: "That phone number is already registered for daily help at your home." };
   const guards = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, ctx.society.id), inArray(memberships.role, ["guard", "security_manager"])));
   if (guards.length) {
     await db.insert(notifications).values(guards.map((g) => ({ id: crypto.randomUUID(), userId: g.userId, societyId: ctx.society.id, title: "New daily help added", body: `${ctx.user.name} added ${name} (${role}) for Home ${ctx.unit.number}. Verification pending.`, type: "security" as const, link: "/gate", createdAt: new Date() })));
@@ -130,8 +138,32 @@ export async function addDailyHelp(_prev: HouseholdState, formData: FormData): P
 export async function removeDailyHelp(formData: FormData) {
   const ctx = await requireResident();
   const id = String(formData.get("id") ?? "");
-  await db.update(staff).set({ active: false }).where(and(eq(staff.id, id), eq(staff.unitId, ctx.unit.id)));
+  await db.update(staff).set({ active: false }).where(and(eq(staff.id, id), eq(staff.unitId, ctx.unit.id), eq(staff.societyId, ctx.society.id), eq(staff.kind, "daily_help")));
   revalidatePath("/app/my-home");
+  revalidatePath("/gate");
+  revalidatePath("/app/directory");
+}
+
+export async function reviewDailyHelp(_prev: HouseholdState, formData: FormData): Promise<HouseholdState> {
+  const ctx = await requireResident();
+  const staffId = String(formData.get("staffId") ?? "");
+  const rating = Number(formData.get("rating"));
+  const review = String(formData.get("review") ?? "").trim();
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5 || review.length > 500) return { error: "Choose 1–5 stars and keep your review within 500 characters." };
+  const saved = db.transaction((tx) => {
+    const person = tx.select({ id: staff.id }).from(staff).where(and(
+      eq(staff.id, staffId), eq(staff.unitId, ctx.unit.id), eq(staff.societyId, ctx.society.id),
+      eq(staff.kind, "daily_help"), eq(staff.active, true), eq(staff.policeVerified, true),
+    )).get();
+    if (!person) return false;
+    const updatedAt = new Date();
+    tx.insert(dailyHelpReviews).values({ id: crypto.randomUUID(), staffId, reviewerId: ctx.user.id, rating, review: review || null, updatedAt })
+      .onConflictDoUpdate({ target: [dailyHelpReviews.staffId, dailyHelpReviews.reviewerId], set: { rating, review: review || null, updatedAt } }).run();
+    return true;
+  }, { behavior: "immediate" });
+  if (!saved) return { error: "You can review verified daily help registered to your home." };
+  revalidatePath("/app/my-home");
+  return { ok: true, message: "Private review saved." };
 }
 
 export async function createMoveRequest(_prev: HouseholdState, formData: FormData): Promise<HouseholdState> {

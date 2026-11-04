@@ -23,7 +23,7 @@ export default async function DeliveriesPage() {
 
   return (
     <div>
-      <PageHeader eyebrow="Gate & security" title="Deliveries" description="Everything headed to your door — food, parcels and courier — with a clear handover record." actions={<Link href="/app/visitors/new" className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-control bg-brand-600 px-4 text-body font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 sm:w-auto"><Package aria-hidden="true" className="size-4" /> <span>Pre-approve delivery</span></Link>} />
+      <PageHeader eyebrow="Gate & security" title="Deliveries" description="Everything headed to your door — food, parcels and courier — with a clear handover record." actions={<Link href="/app/visitors/new?type=delivery" className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-control bg-brand-600 px-4 text-body font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 sm:w-auto"><Package aria-hidden="true" className="size-4" /> <span>Pre-approve delivery</span></Link>} />
       <div className="mt-5 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         <Stat label="At the gate" value={active.filter((d) => d.status === "arrived").length} hint="Awaiting your response" tone="pink" icon={<Clock3 className="size-4" />} />
         <Stat label="Kept at gate" value={active.filter((d) => d.status === "left_at_gate").length} hint="Collect with your code" tone="amber" icon={<PackageOpen className="size-4" />} />
@@ -91,7 +91,7 @@ export default async function DeliveriesPage() {
           <div className="rounded-[20px] bg-gradient-to-br from-brand-50 to-blush-50 p-5">
             <p className="text-body font-semibold text-ink">Pre-approve your regulars</p>
             <p className="mt-1.5 text-caption leading-relaxed text-ink-soft">Milk, newspapers, laundry or that late-night biryani — create a recurring pass and skip the calls every time.</p>
-            <Link href="/app/visitors/new" className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-2 text-caption font-semibold text-brand-700 shadow-sm">Create a pass</Link>
+            <Link href="/app/visitors/new?type=delivery" className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-2 text-caption font-semibold text-brand-700 shadow-sm">Create a pass</Link>
           </div>
         </aside>
       </div>

@@ -4,6 +4,9 @@
   "openComps": [
     3
   ],
+  "compTimes": {
+    "3": 127008000000
+  },
   "schema": 2,
   "settings": {
     "bit_depth": "Bpc8",
@@ -8495,5 +8498,80 @@
       }
     }
   },
-  "next_id": 239
+  "next_id": 239,
+  "render_queue": [
+    {
+      "id": 1,
+      "comp": 3,
+      "render": true,
+      "status": "Done",
+      "settings": {
+        "name": "Custom",
+        "quality": "Best",
+        "resolution": 1.0,
+        "time_span": {
+          "kind": "LengthOfComp"
+        },
+        "frame_rate": null,
+        "motion_blur": true,
+        "motion_blur_mode": "OnForChecked",
+        "frame_blending": "OnForChecked",
+        "field_render": "Off",
+        "pulldown": "Off",
+        "effects": "Current",
+        "solo": "Current",
+        "guide_layers": "AllOff",
+        "color_depth": "Current",
+        "skip_existing": false,
+        "proxy_use": "UseNone",
+        "storage_overflow": true
+      },
+      "output": {
+        "name": "Custom",
+        "format": "PngSequence",
+        "channels": "Rgba",
+        "alpha_mode": "Straight",
+        "output": "/Users/karthikmprakash/Documents/Personal/Projects/my-community/brand/animations/frames/blue-mark-write/frame-[#####].png",
+        "quality": 90,
+        "bitrate_kbps": 10000,
+        "webm_bitrate": false,
+        "keyframe_interval": 0,
+        "prores_profile": "Hq",
+        "crop": {
+          "enabled": false,
+          "use_roi": false,
+          "roi": null,
+          "top": 0,
+          "left": 0,
+          "bottom": 0,
+          "right": 0
+        },
+        "resize": {
+          "enabled": false,
+          "width": 1920,
+          "height": 1080,
+          "lock_aspect": true,
+          "quality": "High"
+        },
+        "audio": "Auto",
+        "audio_sample_rate": 48000,
+        "audio_channels": 2,
+        "audio_format": "S16",
+        "gif_loop": true,
+        "codec": {
+          "profile": "Main",
+          "level": null,
+          "rate_control": "Bitrate",
+          "quality": 70
+        },
+        "webm_codec": "Vp9",
+        "opus_bitrate_kbps": 192,
+        "opus_application": "Audio",
+        "include_project_link": true
+      },
+      "started": 1793742291,
+      "render_time": 2.789006666,
+      "last_output": "/Users/karthikmprakash/Documents/Personal/Projects/my-community/brand/animations/frames/blue-mark-write/frame-00000.png"
+    }
+  ]
 }

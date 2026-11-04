@@ -7,6 +7,7 @@ import {
   UserRoundPlus, Users, XCircle, Package, RefreshCcw, History,
 } from "lucide-react";
 import { Avatar, Badge, Card, EmptyState, PageHeader, Stat } from "@/components/ui/primitives";
+import { CopyCode } from "@/components/app/copy-code";
 import { VisitorApprovalCard } from "@/components/app/visitor-approval-card";
 import { requireResident } from "@/lib/queries";
 import { db } from "@/db";
@@ -24,17 +25,18 @@ const tabs = [
   { value: "history", label: "History" },
 ];
 
-export default async function VisitorsPage({ searchParams }: { searchParams: Promise<{ tab?: string; created?: string; name?: string }> }) {
+export default async function VisitorsPage({ searchParams }: { searchParams: Promise<{ tab?: string; created?: string }> }) {
   const ctx = await requireResident();
   const params = await searchParams;
   const tab = params.tab ?? "pending";
   const now = new Date();
-  const all = await db.select().from(visitors).where(eq(visitors.unitId, ctx.unit.id)).orderBy(desc(visitors.createdAt));
+  const all = await db.select().from(visitors).where(and(eq(visitors.unitId, ctx.unit.id), eq(visitors.societyId, ctx.society.id))).orderBy(desc(visitors.createdAt));
   const pending = all.filter((v) => v.status === "pending");
   const upcoming = all.filter((v) => v.preApproved && ["approved", "pending"].includes(v.status) && (!v.validTo || v.validTo >= now));
+  const created = upcoming.find((pass) => pass.id === params.created);
   const history = all.filter((v) => ["entered", "exited", "denied", "expired"].includes(v.status) || (v.validTo && v.validTo < now));
   const entriesThisMonth = all.filter((v) => v.enteredAt && v.enteredAt.getMonth() === now.getMonth() && v.enteredAt.getFullYear() === now.getFullYear()).length;
-  const dailyHelp = await db.select({ attendance: staffAttendance, person: staff }).from(staffAttendance).innerJoin(staff, eq(staffAttendance.staffId, staff.id)).where(and(eq(staffAttendance.unitId, ctx.unit.id), eq(staffAttendance.date, todayISO())));
+  const dailyHelp = await db.select({ attendance: staffAttendance, person: staff }).from(staffAttendance).innerJoin(staff, eq(staffAttendance.staffId, staff.id)).where(and(eq(staffAttendance.unitId, ctx.unit.id), eq(staffAttendance.date, todayISO()), eq(staff.kind, "daily_help"), eq(staff.active, true)));
 
   return (
     <div>
@@ -45,23 +47,18 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
         actions={<Link href="/app/visitors/new" className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-control bg-brand-600 px-4 text-body font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 sm:w-auto"><UserRoundPlus aria-hidden="true" className="size-4" /> <span>Pre-approve</span></Link>}
       />
 
-      {params.created ? (
-        <div className="mt-5 overflow-hidden rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-50 via-white to-blush-50 p-4 sm:p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-mint-50 text-mint-600"><CheckCircle2 className="size-5" /></span>
-              <div>
-                <p className="text-body font-semibold text-ink">Pass created for {params.name ?? "your visitor"}</p>
-                <p className="mt-0.5 text-caption text-ink-soft">Share this 6-digit code with them. The guard will verify it at the gate.</p>
-              </div>
+      {created?.code ? (
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-panel border border-brand-200 bg-gradient-to-r from-brand-50 via-white to-blush-50 p-4 sm:p-5">
+          <div className="flex min-w-0 items-start gap-3">
+            <CheckCircle2 aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-mint-600" />
+            <div>
+              <p className="break-words text-section font-semibold text-ink">{created.recurringCab ? "Daily cab pass ready" : `Pass ready for ${created.name}`}</p>
+              <p className="mt-1 text-caption text-ink-soft">{created.recurringCab ? "Share this code for one pickup each day in your date range." : "Share this code with your visitor for one entry."}</p>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="rounded-xl border border-brand-200 bg-white px-4 py-2.5 text-center">
-                <p className="text-caption font-bold uppercase tracking-[0.14em] text-muted">Entry code</p>
-                <p className="mt-0.5 font-mono text-[19px] font-bold tracking-[0.2em] text-brand-700">{params.created}</p>
-              </div>
-              <Link href="/app/visitors?tab=upcoming" className="rounded-full bg-brand-600 px-4 py-2.5 text-caption font-semibold text-white">View pass</Link>
-            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="font-mono text-xl font-bold tracking-[0.15em] text-brand-700">{created.code}</p>
+            <CopyCode code={created.code} label="Entry code" />
           </div>
         </div>
       ) : null}
@@ -96,15 +93,15 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
                     <Avatar name={v.name} color={v.photoColor} size="md" />
                     <div><p className="text-body font-semibold text-ink">{v.name}</p><p className="text-caption text-muted">{v.company ? `${v.company} · ` : ""}{v.purpose ?? v.type.replace("_", " ")}</p></div>
                   </div>
-                  <Badge variant={v.leaveAtGate ? "warning" : "success"}>{v.leaveAtGate ? "Leave at gate" : "Pre-approved"}</Badge>
+                  <Badge variant={v.leaveAtGate ? "warning" : "success"}>{v.recurringCab ? "Daily pickup" : v.leaveAtGate ? "Leave at gate" : "Pre-approved"}</Badge>
                 </div>
-                <div className="mt-3 flex items-center gap-2 rounded-xl bg-canvas px-3 py-2">
+                <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-canvas px-3 py-2">
                   <KeyRound className="size-4 text-brand-600" />
                   <div className="flex-1"><p className="text-caption font-semibold uppercase tracking-wide text-muted">Entry code</p><p className="font-mono text-base font-bold tracking-[0.18em] text-ink">{v.code}</p></div>
-                  <div className="text-right"><p className="text-caption font-semibold uppercase tracking-wide text-muted">Valid</p><p className="text-caption font-semibold text-ink">{formatDate(v.validFrom)} – {formatDate(v.validTo)}</p></div>
+                  <div className="text-right"><p className="text-caption font-semibold uppercase tracking-wide text-muted">Valid</p><p className="text-caption font-semibold text-ink">{formatDate(v.validFrom) === formatDate(v.validTo) ? formatDate(v.validFrom) : `${formatDate(v.validFrom)} – ${formatDate(v.validTo)}`}</p></div>
                 </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <p className="flex items-center gap-1 text-caption text-muted"><CalendarDays className="size-4" /> Created {timeAgo(v.createdAt)}</p>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                  {v.code ? <CopyCode code={v.code} label="Entry code" /> : <p className="text-caption text-muted">Created {timeAgo(v.createdAt)}</p>}
                   <form action={cancelPreApproval}><input type="hidden" name="visitorId" value={v.id} /><button className="rounded-lg px-2.5 py-1.5 text-caption font-semibold text-[#c43d4d] hover:bg-[#fdeced]">Cancel pass</button></form>
                 </div>
               </div>
@@ -126,7 +123,7 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
                     <p className="truncate text-body font-semibold text-ink">{v.name}</p>
                     <p className="text-caption text-muted">{v.company ? `${v.company} · ` : ""}{v.type.replace("_", " ")} · {formatDate(v.createdAt)} {v.enteredAt ? `· in ${formatTime(v.enteredAt)}` : ""}{v.exitedAt ? ` · out ${formatTime(v.exitedAt)}` : ""}</p>
                   </div>
-                  {v.status === "denied" ? <Badge variant="danger">Denied</Badge> : v.status === "expired" ? <Badge variant="neutral">Expired</Badge> : v.status === "entered" ? <Badge variant="pink">Inside</Badge> : <Badge variant="success">Exited</Badge>}
+                  {v.status === "denied" ? <Badge variant="danger">Denied</Badge> : v.status === "expired" || (v.status === "approved" && v.validTo && v.validTo < now) ? <Badge variant="neutral">Expired</Badge> : v.status === "exited" && v.leaveAtGate && !v.enteredAt ? <Badge variant="warning">Left at gate</Badge> : v.status === "entered" ? <Badge variant="pink">Inside</Badge> : <Badge variant="success">Exited</Badge>}
                 </div>
               ))}
             </div>
@@ -146,16 +143,16 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
               <div key={d.attendance.id} className="flex items-center gap-2.5 border-b border-line/60 px-5 py-2.5 last:border-0">
                 <Avatar name={d.person.name} color={d.person.photoColor} size="sm" />
                 <div className="flex-1"><p className="text-caption font-semibold text-ink">{d.person.name}</p><p className="text-caption text-muted">{d.person.role}</p></div>
-                <span className="text-caption font-medium text-mint-600">In at {formatTime(d.attendance.checkInAt)}</span>
+                <span className="text-caption font-medium text-mint-600">{d.attendance.checkOutAt ? `Left at ${formatTime(d.attendance.checkOutAt)}` : `In at ${formatTime(d.attendance.checkInAt)}`}</span>
               </div>
             )) : <p className="px-5 py-5 text-caption text-muted">No one has checked in yet today.</p>}
           </div>
         </Card>
         <Card className="bg-gradient-to-br from-[#fbfcff] to-white">
           <div className="p-5">
-            <div className="flex items-center gap-2"><RefreshCcw className="size-4 text-brand-600" /><p className="text-body font-semibold text-ink">Frequent visitors</p></div>
-            <p className="mt-1 text-caption leading-relaxed text-muted">Add your parents, a regular cab driver or a physiotherapist as a recurring pass so they never wait at the gate.</p>
-            <Link href="/app/visitors/new" className="mt-3 inline-flex items-center gap-1 text-caption font-semibold text-brand-600">Create a recurring pass <ChevronRight className="size-4" /></Link>
+            <div className="flex items-center gap-2"><RefreshCcw className="size-4 text-brand-600" /><p className="text-body font-semibold text-ink">Daily cab pickup</p></div>
+            <p className="mt-1 text-caption leading-relaxed text-muted">Set a date range for a regular pickup. The same code works once per day until the pass ends.</p>
+            <Link href="/app/visitors/new?type=cab&mode=daily" className="mt-3 inline-flex items-center gap-1 text-caption font-semibold text-brand-600">Set up daily pickup <ChevronRight className="size-4" /></Link>
           </div>
         </Card>
       </div>

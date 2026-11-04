@@ -5,6 +5,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { and, eq, gt } from "drizzle-orm";
 import { db } from "@/db";
 import { memberships, sessions, societies, units, users, type Membership, type Society, type Unit, type User } from "@/db/schema";
+import { isAdminRoleValue } from "@/lib/society-access";
 
 export const SESSION_COOKIE = "nivaasa_session";
 const SESSION_DAYS = 7;
@@ -106,7 +107,7 @@ export const getSession = cache(async (): Promise<AuthContext | null> => {
 });
 
 export function isAdminRole(role?: string | null) {
-  return !!role && ["admin", "committee", "manager", "accountant", "helpdesk_manager", "security_manager", "auditor", "super_admin"].includes(role);
+  return isAdminRoleValue(role);
 }
 
 export function isResidentRole(role?: string | null) {

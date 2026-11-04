@@ -5,6 +5,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { avatarForeground, cn, formatDate, formatTime } from "./utils";
 import { adminNavigation, isNavigationActive, navigationTitle, residentNavigation } from "../components/shell/navigation";
 import { Field, Input } from "../components/ui/field";
+import { validatePassRequest } from "./visitor-pass-rules";
+import { isSafeInternalPath, resolveSwitchPath, societyHomePath } from "./society-access";
 
 test("semantic font sizes preserve button foreground colors", () => {
   assert.match(cn("bg-brand-600 text-white", "text-body"), /text-white/);
@@ -48,8 +50,58 @@ test("validation is announced and attached to the failed input", () => {
   assert.match(markup, /role="alert"/);
 });
 
+test("society switching only keeps destinations the new role can use", () => {
+  assert.equal(resolveSwitchPath({ role: "manager", next: "/admin/residents" }), "/admin/residents");
+  assert.equal(resolveSwitchPath({ role: "owner", hasUnit: true, next: "/app/visitors" }), "/app/visitors");
+  assert.equal(resolveSwitchPath({ role: "owner", hasUnit: true, next: "/admin/billing" }), "/app");
+  assert.equal(resolveSwitchPath({ role: "guard", next: "/gate" }), "/gate");
+  assert.equal(resolveSwitchPath({ role: "guard", next: "/admin" }), "/gate");
+  assert.equal(resolveSwitchPath({ role: "owner", hasUnit: true, next: "//evil.example" }), "/app");
+  assert.equal(resolveSwitchPath({ role: "admin", next: "/admin/../portfolio" }), "/admin");
+});
+
+test("society home paths follow the membership role", () => {
+  assert.equal(societyHomePath({ role: "owner", hasUnit: true }), "/app");
+  assert.equal(societyHomePath({ role: "manager" }), "/admin");
+  assert.equal(societyHomePath({ role: "guard" }), "/gate");
+  assert.equal(societyHomePath({ role: "owner", isSuper: true }), "/admin");
+});
+
+test("internal destinations reject absolute URLs and traversal", () => {
+  assert.equal(isSafeInternalPath("/app/visitors"), true);
+  assert.equal(isSafeInternalPath("https://evil.example"), false);
+  assert.equal(isSafeInternalPath("//evil.example"), false);
+  assert.equal(isSafeInternalPath("/app/../admin"), false);
+  assert.equal(isSafeInternalPath("/app/%2e%2e/admin"), false);
+  assert.equal(isSafeInternalPath("/app\\admin"), false);
+});
+
 test("resident and guard dates use the community time zone across midnight", () => {
   const instant = "2026-11-03T20:00:00Z";
   assert.equal(formatDate(instant), "4 Nov 2026");
   assert.equal(formatTime(instant), "1:30 am");
+});
+
+test("guest passes use inclusive community dates and reject impossible or excessive windows", () => {
+  const today = "2026-11-04";
+  const pass = validatePassRequest({ type: "guest", name: "Guest", validFrom: today, validTo: "2026-11-05" }, today).pass;
+  assert.equal(pass?.validFrom.toISOString(), "2026-11-03T18:30:00.000Z");
+  assert.equal(pass?.validTo.toISOString(), "2026-11-05T18:29:59.999Z");
+  assert.ok(validatePassRequest({ type: "guest", name: "Guest", validFrom: "2026-11-31", validTo: "2026-12-01" }, today).fieldErrors?.validFrom);
+  assert.ok(validatePassRequest({ type: "guest", name: "Guest", validFrom: today, validTo: "2026-12-04" }, today).fieldErrors?.validTo);
+});
+
+test("non-guest passes collect identity at the gate and only daily cabs keep a date range", () => {
+  const today = "2026-11-04";
+  const requested = { name: "Unverified driver", phone: "9999999999", validFrom: today, validTo: "2026-11-10", recurringCab: true };
+  const delivery = validatePassRequest({ ...requested, type: "delivery" }, today).pass;
+  const cab = validatePassRequest({ ...requested, type: "cab" }, today).pass;
+  assert.equal(delivery?.name, "Delivery");
+  assert.equal(delivery?.phone, null);
+  assert.equal(delivery?.recurringCab, false);
+  assert.equal(delivery!.validTo.getTime() - delivery!.validFrom.getTime(), 86_400_000 - 1);
+  assert.equal(cab?.name, "Daily cab pickup");
+  assert.equal(cab?.phone, null);
+  assert.equal(cab?.recurringCab, true);
+  assert.ok(cab!.validTo > delivery!.validTo);
 });

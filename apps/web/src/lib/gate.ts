@@ -14,5 +14,5 @@ export async function gateSession() {
 }
 
 export async function residentsOfUnit(unitId: string, societyId: string) {
-  return db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.unitId, unitId), eq(memberships.societyId, societyId), inArray(memberships.role, ["owner", "tenant", "committee", "family"])));
+  return db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.unitId, unitId), eq(memberships.societyId, societyId), eq(memberships.status, "active"), inArray(memberships.role, ["owner", "tenant", "committee", "family"])));
 }

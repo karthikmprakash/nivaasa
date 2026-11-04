@@ -1,10 +1,12 @@
 import "server-only";
+import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { memberships, users } from "@/db/schema";
 import { and, eq as eqOp } from "drizzle-orm";
 import { verifyPassword } from "./password";
 import { createSessionToken, getSession, isAdminRole, isResidentRole } from "./auth";
+import { societyHomePath } from "./society-access";
 
 const attempts = new Map<string, { count: number; resetAt: number }>();
 
@@ -43,20 +45,22 @@ export async function authenticate(email: string, password: string) {
   }
   clearLoginFailures(normalized);
   await db.update(users).set({ lastSeenAt: new Date() }).where(eq(users.id, user.id));
-  const [membership] = await db
+  const activeMemberships = await db
     .select()
     .from(memberships)
     .where(and(eqOp(memberships.userId, user.id), eqOp(memberships.status, "active")))
-    .limit(1);
+    .orderBy(memberships.joinedAt);
+  const store = await cookies();
+  const preferredSociety = store.get("nivaasa_society")?.value;
+  const membership =
+    activeMemberships.find((m) => m.societyId === preferredSociety) ??
+    activeMemberships.find((m) => m.isPrimary) ??
+    activeMemberships[0];
   const session = await createSessionToken(user.id);
   const home =
     user.globalRole === "super_admin"
       ? "/portfolio"
-      : membership?.role === "guard"
-        ? "/gate"
-        : ["admin", "committee", "manager", "accountant", "helpdesk_manager", "security_manager", "auditor"].includes(membership?.role ?? "")
-          ? "/admin"
-          : "/app";
+      : societyHomePath({ role: membership?.role, hasUnit: !!membership?.unitId });
   return { user, membership, home, ...session };
 }
 

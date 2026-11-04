@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -11,14 +11,13 @@ import { Button, Input } from "@/components/ui/primitives";
 import { avatarForeground, cn } from "@/lib/utils";
 
 type Resident = { name: string; phone: string; unit: string; unitId: string; role: string; color: string };
-type Pass = { id: string; name: string; company: string | null; type: string; code: string; unit: string; unitId: string; status: string };
+type Pass = { id: string; name: string; company: string | null; type: string; code: string; unit: string; unitId: string; status: string; notes: string | null; leaveAtGate: boolean };
 type Unit = { id: string; number: string } | null;
 
 const types = [
   { v: "guest", l: "Guest", i: UserRound },
   { v: "delivery", l: "Delivery", i: PackageOpen },
   { v: "cab", l: "Cab", i: Car },
-  { v: "domestic_help", l: "Daily help", i: Users },
   { v: "vendor", l: "Vendor", i: Wrench },
   { v: "other", l: "Other", i: UserRoundCheck },
 ];
@@ -39,29 +38,43 @@ export function GateEntryWizard() {
   const [vehicleNo, setVehicleNo] = useState("");
   const [code, setCode] = useState("");
   const [notes, setNotes] = useState("");
+  const [holdParcel, setHoldParcel] = useState(false);
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState<{ status: string; name: string; unit: string } | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [searchError, setSearchError] = useState(false);
+  const needsIdentity = !code || type !== "guest";
 
   useEffect(() => {
-    if (timer.current) clearTimeout(timer.current);
-    if (query.trim().length < 2) { setResidents([]); setPasses([]); return; }
-    timer.current = setTimeout(async () => {
-      setSearching(true);
+    const controller = new AbortController();
+    const term = query.trim();
+    setSearchError(false);
+    setResidents([]);
+    setPasses([]);
+    setSearching(term.length >= 2);
+    if (term.length < 2) return;
+    const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/gate/search?q=${encodeURIComponent(query.trim())}`);
+        const res = await fetch(`/api/gate/search?q=${encodeURIComponent(term)}`, { signal: controller.signal });
+        if (!res.ok) throw new Error("Search failed");
         const data = await res.json();
-        setResidents(data.residents ?? []);
-        setPasses(data.passes ?? []);
-      } catch { /* ignore */ }
-      finally { setSearching(false); }
+        if (!controller.signal.aborted) {
+          setResidents(data.residents ?? []);
+          setPasses(data.passes ?? []);
+        }
+      } catch {
+        if (!controller.signal.aborted) setSearchError(true);
+      } finally {
+        if (!controller.signal.aborted) setSearching(false);
+      }
     }, 280);
-    return () => { if (timer.current) clearTimeout(timer.current); };
+    return () => { clearTimeout(timer); controller.abort(); };
   }, [query]);
 
   function usePass(p: Pass) {
     setCode(p.code);
-    setName(p.name);
+    setName(p.type === "guest" ? p.name : "");
+    setPhone("");
+    setVehicleNo("");
     setCompany(p.company ?? "");
     setType(p.type);
     setUnit({ id: p.unitId, number: p.unit });
@@ -70,9 +83,12 @@ export function GateEntryWizard() {
     setResidents([]);
     setPasses([]);
     setPurpose("Pre-approved visitor");
+    setNotes(p.notes ?? "");
+    setHoldParcel(p.leaveAtGate);
   }
 
   function selectResident(r: Resident) {
+    if (code) reset();
     setUnit({ id: r.unitId, number: r.unit });
     setHostName(r.name);
     setQuery("");
@@ -80,16 +96,25 @@ export function GateEntryWizard() {
   }
 
   function reset() {
-    setSuccess(null); setUnit(null); setHostName(""); setName(""); setPhone(""); setCompany(""); setPurpose(""); setVehicleNo(""); setCode(""); setNotes(""); setQuery(""); setType("guest");
+    setSuccess(null); setUnit(null); setHostName(""); setName(""); setPhone(""); setCompany(""); setPurpose(""); setVehicleNo(""); setCode(""); setNotes(""); setQuery(""); setType("guest"); setHoldParcel(false);
+  }
+
+  function changeHome() {
+    if (code) {
+      reset();
+      return;
+    }
+    setUnit(null);
+    setHostName("");
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!unit) return toast.error("Choose the resident's home first.");
-    if (!name.trim()) return toast.error("Enter the visitor's name.");
+    if (needsIdentity && !name.trim()) return toast.error("Enter the visitor's name.");
     setBusy(true);
     try {
-      const res = await fetch("/api/gate/entry", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, unitId: unit.id, name, phone, company, purpose, vehicleNo, code: code || undefined, notes }) });
+      const res = await fetch("/api/gate/entry", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, unitId: unit.id, name, phone, company, purpose, vehicleNo: type === "cab" ? vehicleNo : undefined, code: code || undefined, notes }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not log entry");
       setSuccess({ status: data.status, name: data.name, unit: data.unit });
@@ -102,11 +127,11 @@ export function GateEntryWizard() {
   if (success) {
     return (
       <div className="rounded-2xl border border-line bg-white p-5 text-center sm:p-7">
-        <span className={cn("mx-auto grid size-14 place-items-center rounded-full", success.status === "entered" ? "bg-mint-50 text-mint-600" : "bg-amber-soft text-amber-ink")}>
-          {success.status === "entered" ? <CheckCircle2 className="size-7" /> : <Clock3 className="size-7" />}
+        <span className={cn("mx-auto grid size-14 place-items-center rounded-full", success.status !== "pending" ? "bg-mint-50 text-mint-600" : "bg-amber-soft text-amber-ink")}>
+          {success.status !== "pending" ? <CheckCircle2 className="size-7" /> : <Clock3 className="size-7" />}
         </span>
-        <p className="mt-3 text-[17px] font-semibold text-ink">{success.status === "entered" ? "Entry recorded" : "Approval request sent"}</p>
-        <p className="mt-1 text-caption leading-relaxed text-muted">{success.status === "entered" ? `${success.name} is in. Welcome them in.` : `${success.name} is waiting for Home ${success.unit} to approve. You'll see the status in the queue.`}</p>
+        <p className="mt-3 text-[17px] font-semibold text-ink">{success.status === "left_at_gate" ? "Parcel logged for pickup" : success.status === "entered" ? "Entry recorded" : "Approval request sent"}</p>
+        <p className="mt-1 text-caption leading-relaxed text-muted">{success.status === "left_at_gate" ? `Keep the parcel for Home ${success.unit}. The resident can see the pickup code in Deliveries.` : success.status === "entered" ? `${success.name} is in. Welcome them in.` : `${success.name} is waiting for Home ${success.unit} to approve. You'll see the status in the queue.`}</p>
         <div className="mt-5 flex gap-2"><Button variant="outline" className="flex-1" onClick={reset}>Log another</Button><Button className="flex-1" onClick={() => { reset(); router.push("/gate#queue"); }}>View queue</Button></div>
       </div>
     );
@@ -120,7 +145,7 @@ export function GateEntryWizard() {
           <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
           <Input id="resident-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search A-402, Aarav, or paste a passcode…" className="h-11 pl-10" autoComplete="off" />
           {query ? <button type="button" aria-label="Clear resident search" onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted"><X className="size-4" /></button> : null}
-          {query.trim().length >= 2 && (residents.length > 0 || passes.length > 0 || searching || query.trim().length >= 2) ? (
+          {query.trim().length >= 2 ? (
             <div className="absolute left-0 right-0 top-full z-20 mt-1.5 overflow-hidden rounded-2xl border border-line bg-white shadow-lift">
               {searching ? <div className="flex items-center gap-2 px-4 py-3 text-caption text-muted"><Loader2 className="size-4 animate-spin" /> Searching…</div> : null}
               {passes.map((p) => (
@@ -137,39 +162,62 @@ export function GateEntryWizard() {
                   <Check className="size-4 text-brand-500" />
                 </button>
               ))}
-              {!searching && !residents.length && !passes.length ? <div className="px-4 py-3 text-caption text-muted">No resident or pass found.</div> : null}
+              {!searching && !residents.length && !passes.length ? <div role="status" className="px-4 py-3 text-caption text-muted">{searchError ? "Search failed. Clear the search and try again." : "No resident or pass found."}</div> : null}
             </div>
           ) : null}
         </div>
-        {unit ? <div className="mt-2 flex items-center justify-between rounded-xl border border-brand-200 bg-brand-50 px-3 py-2"><div className="flex items-center gap-2"><CheckCircle2 className="size-4 text-brand-600" /><span className="text-caption font-semibold text-brand-800">Home {unit.number} · {hostName}</span>{code ? <span className="rounded-full bg-white px-2 py-0.5 font-mono text-caption font-bold text-brand-700">PASS {code}</span> : null}</div><button type="button" onClick={() => { setUnit(null); setCode(""); }} className="text-caption font-semibold text-brand-600">Change</button></div> : null}
+        {unit ? <div className="mt-2 flex items-center justify-between rounded-xl border border-brand-200 bg-brand-50 px-3 py-2"><div className="flex items-center gap-2"><CheckCircle2 className="size-4 text-brand-600" /><span className="text-caption font-semibold text-brand-800">Home {unit.number} · {hostName}</span>{code ? <span className="rounded-full bg-white px-2 py-0.5 font-mono text-caption font-bold text-brand-700">PASS {code}</span> : null}</div><button type="button" onClick={changeHome} className="text-caption font-semibold text-brand-600">Change</button></div> : null}
       </div>
 
-      <div>
-        <p className="mb-1.5 text-caption font-semibold text-ink-soft">Visitor type</p>
-        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
-          {types.map((t) => <button key={t.v} type="button" aria-pressed={type === t.v} onClick={() => setType(t.v)} className={cn("flex flex-col items-center gap-1 rounded-xl border px-1 py-2", type === t.v ? "border-brand-600 bg-brand-50 ring-2 ring-brand-100" : "border-line bg-white hover:border-brand-200")}><t.i className={cn("size-4", type === t.v ? "text-brand-600" : "text-muted")} /><span className="text-caption font-semibold text-ink-soft">{t.l}</span></button>)}
+      {!code ? (
+        <>
+          <div>
+            <p className="mb-1.5 text-caption font-semibold text-ink-soft">Visitor type</p>
+            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5">
+              {types.map((t) => <button key={t.v} type="button" aria-pressed={type === t.v} onClick={() => setType(t.v)} className={cn("flex flex-col items-center gap-1 rounded-xl border px-1 py-2", type === t.v ? "border-brand-600 bg-brand-50 ring-2 ring-brand-100" : "border-line bg-white hover:border-brand-200")}><t.i className={cn("size-4", type === t.v ? "text-brand-600" : "text-muted")} /><span className="text-caption font-semibold text-ink-soft">{t.l}</span></button>)}
+            </div>
+          </div>
+          <a href="#staff" className="inline-flex min-h-11 items-center gap-1.5 text-caption font-semibold text-brand-700"><Users aria-hidden="true" className="size-4" /> Daily help check-in</a>
+        </>
+      ) : null}
+      {code && (holdParcel || notes) ? (
+        <div className="space-y-1 rounded-control border border-line bg-canvas p-3 text-body text-ink-soft">
+          {holdParcel ? <p className="font-semibold text-ink">Keep this parcel at the gate for pickup.</p> : null}
+          {notes ? <p className="break-words">Gate instructions: {notes}</p> : null}
         </div>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div><label className="mb-1 text-caption font-semibold text-ink-soft">Visitor name <span className="text-blush-500">*</span></label><Input aria-label="Visitor name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Yash Sharma" required className="h-10" /></div>
-        <div><label className="mb-1 text-caption font-semibold text-ink-soft">Phone</label><Input aria-label="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91…" className="h-10" /></div>
-        <div><label className="mb-1 text-caption font-semibold text-ink-soft">{type === "delivery" ? "Company" : type === "cab" ? "Cab service" : "Company / note"}</label><Input aria-label="Company or service" value={company} onChange={(e) => setCompany(e.target.value)} placeholder={type === "delivery" ? "Swiggy, Amazon…" : "Optional"} className="h-10" /></div>
-        <div><label className="mb-1 text-caption font-semibold text-ink-soft">Vehicle number</label><Input aria-label="Vehicle number" value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value)} placeholder="KA 01 AB 1234" className="h-10" /></div>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div><label className="mb-1 text-caption font-semibold text-ink-soft">Purpose</label><Input aria-label="Purpose" value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="Food delivery, family visit…" className="h-10" /></div>
-        <div><label className="mb-1 text-caption font-semibold text-ink-soft">Notes for the log</label><Input aria-label="Notes for the log" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" className="h-10" /></div>
-      </div>
+      ) : null}
+      {needsIdentity ? (
+        <>
+          {code ? <p className="text-body font-medium text-ink">Record the visitor’s details before using the pass.</p> : null}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div><label htmlFor="gate-visitor-name" className="mb-1 block text-caption font-semibold text-ink-soft">Visitor name <span className="text-blush-500">*</span></label><Input id="gate-visitor-name" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Yash Sharma" required className="h-10" /></div>
+            <div><label htmlFor="gate-visitor-phone" className="mb-1 block text-caption font-semibold text-ink-soft">Phone number <span className="text-blush-500">*</span></label><Input id="gate-visitor-phone" type="tel" maxLength={30} required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91…" className="h-10" /></div>
+            {type === "cab" ? (
+              <div className="sm:col-span-2">
+                <label htmlFor="gate-cab-registration" className="mb-1 block text-caption font-semibold text-ink-soft">Cab registration number <span className="text-blush-500">*</span></label>
+                <Input id="gate-cab-registration" value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value)} required maxLength={30} autoCapitalize="characters" placeholder="KA 01 AB 1234" className="h-10" />
+              </div>
+            ) : null}
+          </div>
+          {!code ? <details className="rounded-xl border border-line px-3">
+            <summary className="cursor-pointer py-3 text-body font-medium text-ink-soft">Additional details <span className="font-normal text-muted">(optional)</span></summary>
+            <div className="grid gap-3 pb-3 sm:grid-cols-2">
+              <div><label htmlFor="gate-company" className="mb-1 block text-caption font-semibold text-ink-soft">{type === "cab" ? "Cab service" : "Company"}</label><Input id="gate-company" value={company} onChange={(e) => setCompany(e.target.value)} maxLength={80} className="h-10" /></div>
+              <div><label htmlFor="gate-purpose" className="mb-1 block text-caption font-semibold text-ink-soft">Purpose</label><Input id="gate-purpose" value={purpose} onChange={(e) => setPurpose(e.target.value)} maxLength={160} className="h-10" /></div>
+              <div className="sm:col-span-2"><label htmlFor="gate-notes" className="mb-1 block text-caption font-semibold text-ink-soft">Notes for the log</label><Input id="gate-notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={300} className="h-10" /></div>
+            </div>
+          </details> : null}
+        </>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
-        <p className="flex items-center gap-1.5 text-caption text-muted"><ShieldCheck className="size-4 text-mint-600" /> The resident is notified instantly if approval is needed.</p>
-        <Button type="submit" size="lg" disabled={busy || !unit} className="min-w-40">{busy ? <><Loader2 className="size-4 animate-spin" /> Logging…</> : <><UserRoundCheck className="size-4" /> Log entry</>}</Button>
+        <p className="flex items-center gap-1.5 text-caption text-muted"><ShieldCheck className="size-4 text-mint-600" /> {code ? "Confirm the pass to record this arrival." : "The resident will receive an approval request."}</p>
+        <Button type="submit" size="lg" disabled={busy || !unit} className="min-w-40">{busy ? <><Loader2 className="size-4 animate-spin" /> Logging…</> : <><UserRoundCheck className="size-4" /> {code ? holdParcel ? "Verify and log parcel" : "Verify pass and admit" : "Request approval"}</>}</Button>
       </div>
     </form>
   );
 }
 
-type QueueItem = { id: string; name: string; company: string | null; type: string; unit: string | null; status: string; hostName: string | null; hostPhone: string | null; photoColor: string | null; createdAt: string | Date };
+type QueueItem = { id: string; name: string; company: string | null; type: string; unit: string | null; status: string; hostName: string | null; hostPhone: string | null; photoColor: string | null; createdAt: string | Date; leaveAtGate: boolean };
 
 export function GateQueue({ initial }: { initial: QueueItem[] }) {
   const router = useRouter();
@@ -184,13 +232,21 @@ export function GateQueue({ initial }: { initial: QueueItem[] }) {
   useEffect(() => { const t = setInterval(load, 12000); return () => clearInterval(t); }, []);
   async function enter(id: string) {
     setBusy(id);
-    const res = await fetch(`/api/gate/visitors/${id}/entry`, { method: "POST" });
-    const data = await res.json();
-    if (!res.ok) toast.error(data.error ?? "Could not record entry"); else { toast.success("Entry recorded"); await load(); router.refresh(); }
-    setBusy(null);
+    try {
+      const res = await fetch(`/api/gate/visitors/${id}/entry`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success("Entry recorded");
+      await load();
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not record entry.");
+    } finally {
+      setBusy(null);
+    }
   }
   const pending = items.filter((i) => i.status === "pending");
-  const approved = items.filter((i) => i.status === "approved");
+  const approved = items.filter((i) => i.status === "approved" && !i.leaveAtGate);
   return (
     <div>
       <div className="mb-2 flex items-center justify-between"><span className="text-caption text-muted">Updates every 12s · {updated.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" })}</span><button onClick={load} className="text-caption font-semibold text-brand-600">Refresh</button></div>
@@ -204,22 +260,76 @@ export function GateQueue({ initial }: { initial: QueueItem[] }) {
 export function GateStaff({ people, attendance }: { people: { id: string; name: string; role: string; kind: string; photoColor: string | null; unit: string | null; policeVerified: boolean }[]; attendance: Record<string, { in: boolean; out: boolean }> }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
-  const [data, setData] = useState(attendance);
-  async function mark(id: string, action: "in" | "out") {
-    setBusy(id + action);
-    const res = await fetch("/api/gate/staff", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ staffId: id, action }) });
-    const d = await res.json();
-    if (!res.ok) toast.error(d.error ?? "Could not mark attendance");
-    else { setData((prev) => ({ ...prev, [id]: { in: true, out: action === "out" } })); toast.success(action === "in" ? "Check-in recorded" : "Check-out recorded"); router.refresh(); }
-    setBusy(null);
+  const [phone, setPhone] = useState("");
+  const [matches, setMatches] = useState<string[] | null>(null);
+  const [error, setError] = useState("");
+  const [lookingUp, setLookingUp] = useState(false);
+  const [limit, setLimit] = useState(8);
+  const visible = matches ? people.filter((person) => matches.includes(person.id)) : people.slice(0, limit);
+
+  async function findByPhone(event: React.FormEvent) {
+    event.preventDefault();
+    setLookingUp(true);
+    setError("");
+    try {
+      const res = await fetch("/api/gate/staff", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "lookup", phone }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setMatches(data.ids);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not look up this number.");
+    } finally {
+      setLookingUp(false);
+    }
   }
+
+  async function mark(id: string, action: "in" | "out") {
+    setBusy(id);
+    try {
+      const res = await fetch("/api/gate/staff", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ staffId: id, action }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success(action === "in" ? "Check-in recorded" : "Check-out recorded");
+      router.refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not mark attendance");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div className="space-y-2">
-      {people.slice(0, 8).map((p) => {
-        const a = data[p.id];
-        return <div key={p.id} className="flex items-center gap-2 rounded-xl border border-line bg-white px-3 py-2"><span className="grid size-7 place-items-center rounded-full text-caption font-bold text-white" style={{ background: p.photoColor ?? "#3155d8", color: avatarForeground(p.photoColor ?? "#3155d8") }}>{p.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}</span><div className="min-w-0 flex-1"><p className="truncate text-caption font-semibold text-ink">{p.name}</p><p className="text-caption text-muted">{p.role}{p.unit ? ` · Home ${p.unit}` : ""}</p></div>{a?.out ? <span className="text-caption text-muted">Out</span> : a?.in ? <button onClick={() => mark(p.id, "out")} disabled={busy === p.id + "out"} className="rounded-full bg-canvas px-2 py-1 text-caption font-semibold text-ink-soft">Check out</button> : <button onClick={() => mark(p.id, "in")} disabled={busy === p.id + "in"} className="rounded-full bg-mint-600 px-2 py-1 text-caption font-semibold text-white">Check in</button>}</div>;
+      <form onSubmit={findByPhone} className="mb-3 space-y-1.5">
+        <label htmlFor="daily-help-phone" className="text-body font-medium text-ink">Daily help phone number</label>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input id="daily-help-phone" type="tel" required maxLength={30} value={phone} disabled={lookingUp} onChange={(e) => { setPhone(e.target.value); setMatches(null); setError(""); }} placeholder="Number given at the gate" className="min-w-0 flex-1" />
+          <Button type="submit" variant="outline" disabled={lookingUp}>{lookingUp ? "Finding…" : "Find"}</Button>
+        </div>
+        {error ? <p role="alert" className="text-caption text-[#b83244]">{error}</p> : null}
+        {matches ? <div className="flex flex-wrap items-center justify-between gap-x-2"><p role="status" className="text-caption text-muted">{visible.length ? `${visible.length} matching registration${visible.length === 1 ? "" : "s"}` : "No active registration found. Ask the household to register this number."}</p><button type="button" className="min-h-11 text-caption font-semibold text-brand-700" onClick={() => { setPhone(""); setMatches(null); }}>Clear search</button></div> : null}
+      </form>
+      {visible.map((person) => {
+        const a = attendance[person.id];
+        const needsVerification = person.kind === "daily_help" && !person.policeVerified;
+        return (
+          <div key={person.id} className="flex flex-wrap items-center gap-2 rounded-control border border-line px-3 py-2">
+            <span className="grid size-8 shrink-0 place-items-center rounded-full text-caption font-bold" style={{ background: person.photoColor ?? "#3155d8", color: avatarForeground(person.photoColor ?? "#3155d8") }}>{person.name.split(" ").map((part) => part[0]).join("").slice(0, 2)}</span>
+            <div className="min-w-0 flex-1">
+              <p className="break-words text-body font-semibold text-ink">{person.name}</p>
+              <p className="text-caption text-muted">{person.role}{person.unit ? ` · Home ${person.unit}` : ""}</p>
+              {person.kind === "daily_help" ? <p className={cn("mt-0.5 text-caption font-medium", needsVerification ? "text-amber-ink" : "text-mint-600")}>{needsVerification ? "Verification pending" : "Verified"}</p> : null}
+            </div>
+            {a?.out ? <span className="text-caption font-medium text-muted">Checked out</span> : a?.in ? (
+              <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => mark(person.id, "out")}>Check out</Button>
+            ) : !needsVerification ? (
+              <Button size="sm" disabled={busy !== null} onClick={() => mark(person.id, "in")}>Check in</Button>
+            ) : null}
+          </div>
+        );
       })}
-      {!people.length ? <p className="py-4 text-center text-caption text-muted">No staff on record.</p> : null}
+      {!matches && people.length > limit ? <Button type="button" variant="outline" className="w-full" onClick={() => setLimit(limit + 8)}>Show more staff</Button> : null}
+      {!matches && !people.length ? <p className="py-4 text-center text-caption text-muted">No staff on record.</p> : null}
     </div>
   );
 }

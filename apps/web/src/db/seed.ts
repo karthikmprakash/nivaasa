@@ -217,6 +217,11 @@ async function main() {
   membershipRows.push(
     { id: id(), userId: superId, societyId: vh, unitId: null, role: "admin", designation: "Portfolio Owner", status: "active", isPrimary: true, joinedAt: day(-400) },
     { id: id(), userId: superId, societyId: lv, unitId: null, role: "admin", designation: "Portfolio Owner", status: "active", isPrimary: false, joinedAt: day(-400) },
+    // Multi-society demo memberships: the same account can hold a different
+    // role and home in each community.
+    { id: id(), userId: userIds.get("admin")!, societyId: lv, unitId: null, role: "manager", designation: "Community Manager", status: "active", isPrimary: false, joinedAt: day(-150) },
+    { id: id(), userId: userIds.get("resident")!, societyId: lv, unitId: lvUnits[0].id, role: "owner", status: "active", isPrimary: false, joinedAt: day(-90) },
+    { id: id(), userId: userIds.get("guard")!, societyId: lv, unitId: null, role: "guard", designation: "Security — Gate 1", status: "active", isPrimary: false, joinedAt: day(-150) },
   );
   await db.insert(memberships).values(membershipRows);
   const residentMember = new Map<string, string>();

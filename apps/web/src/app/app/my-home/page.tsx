@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import {
   ArrowRight, BadgeCheck, Building2, Car, CheckCircle2, Clock3, Dog, Home, IdCard, KeyRound,
   MoveRight, PawPrint, Phone, ShieldCheck, Sparkles, UserRound, Users, Wallet,
 } from "lucide-react";
 import { Avatar, Badge, Card, CardHeader, EmptyState, PageHeader, Stat } from "@/components/ui/primitives";
-import { AddFamilyDialog, AddHelpDialog, AddPetDialog, AddVehicleDialog, ContactsForm, MoveRequestDialog } from "@/components/app/household-dialogs";
+import { AddFamilyDialog, AddHelpDialog, AddPetDialog, AddVehicleDialog, ContactsForm, MoveRequestDialog, ReviewHelpDialog } from "@/components/app/household-dialogs";
 import { requireResident } from "@/lib/queries";
 import { db } from "@/db";
-import { familyMembers, moveRequests, pets, staff, staffAttendance, towers, vehicles } from "@/db/schema";
+import { dailyHelpReviews, familyMembers, moveRequests, pets, staff, staffAttendance, towers, users, vehicles } from "@/db/schema";
 import { removeDailyHelp, removeFamilyMember, removePet, removeVehicle } from "@/lib/actions/household";
 import { formatDate, formatTime, todayISO } from "@/lib/utils";
 
@@ -19,17 +19,22 @@ export const dynamic = "force-dynamic";
 
 export default async function MyHomePage() {
   const ctx = await requireResident();
-  const [towerRows, family, vehicleRows, petRows, helpRows, attendance, moves] = await Promise.all([
+  const [towerRows, family, vehicleRows, petRows, helpRows, attendance, moves, reviews] = await Promise.all([
     db.select().from(towers).where(eq(towers.id, ctx.unit.towerId)).limit(1),
     db.select().from(familyMembers).where(eq(familyMembers.membershipId, ctx.membership.id)),
     db.select().from(vehicles).where(eq(vehicles.unitId, ctx.unit.id)),
     db.select().from(pets).where(eq(pets.unitId, ctx.unit.id)),
-    db.select().from(staff).where(and(eq(staff.unitId, ctx.unit.id), eq(staff.active, true))),
-    db.select().from(staffAttendance).where(and(eq(staffAttendance.unitId, ctx.unit.id), eq(staffAttendance.date, todayISO()))),
+    db.select().from(staff).where(and(eq(staff.unitId, ctx.unit.id), eq(staff.societyId, ctx.society.id), eq(staff.kind, "daily_help"), eq(staff.active, true))),
+    db.select().from(staffAttendance).where(and(eq(staffAttendance.unitId, ctx.unit.id), gte(staffAttendance.date, todayISO(-13)))).orderBy(desc(staffAttendance.date)),
     db.select().from(moveRequests).where(eq(moveRequests.unitId, ctx.unit.id)).orderBy(desc(moveRequests.createdAt)),
+    db.select({ review: dailyHelpReviews, author: users.name }).from(dailyHelpReviews)
+      .innerJoin(staff, eq(staff.id, dailyHelpReviews.staffId))
+      .innerJoin(users, eq(users.id, dailyHelpReviews.reviewerId))
+      .where(and(eq(staff.unitId, ctx.unit.id), eq(staff.societyId, ctx.society.id), eq(staff.kind, "daily_help"), eq(staff.active, true)))
+      .orderBy(desc(dailyHelpReviews.updatedAt)),
   ]);
   const tower = towerRows[0];
-  const attendanceBy = new Map(attendance.map((a) => [a.staffId, a]));
+  const today = todayISO();
 
   return (
     <div>
@@ -103,21 +108,49 @@ export default async function MyHomePage() {
             </Card>
           </div>
 
-          <Card id="help">
-            <CardHeader title="Daily help" description="Your household staff, verified at the gate" icon={<Sparkles className="size-4" />} action={<AddHelpDialog />} />
-            <div className="border-t border-line">
+          <Card id="help" className="scroll-mt-24">
+            <CardHeader title="Daily help" description="Registration, gate attendance and private household reviews" icon={<Sparkles className="size-4" />} action={<AddHelpDialog />} />
+            <div className="divide-y divide-line border-t border-line">
               {helpRows.map((s) => {
-                const a = attendanceBy.get(s.id);
+                const visits = attendance.filter((a) => a.staffId === s.id && a.checkInAt);
+                const current = visits.find((a) => a.date === today);
+                const feedback = reviews.filter(({ review }) => review.staffId === s.id);
+                const ownReview = feedback.find(({ review }) => review.reviewerId === ctx.user.id)?.review;
+                const rating = feedback.length ? feedback.reduce((total, { review }) => total + review.rating, 0) / feedback.length : null;
                 return (
-                  <div key={s.id} className="flex items-center gap-3 border-b border-line/70 px-5 py-3 last:border-0">
-                    <Avatar name={s.name} color={s.photoColor} size="sm" />
-                    <div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><p className="text-caption font-semibold text-ink">{s.name}</p>{s.policeVerified ? <BadgeCheck className="size-4 text-mint-600" /> : <Badge variant="warning">Verification pending</Badge>}</div><p className="text-caption text-muted">{s.role} · {s.shift} · {s.rating?.toFixed(1)}★</p></div>
-                    {a ? <span className="inline-flex items-center gap-1 text-caption font-semibold text-mint-600"><CheckCircle2 className="size-4" /> In at {formatTime(a.checkInAt)}</span> : <span className="text-caption text-muted">Not in yet</span>}
-                    <form action={removeDailyHelp}><input type="hidden" name="id" value={s.id} /><button className="text-caption text-muted hover:text-[#c43d4d]">Remove</button></form>
+                  <div key={s.id} className="space-y-3 px-4 py-4 sm:px-5">
+                    <div className="flex flex-wrap items-start gap-3">
+                      <Avatar name={s.name} color={s.photoColor} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <p className="break-words text-body font-semibold text-ink">{s.name}</p>
+                        <p className="text-caption text-muted">{s.role}{s.shift ? ` · ${s.shift}` : ""}</p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <Badge variant={s.policeVerified ? "success" : "warning"}>{s.policeVerified ? <><BadgeCheck aria-hidden="true" className="size-4" /> Verified</> : "Verification pending"}</Badge>
+                          <span className="text-caption font-medium text-ink-soft">{current?.checkOutAt ? `Left at ${formatTime(current.checkOutAt)}` : current?.checkInAt ? `In at ${formatTime(current.checkInAt)}` : "No check-in today"}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <details className="rounded-control border border-line px-3">
+                      <summary className="min-h-11 cursor-pointer py-2.5 text-body font-medium text-ink">Attendance · {visits.length} {visits.length === 1 ? "day" : "days"} in the last 14</summary>
+                      {visits.length ? <ul className="divide-y divide-line pb-2">{visits.map((visit) => (
+                        <li key={visit.id} className="flex flex-wrap justify-between gap-x-3 py-2 text-caption"><time dateTime={visit.date} className="font-medium text-ink">{formatDate(visit.checkInAt, { day: "numeric", month: "short" })}</time><span className="text-muted">In {formatTime(visit.checkInAt)}{visit.checkOutAt ? ` · Out ${formatTime(visit.checkOutAt)}` : ""}</span></li>
+                      ))}</ul> : <p className="pb-3 text-caption text-muted">Attendance will appear after the first check-in.</p>}
+                    </details>
+                    {s.policeVerified ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="mr-auto text-caption text-muted">{rating === null ? "No household reviews yet" : `${rating.toFixed(1)} / 5 · ${feedback.length} household ${feedback.length === 1 ? "review" : "reviews"}`}</span>
+                        <ReviewHelpDialog person={{ id: s.id, name: s.name }} review={ownReview} />
+                      </div>
+                    ) : null}
+                    {feedback.length ? <details className="rounded-control border border-line px-3">
+                      <summary className="min-h-11 cursor-pointer py-2.5 text-body font-medium text-ink">Private reviews</summary>
+                      <ul className="divide-y divide-line pb-2">{feedback.map(({ review, author }) => <li key={review.id} className="py-2 text-caption"><p className="font-semibold text-ink">{author} · {review.rating} / 5</p>{review.review ? <p className="mt-1 whitespace-pre-wrap break-words text-ink-soft">{review.review}</p> : null}</li>)}</ul>
+                    </details> : null}
+                    <form action={removeDailyHelp}><input type="hidden" name="id" value={s.id} /><button className="min-h-11 text-caption font-semibold text-[#b83244] hover:underline">Remove registration</button></form>
                   </div>
                 );
               })}
-              {!helpRows.length ? <p className="px-5 py-6 text-center text-caption text-muted">Add your house help, cook or driver to make gate entry seamless.</p> : null}
+              {!helpRows.length ? <p className="px-5 py-6 text-center text-body text-muted">Register your housekeeper, cook or driver to track their gate attendance.</p> : null}
             </div>
           </Card>
 

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { amenities, auditLogs, billingHeads, memberships, notices, societies, towers, units, users } from "@/db/schema";
-import { hashPassword } from "@/lib/password";
+import { hashPassword, verifyPassword } from "@/lib/password";
 import { createSessionToken, SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth";
 
 export type OnboardingState = { error?: string; fieldErrors?: Record<string, string> };
@@ -31,8 +31,10 @@ export async function createCommunity(_prev: OnboardingState, formData: FormData
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(adminEmail)) return { fieldErrors: { adminEmail: "Enter a valid email." } };
   if (!/^[+\d][\d\s-]{6,}$/.test(adminPhone)) return { fieldErrors: { adminPhone: "Enter a valid phone number." } };
   if (password.length < 8) return { fieldErrors: { password: "Use at least 8 characters." } };
-  const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, adminEmail)).limit(1);
-  if (existing) return { fieldErrors: { adminEmail: "That email already has a Nivaasa account. Sign in instead." } };
+  const [existing] = await db.select().from(users).where(eq(users.email, adminEmail)).limit(1);
+  if (existing && !verifyPassword(password, existing.passwordHash)) {
+    return { fieldErrors: { adminEmail: "That email already has a Nivaasa account. Enter that account's password, or use another email." } };
+  }
 
   let slug = slugify(name);
   let attempt = 1;
@@ -42,7 +44,8 @@ export async function createCommunity(_prev: OnboardingState, formData: FormData
     slug = `${slugify(name)}-${attempt++}`;
   }
   const societyId = crypto.randomUUID();
-  const adminId = crypto.randomUUID();
+  const adminId = existing?.id ?? crypto.randomUUID();
+  const adminDisplayName = existing?.name ?? adminName;
   const now = new Date();
   const totalUnits = towerCount * unitsPerTower;
   await db.insert(societies).values({
@@ -51,8 +54,10 @@ export async function createCommunity(_prev: OnboardingState, formData: FormData
     settings: { visitorApproval: true, visitorPassTtlHours: 24, discussionApproval: true, allowResidentClassifieds: true, lateFeePercent: 2, graceDays: 5, paymentGateway: "demo", helpdeskSlaHours: 24 },
     createdAt: now,
   });
-  await db.insert(users).values({ id: adminId, name: adminName, email: adminEmail, phone: adminPhone, passwordHash: hashPassword(password), avatarColor: "#3155d8", createdAt: now });
-  await db.insert(memberships).values({ id: crypto.randomUUID(), userId: adminId, societyId, unitId: null, role: "admin", designation: "Society Admin", status: "active", isPrimary: true, joinedAt: now });
+  if (!existing) {
+    await db.insert(users).values({ id: adminId, name: adminName, email: adminEmail, phone: adminPhone, passwordHash: hashPassword(password), avatarColor: "#3155d8", createdAt: now });
+  }
+  await db.insert(memberships).values({ id: crypto.randomUUID(), userId: adminId, societyId, unitId: null, role: "admin", designation: "Society Admin", status: "active", isPrimary: !existing, joinedAt: now });
 
   const codes = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
   const unitValues: (typeof units.$inferInsert)[] = [];
@@ -81,7 +86,7 @@ export async function createCommunity(_prev: OnboardingState, formData: FormData
     { id: crypto.randomUUID(), societyId, name: "Swimming Pool", description: "A shared pool for the community.", icon: "waves", location: "Clubhouse", capacity: 20, slotMinutes: 60, price: 0, deposit: 0, openTime: "06:00", closeTime: "20:00", active: true, sortOrder: 2 },
   ]);
   await db.insert(notices).values({ id: crypto.randomUUID(), societyId, authorId: adminId, title: "Welcome to Nivaasa", body: `Welcome to ${name}!\n\nThis is your community's home. Add residents, configure billing and publish your first notice. The setup checklist in the admin console will guide you.`, category: "general", pinned: true, audience: "all", publishedAt: now });
-  await db.insert(auditLogs).values({ id: crypto.randomUUID(), societyId, actorId: adminId, actorName: adminName, action: "society.created", entity: "society", entityId: societyId, metadata: { name, towerCount, unitsPerTower }, createdAt: now });
+  await db.insert(auditLogs).values({ id: crypto.randomUUID(), societyId, actorId: adminId, actorName: adminDisplayName, action: "society.created", entity: "society", entityId: societyId, metadata: { name, towerCount, unitsPerTower }, createdAt: now });
   const session = await createSessionToken(adminId);
   const store = await cookies();
   store.set(SESSION_COOKIE, session.token, sessionCookieOptions(session.expiresAt));

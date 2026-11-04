@@ -4,10 +4,11 @@ import { and, desc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { todayISO } from "@/lib/utils";
 import { db } from "@/db";
 import {
-  amenities, amenityBookings, events, expenses, helpdeskTickets, invoices, notices, notifications,
-  payments, polls, pollVotes, units, visitors, deliveries, familyMembers, vehicles, pets,
+  amenities, amenityBookings, events, expenses, helpdeskTickets, invoices, memberships, notices, notifications,
+  payments, polls, pollVotes, societies, units, visitors, deliveries, familyMembers, vehicles, pets,
 } from "@/db/schema";
 import { getSession, isAdminRole, type AuthContext } from "./auth";
+import type { SocietyOption } from "./society-access";
 
 export type ResidentContext = AuthContext & { unit: NonNullable<AuthContext["unit"]>; society: NonNullable<AuthContext["society"]>; membership: NonNullable<AuthContext["membership"]> };
 
@@ -41,6 +42,26 @@ export async function requireAdmin() {
   if (!session.membership || !isAdminRole(session.membership.role)) redirect("/app");
   if (session.membership.role === "guard") redirect("/gate");
   return session;
+}
+
+/** Every active society membership for the account menu/switcher. */
+export async function getSocietyOptions(ctx: AuthContext): Promise<SocietyOption[]> {
+  if (!ctx.memberships.length) return [];
+  return db
+    .select({
+      id: societies.id,
+      name: societies.name,
+      slug: societies.slug,
+      city: societies.city,
+      role: memberships.role,
+      unitNumber: units.number,
+      isPrimary: memberships.isPrimary,
+    })
+    .from(memberships)
+    .innerJoin(societies, eq(memberships.societyId, societies.id))
+    .leftJoin(units, eq(memberships.unitId, units.id))
+    .where(and(eq(memberships.userId, ctx.user.id), eq(memberships.status, "active")))
+    .orderBy(desc(memberships.isPrimary), memberships.joinedAt);
 }
 
 export async function requireGuard() {

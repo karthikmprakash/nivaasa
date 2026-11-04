@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { and, count, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import {
   AlertTriangle, Bell, CalendarDays, CheckCircle2, ChevronRight, Clock3, DoorOpen, KeyRound,
   LogOut, MapPin, Package, Phone, Search, ShieldAlert, ShieldCheck, UserRoundCheck, Users, Wifi,
@@ -8,10 +8,12 @@ import {
 import { Logo, LogoMark } from "@/components/brand/logo";
 import { Avatar, Badge, Card, CardHeader } from "@/components/ui/primitives";
 import { GateEntryWizard, GateQueue, GateStaff, GatePatrol, GateDeliveries, GatePanic, GateExitButton } from "@/components/gate/gate-panels";
-import { requireGuard } from "@/lib/queries";
+import { SocietySwitcher } from "@/components/shell/society-switcher";
+import { getSocietyOptions, requireGuard } from "@/lib/queries";
 import { db } from "@/db";
 import { deliveries, patrolCheckpoints, patrolRounds, staff, staffAttendance, units, users, visitors, panicAlerts, helpdeskTickets, notifications } from "@/db/schema";
 import { logoutAction } from "@/lib/actions/auth";
+import { passDateBoundary, shiftPassDate } from "@/lib/visitor-pass-rules";
 import { formatDate, formatTime, timeAgo, todayISO } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Gate console" };
@@ -20,10 +22,12 @@ export const dynamic = "force-dynamic";
 export default async function GatePage() {
   const ctx = await requireGuard();
   const society = ctx.society!;
+  const societies = await getSocietyOptions(ctx);
   const today = todayISO();
-  const start = new Date(); start.setHours(0, 0, 0, 0);
-  const [queueRows, deliveriesRows, staffRows, attendanceRows, checkpoints, rounds, recentRows, alerts, ticketRows, unreadRows] = await Promise.all([
-    db.select({ v: visitors, unit: units.number, hostName: users.name, hostPhone: users.phone }).from(visitors).leftJoin(units, eq(visitors.unitId, units.id)).leftJoin(users, eq(visitors.hostUserId, users.id)).where(and(eq(visitors.societyId, society.id), inArray(visitors.status, ["pending", "approved"]), gte(visitors.createdAt, new Date(Date.now() - 24 * 3600 * 1000)))).orderBy(desc(visitors.createdAt)).limit(30),
+  const start = passDateBoundary(today);
+  const tomorrow = passDateBoundary(shiftPassDate(today, 1));
+  const [queueRows, deliveriesRows, staffRows, attendanceRows, checkpoints, rounds, recentRows, alerts, ticketRows, unreadRows, preApproved] = await Promise.all([
+    db.select({ v: visitors, unit: units.number, hostName: users.name, hostPhone: users.phone }).from(visitors).leftJoin(units, eq(visitors.unitId, units.id)).leftJoin(users, eq(visitors.hostUserId, users.id)).where(and(eq(visitors.societyId, society.id), eq(visitors.preApproved, false), eq(visitors.leaveAtGate, false), inArray(visitors.status, ["pending", "approved"]), gte(visitors.createdAt, new Date(Date.now() - 24 * 3600 * 1000)))).orderBy(desc(visitors.createdAt)).limit(30),
     db.select({ delivery: deliveries, unit: units.number }).from(deliveries).leftJoin(units, eq(deliveries.unitId, units.id)).where(and(eq(deliveries.societyId, society.id), inArray(deliveries.status, ["arrived", "left_at_gate"]))).orderBy(desc(deliveries.createdAt)),
     db.select({ person: staff, unit: units.number }).from(staff).leftJoin(units, eq(staff.unitId, units.id)).where(and(eq(staff.societyId, society.id), eq(staff.active, true))).orderBy(staff.kind, staff.name),
     db.select().from(staffAttendance).where(and(eq(staffAttendance.societyId, society.id), eq(staffAttendance.date, today))),
@@ -33,13 +37,14 @@ export default async function GatePage() {
     db.select({ alert: panicAlerts, unit: units.number, user: users.name }).from(panicAlerts).leftJoin(units, eq(panicAlerts.unitId, units.id)).leftJoin(users, eq(panicAlerts.userId, users.id)).where(and(eq(panicAlerts.societyId, society.id), inArray(panicAlerts.status, ["open", "acknowledged"]))).orderBy(desc(panicAlerts.createdAt)),
     db.select({ count: sql<number>`count(*)` }).from(helpdeskTickets).where(and(eq(helpdeskTickets.societyId, society.id), inArray(helpdeskTickets.status, ["open", "assigned", "in_progress", "reopened"]))),
     db.select({ count: sql<number>`count(*)` }).from(notifications).where(and(eq(notifications.userId, ctx.user.id), eq(notifications.societyId, society.id), isNull(notifications.readAt))),
+    db.select({ v: visitors, unit: units.number }).from(visitors).leftJoin(units, eq(visitors.unitId, units.id)).where(and(eq(visitors.societyId, society.id), eq(visitors.preApproved, true), eq(visitors.status, "approved"), or(isNull(visitors.validFrom), lt(visitors.validFrom, tomorrow)), or(isNull(visitors.validTo), gte(visitors.validTo, new Date())))).orderBy(visitors.validFrom).limit(20),
   ]);
   const attendanceBy = new Map(attendanceRows.map((a) => [a.staffId, a]));
   const queue = queueRows.map((r) => ({ ...r.v, unit: r.unit, hostName: r.hostName, hostPhone: r.hostPhone }));
   const pendingQueue = queue.filter((q) => q.status === "pending").length;
-  const preApproved = queueRows.filter((r) => r.v.preApproved && r.v.status === "approved" && (!r.v.validTo || r.v.validTo >= new Date()));
+
   const entriesToday = recentRows.filter((r) => r.v.enteredAt && r.v.enteredAt >= start);
-  const staffPresent = attendanceRows.filter((a) => a.checkInAt).length;
+  const staffPresent = attendanceRows.filter((a) => a.checkInAt && !a.checkOutAt).length;
   const patrolDone = new Set(rounds.filter((r) => r.status === "scanned").map((r) => r.checkpointId)).size;
   const staffForPanel = staffRows.map((s) => ({ id: s.person.id, name: s.person.name, role: s.person.role, kind: s.person.kind, photoColor: s.person.photoColor, unit: s.unit, policeVerified: s.person.policeVerified }));
   const attendanceMap: Record<string, { in: boolean; out: boolean }> = {};
@@ -53,7 +58,7 @@ export default async function GatePage() {
           <div className="flex items-center gap-3">
             <Link href="/gate"><Logo size={30} /></Link>
             <span className="hidden h-6 w-px bg-line sm:block" />
-            <div className="hidden sm:block"><p className="text-caption font-semibold text-ink">Gate 1 · Main entrance</p><p className="text-caption text-muted">{society.name} · {society.city}</p></div>
+            <div className="hidden min-w-0 sm:block"><p className="text-caption font-semibold text-ink">Gate 1 · Main entrance</p><SocietySwitcher societies={societies} currentId={society.id} variant="header" /></div>
           </div>
           <nav className="no-scrollbar hidden items-center gap-1 overflow-x-auto md:flex">
             {[["Entry", "#entry"], ["Queue", "#queue"], ["Staff", "#staff"], ["Patrol", "#patrol"], ["Alerts", "#alerts"]].map(([l, h]) => <a key={l} href={h} className="rounded-full px-3 py-1.5 text-caption font-semibold text-ink-soft hover:bg-canvas">{l}</a>)}

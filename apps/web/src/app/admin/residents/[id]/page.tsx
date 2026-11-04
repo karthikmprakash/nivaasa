@@ -46,7 +46,7 @@ export default async function UnitDetailPage({ params }: { params: Promise<{ id:
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[1.55fr_1fr]">
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <Card>
             <CardHeader title="Residents & household" description="People linked to this home" icon={<Users className="size-4" />} />
             <div className="border-t border-line">
@@ -76,7 +76,7 @@ export default async function UnitDetailPage({ params }: { params: Promise<{ id:
           </Card>
         </div>
 
-        <aside className="space-y-4">
+        <aside className="min-w-0 space-y-4">
           <Card>
             <CardHeader title="Home details" icon={<Home className="size-4" />} />
             <div className="border-t border-line px-5 py-4">

@@ -29,15 +29,15 @@ export default async function AdminDashboard() {
 
   return (
     <div>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-end md:justify-between">
         <div>
           <p className="flex items-center gap-2 text-caption font-medium text-muted"><span className="inline-flex size-1.5 rounded-lg bg-brand-500" /> {now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })} · {ctx.society!.name}</p>
           <h1 className="mt-1 text-[26px] font-semibold leading-tight tracking-[-0.04em] text-ink sm:text-[30px]">{greeting}, {firstName}.</h1>
           <p className="mt-1.5 text-body text-ink-soft">Here&apos;s the pulse of your community. {attention ? <span className="font-medium text-ink">{attention} things need your attention.</span> : "Everything looks calm."}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/admin/billing" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line-strong bg-white px-3.5 text-caption font-semibold text-ink-soft hover:bg-canvas"><Wallet className="size-4" /> Run billing</Link>
-          <Link href="/admin/communications" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 text-caption font-semibold text-white hover:bg-brand-700"><BellRing className="size-4" /> Publish notice</Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/admin/billing" className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-line-strong bg-white px-3.5 text-caption font-semibold text-ink-soft hover:bg-canvas"><Wallet className="size-4 shrink-0" /> Run billing</Link>
+          <Link href="/admin/communications" className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-brand-600 px-3.5 text-caption font-semibold text-white hover:bg-brand-700"><BellRing className="size-4 shrink-0" /> Publish notice</Link>
         </div>
       </div>
 

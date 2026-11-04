@@ -66,13 +66,13 @@ export function CardHeader({ title, description, action, icon, className }: { ti
 
 export function PageHeader({ title, eyebrow, description, actions, className }: { title: ReactNode; eyebrow?: string; description?: ReactNode; actions?: ReactNode; className?: string }) {
   return (
-    <div className={cn("flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between", className)}>
-      <div className="min-w-0">
+    <div className={cn("flex min-w-0 flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between", className)}>
+      <div className="min-w-0 sm:flex-[1_1_20rem]">
         {eyebrow ? <span className="sr-only">{eyebrow}</span> : null}
         <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.03em] text-ink sm:text-[30px]">{title}</h1>
         {description ? <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink-soft">{description}</p> : null}
       </div>
-      {actions ? <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto sm:shrink-0 [&>*]:max-w-full [&>*]:whitespace-nowrap">{actions}</div> : null}
+      {actions ? <div className="flex w-full min-w-0 max-w-full flex-wrap items-center gap-2 sm:w-auto [&>*]:max-w-full [&>*]:whitespace-nowrap">{actions}</div> : null}
     </div>
   );
 }

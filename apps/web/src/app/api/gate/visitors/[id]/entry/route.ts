@@ -11,9 +11,14 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
   const { id } = await params;
   const [v] = await db.select().from(visitors).where(and(eq(visitors.id, id), eq(visitors.societyId, session.society!.id))).limit(1);
   if (!v) return NextResponse.json({ error: "Visitor not found" }, { status: 404 });
+  if (v.preApproved) return NextResponse.json({ error: "Verify the visitor’s passcode in New entry." }, { status: 409 });
+  if (v.leaveAtGate) return NextResponse.json({ error: "Keep this parcel at the gate for pickup." }, { status: 409 });
   if (v.status !== "approved") return NextResponse.json({ error: "Resident approval is pending." }, { status: 409 });
   const now = new Date();
-  await db.update(visitors).set({ status: "entered", enteredAt: now, guardId: session.user.id }).where(eq(visitors.id, id));
+  if (v.validFrom && v.validFrom > now) return NextResponse.json({ error: "This pass is not valid yet." }, { status: 409 });
+  if (v.validTo && v.validTo < now) return NextResponse.json({ error: "This pass has expired." }, { status: 409 });
+  const [admitted] = await db.update(visitors).set({ status: "entered", enteredAt: now, guardId: session.user.id }).where(and(eq(visitors.id, id), eq(visitors.status, "approved"))).returning({ id: visitors.id });
+  if (!admitted) return NextResponse.json({ error: "This entry is no longer available." }, { status: 409 });
   const hosts = await residentsOfUnit(v.unitId!, session.society!.id);
   if (hosts.length) await db.insert(notifications).values(hosts.map((h) => ({ id: crypto.randomUUID(), userId: h.userId, societyId: session.society!.id, title: `${v.name} entered the community`, body: "Recorded at Gate 1.", type: "security" as const, link: "/app/visitors", createdAt: now })));
   await db.insert(auditLogs).values({ id: crypto.randomUUID(), societyId: session.society!.id, actorId: session.user.id, actorName: session.user.name, action: "visitor.entered", entity: "visitor", entityId: id, metadata: { name: v.name }, createdAt: now });

@@ -1,24 +1,25 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useEffectEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Car, Dog, Loader2, MoveRight, Plus, UserRoundPlus, Users } from "lucide-react";
 import { Dialog } from "@/components/ui/client";
 import { Button, Field, Input, Select, Textarea } from "@/components/ui/primitives";
-import { addDailyHelp, addFamilyMember, addPet, addVehicle, createMoveRequest, updateContacts, type HouseholdState } from "@/lib/actions/household";
+import { addDailyHelp, addFamilyMember, addPet, addVehicle, createMoveRequest, reviewDailyHelp, updateContacts, type HouseholdState } from "@/lib/actions/household";
 import { todayISO } from "@/lib/utils";
 
 function useForm(action: (prev: HouseholdState, fd: FormData) => Promise<HouseholdState>, close: () => void) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState<HouseholdState, FormData>(action, {});
+  const closeDialog = useEffectEvent(close);
   useEffect(() => {
     if (state.ok) {
       toast.success(state.message ?? "Saved");
-      close();
+      closeDialog();
       router.refresh();
     }
-  }, [state.ok, state.message, close, router]);
+  }, [state, router]);
   return { state, formAction, pending };
 }
 
@@ -83,24 +84,40 @@ export function AddPetDialog() {
   );
 }
 
-export function AddHelpDialog() {
+export function AddHelpDialog({ primary = false }: { primary?: boolean }) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
   const { state, formAction, pending } = useForm(addDailyHelp, close);
   return (
     <>
-      <Button size="sm" variant="outline" onClick={() => setOpen(true)}><Plus className="size-4" /> Add daily help</Button>
-      <Dialog open={open} onOpenChange={setOpen} title="Add daily help" description="A digital profile keeps your household staff verified at the gate and their attendance transparent.">
+      <Button type="button" size={primary ? "md" : "sm"} variant={primary ? "primary" : "outline"} onClick={() => setOpen(true)}><Plus aria-hidden="true" className="size-4" /> Register daily help</Button>
+      <Dialog open={open} onOpenChange={setOpen} title="Register daily help" description="Use the phone number they will give at the gate. Security verifies their identity before attendance can be recorded.">
         <form action={formAction} className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2"><Field label="Name"><Input name="name" required placeholder="Sunita Devi" /></Field><Field label="Role"><Select name="role"><option>House help</option><option>Cook</option><option>Driver</option><option>Nanny</option><option>Gardener</option><option>Other</option></Select></Field></div>
-          <div className="grid gap-3 sm:grid-cols-2"><Field label="Phone"><Input name="phone" type="tel" placeholder="+91…" /></Field><Field label="Aadhaar last 4 digits"><Input name="idLast4" maxLength={4} placeholder="1234" /></Field></div>
+          <div className="grid gap-3 sm:grid-cols-2"><Field label="Name"><Input name="name" required maxLength={80} placeholder="Sunita Devi" /></Field><Field label="Role"><Select name="role"><option>House help</option><option>Cook</option><option>Driver</option><option>Nanny</option><option>Gardener</option><option>Other</option></Select></Field></div>
+          <Field label="Phone number" hint="Ask for their permission before sharing their number."><Input name="phone" type="tel" required maxLength={30} placeholder="+91…" /></Field>
           <div className="grid gap-3 sm:grid-cols-2"><Field label="Working hours"><Input name="shift" placeholder="8 AM – 11 AM" /></Field><Field label="Monthly pay (₹)"><Input name="monthlyRate" type="number" min={0} placeholder="6000" /></Field></div>
-          <p className="rounded-xl bg-canvas px-3 py-2 text-caption leading-relaxed text-muted">The security team verifies IDs before the profile is activated. You&apos;re responsible for the information you provide.</p>
           {state.error ? <p className="text-caption text-[#c43d4d]">{state.error}</p> : null}
-          <Button type="submit" className="w-full" disabled={pending}>{pending ? "Adding…" : "Add daily help"}</Button>
+          <Button type="submit" className="w-full" disabled={pending}>{pending ? "Registering…" : "Register daily help"}</Button>
         </form>
       </Dialog>
     </>
+  );
+}
+
+export function ReviewHelpDialog({ person, review }: { person: { id: string; name: string }; review?: { rating: number; review: string | null } }) {
+  const [open, setOpen] = useState(false);
+  const { state, formAction, pending } = useForm(reviewDailyHelp, () => setOpen(false));
+  return (
+    <Dialog open={open} onOpenChange={setOpen} title={`Review ${person.name}`} description="Your rating and review are visible to your household in My home."
+      trigger={<Button type="button" size="sm" variant="outline">{review ? "Edit review" : "Rate & review"}</Button>}>
+      <form action={formAction} className="space-y-4">
+        <input type="hidden" name="staffId" value={person.id} />
+        <Field label="Rating"><Select name="rating" required defaultValue={review?.rating ?? ""}><option value="" disabled>Choose a rating</option>{[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} {rating === 1 ? "star" : "stars"}</option>)}</Select></Field>
+        <Field label="Review (optional)"><Textarea name="review" maxLength={500} defaultValue={review?.review ?? ""} placeholder="What should your household know?" /></Field>
+        {state.error ? <p role="alert" className="text-caption text-[#b83244]">{state.error}</p> : null}
+        <Button type="submit" disabled={pending} className="w-full">{pending ? "Saving…" : "Save private review"}</Button>
+      </form>
+    </Dialog>
   );
 }
 

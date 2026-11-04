@@ -177,6 +177,15 @@ export const staffAttendance = sqliteTable("staff_attendance", {
   markedBy: text("marked_by").references(() => users.id, { onDelete: "set null" }),
 });
 
+export const dailyHelpReviews = sqliteTable("daily_help_reviews", {
+  id: text("id").primaryKey(),
+  staffId: text("staff_id").notNull().references(() => staff.id, { onDelete: "cascade" }),
+  reviewerId: text("reviewer_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  rating: integer("rating").notNull(),
+  review: text("review"),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+}, (t) => [uniqueIndex("daily_help_reviewer_idx").on(t.staffId, t.reviewerId)]);
+
 export const vendors = sqliteTable("vendors", {
   id: text("id").primaryKey(),
   societyId: text("society_id").notNull().references(() => societies.id, { onDelete: "cascade" }),
@@ -465,6 +474,9 @@ export const visitors = sqliteTable(
     code: text("code"),
     leaveAtGate: integer("leave_at_gate", { mode: "boolean" }).default(false).notNull(),
     preApproved: integer("pre_approved", { mode: "boolean" }).default(false).notNull(),
+    recurringCab: integer("recurring_cab", { mode: "boolean" }),
+    sourcePassId: text("source_pass_id"),
+    entryDay: text("entry_day"),
     validFrom: integer("valid_from", { mode: "timestamp_ms" }),
     validTo: integer("valid_to", { mode: "timestamp_ms" }),
     approvedAt: integer("approved_at", { mode: "timestamp_ms" }),
@@ -474,7 +486,7 @@ export const visitors = sqliteTable(
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
     notes: text("notes"),
   },
-  (t) => [index("visitors_society_idx").on(t.societyId), index("visitors_status_idx").on(t.status)],
+  (t) => [index("visitors_society_idx").on(t.societyId), index("visitors_status_idx").on(t.status), uniqueIndex("visitor_pass_day_idx").on(t.sourcePassId, t.entryDay)],
 );
 
 export const deliveries = sqliteTable("deliveries", {

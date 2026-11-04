@@ -3,8 +3,9 @@ import {
   ArrowRight, ShieldCheck, Sparkles, Building2, Wallet, Wrench, CalendarHeart, MessageCircle,
   Check, LockKeyhole, Smartphone, Code2, Server, Globe2, Users, KeyRound, FileCheck2,
   ArrowUpRight, PlayCircle, CheckCircle2, CircleDot, ReceiptIndianRupee, Landmark,
-  Fingerprint, BellRing, ChartNoAxesCombined, BedDouble, Dumbbell, Trophy, Waves, PartyPopper, Flower2,
+  Fingerprint, BellRing, ChartNoAxesCombined, BedDouble, Dumbbell, Trophy, Waves, Flower2,
 } from "lucide-react";
+import { CommunityDay } from "@/components/marketing/community-day";
 import { MarketingNav } from "@/components/marketing/nav";
 import { RoleTabs } from "@/components/marketing/role-tabs";
 import { Reveal } from "@/components/marketing/reveal";
@@ -31,15 +32,15 @@ export default async function LandingPage() {
       <MarketingNav signedIn={signedIn} home={home} />
       <main>
         {/* ── Hero ─────────────────────────────────────────────────────── */}
-        <section className="hero-wash relative pt-28 pb-16 sm:pt-36 lg:pb-24">
-          <div className="relative mx-auto max-w-[1180px] px-5">
-            <div className="grid items-center gap-14 lg:grid-cols-[1.02fr_0.98fr]">
+        <section className="hero-wash relative pt-[calc(6rem+env(safe-area-inset-top))] pb-12 sm:pt-[calc(9rem+env(safe-area-inset-top))] sm:pb-16 lg:pb-24">
+          <div className="relative mx-auto max-w-[1180px] landing-gutter">
+            <div className="grid grid-cols-1 items-center gap-8 sm:gap-14 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)]">
               <div className="animate-in-up">
                 <div className="inline-flex items-center gap-2 rounded-full border border-brand-200/70 bg-white/70 px-3 py-1.5 text-xs font-semibold text-brand-700 shadow-sm backdrop-blur">
                   <span className="relative flex size-2"><span className="absolute inline-flex size-full animate-ping rounded-full bg-blush-400 opacity-60" /><span className="relative inline-flex size-2 rounded-full bg-blush-400" /></span>
                   Open source · Self-hosted · Built for community living
                 </div>
-                <h1 className="mt-6 max-w-[620px] text-[46px] font-semibold leading-[0.98] tracking-[-0.035em] text-ink sm:text-[62px] lg:text-[68px]">
+                <h1 className="mt-6 max-w-[620px] text-[clamp(2rem,9.5vw,2.875rem)] font-semibold leading-[1.03] tracking-[-0.035em] text-ink sm:text-[62px] lg:text-[68px]">
                   Your community,
                   <br />
                   running beautifully.
@@ -47,11 +48,11 @@ export default async function LandingPage() {
                 <p className="mt-5 max-w-[520px] text-[16px] leading-relaxed text-ink-soft sm:text-[17px]">
                   Security at the gate, calm at home, clarity in the accounts. Nivaasa brings every part of your gated community into one gentle, powerful platform — owned by the community itself.
                 </p>
-                <div className="mt-7 flex flex-wrap items-center gap-3">
-                  <Link href="/login?demo=1" className="group inline-flex h-12 items-center gap-2 rounded-full bg-brand-600 px-6 text-sm font-semibold text-white shadow-[0_16px_36px_-14px_rgba(49,85,216,0.7)] transition-all hover:-translate-y-0.5 hover:bg-brand-700">
+                <div className="mt-7 flex flex-col items-stretch gap-3 min-[480px]:flex-row min-[480px]:flex-wrap min-[480px]:items-center">
+                  <Link href="/login?demo=1" className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-brand-600 px-6 text-sm font-semibold text-white shadow-[0_16px_36px_-14px_rgba(49,85,216,0.7)] transition-all hover:-translate-y-0.5 hover:bg-brand-700">
                     Explore the live demo <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
                   </Link>
-                  <a href="#platform" className="inline-flex h-12 items-center gap-2 rounded-full border border-line-strong bg-white/80 px-5 text-sm font-semibold text-ink shadow-sm backdrop-blur transition-colors hover:bg-white">
+                  <a href="#platform" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-line-strong bg-white/80 px-5 text-sm font-semibold text-ink shadow-sm backdrop-blur transition-colors hover:bg-white">
                     <PlayCircle className="size-4 text-brand-600" /> See the platform
                   </a>
                 </div>
@@ -85,7 +86,7 @@ export default async function LandingPage() {
 
         {/* ── Promise strip ────────────────────────────────────────────── */}
         <section className="border-y border-line bg-white py-5">
-          <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-x-8 gap-y-3 px-5">
+          <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-x-8 gap-y-3 landing-gutter">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">One system for the whole community</p>
             {["Gate & security", "Community life", "Payments & ERP", "Helpdesk & SLAs", "Amenities", "Staff & vendors"].map((t) => (
               <span key={t} className="text-sm font-semibold text-ink-soft">{t}</span>
@@ -94,7 +95,7 @@ export default async function LandingPage() {
         </section>
 
         {/* ── Platform bento ──────────────────────────────────────────── */}
-        <section id="platform" className="relative mx-auto max-w-[1180px] scroll-mt-24 px-5 py-20 sm:py-28">
+        <section id="platform" className="relative mx-auto max-w-[1180px] scroll-mt-24 landing-gutter py-20 sm:py-28">
           <Reveal>
             <div className="max-w-2xl">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-600">The platform</p>
@@ -107,8 +108,8 @@ export default async function LandingPage() {
             </div>
           </Reveal>
 
-          <div className="mt-10 grid gap-4 md:grid-cols-6">
-            <Reveal className="md:col-span-4" delay={0}>
+          <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+            <Reveal className="sm:col-span-2 lg:col-span-4" delay={0}>
               <div className="group relative h-full overflow-hidden rounded-[26px] border border-line bg-white p-6 shadow-soft transition-shadow hover:shadow-lift sm:p-7">
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -118,7 +119,7 @@ export default async function LandingPage() {
                   </div>
                   <span className="rounded-full bg-mint-50 px-2.5 py-1 text-xs font-bold text-mint-600">Live</span>
                 </div>
-                <div className="mt-6 grid gap-3 sm:grid-cols-[1.1fr_0.9fr]">
+                <div className="mt-6 grid grid-cols-1 gap-3 min-[860px]:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
                   <div className="rounded-2xl border border-line bg-[#fbfcff] p-4">
                     <div className="flex items-center justify-between">
                       <span className="rounded-full bg-blush-100 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-blush-600">At the gate</span>
@@ -153,7 +154,7 @@ export default async function LandingPage() {
               </div>
             </Reveal>
 
-            <Reveal className="md:col-span-2" delay={0.06}>
+            <Reveal className="lg:col-span-2" delay={0.06}>
               <div className="h-full rounded-[26px] border border-blush-200 bg-blush-50 p-6 shadow-soft transition-shadow hover:shadow-lift">
                 <div className="grid size-10 place-items-center rounded-xl bg-white text-blush-500"><Users className="size-5" /></div>
                 <h3 className="mt-4 text-[19px] font-semibold tracking-[-0.02em] text-ink">A neighbourhood, not a noticeboard</h3>
@@ -173,7 +174,7 @@ export default async function LandingPage() {
               </div>
             </Reveal>
 
-            <Reveal className="md:col-span-2" delay={0.1}>
+            <Reveal className="lg:col-span-2" delay={0.1}>
               <div className="h-full rounded-[26px] border border-line bg-white p-6 shadow-soft transition-shadow hover:shadow-lift">
                 <div className="grid size-10 place-items-center rounded-xl bg-brand-50 text-brand-600"><Wallet className="size-5" /></div>
                 <h3 className="mt-4 text-[19px] font-semibold tracking-[-0.02em] text-ink">Money, minus the mystery</h3>
@@ -193,7 +194,7 @@ export default async function LandingPage() {
               </div>
             </Reveal>
 
-            <Reveal className="md:col-span-2" delay={0.14}>
+            <Reveal className="lg:col-span-2" delay={0.14}>
               <div className="h-full rounded-[26px] border border-line bg-white p-6 shadow-soft transition-shadow hover:shadow-lift">
                 <div className="grid size-10 place-items-center rounded-xl bg-[#f2effc] text-[#6a54c8]"><Wrench className="size-5" /></div>
                 <h3 className="mt-4 text-[19px] font-semibold tracking-[-0.02em] text-ink">Helpdesk that closes the loop</h3>
@@ -214,7 +215,7 @@ export default async function LandingPage() {
               </div>
             </Reveal>
 
-            <Reveal className="md:col-span-2" delay={0.18}>
+            <Reveal className="lg:col-span-2" delay={0.18}>
               <div className="h-full rounded-[26px] border border-line bg-white p-6 shadow-soft transition-shadow hover:shadow-lift">
                 <div className="grid size-10 place-items-center rounded-xl bg-mint-50 text-mint-600"><CalendarHeart className="size-5" /></div>
                 <h3 className="mt-4 text-[19px] font-semibold tracking-[-0.02em] text-ink">Amenities without the register</h3>
@@ -232,7 +233,7 @@ export default async function LandingPage() {
               </div>
             </Reveal>
 
-            <Reveal className="md:col-span-3" delay={0.22}>
+            <Reveal className="lg:col-span-3" delay={0.22}>
               <div className="h-full rounded-[26px] border border-line bg-[#fbfcff] p-6 shadow-soft sm:p-7">
                 <div className="flex items-center justify-between">
                   <div className="grid size-10 place-items-center rounded-xl bg-white text-brand-600 shadow-sm"><Landmark className="size-5" /></div>
@@ -240,7 +241,7 @@ export default async function LandingPage() {
                 </div>
                 <h3 className="mt-4 text-[20px] font-semibold tracking-[-0.02em] text-ink">Accounting an auditor would enjoy</h3>
                 <p className="mt-2 max-w-lg text-sm leading-relaxed text-ink-soft">Billing heads, per-sq-ft runs, GST, penalties, expenses, vendors, budgets and reports. Every action leaves a trail.</p>
-                <div className="mt-5 grid grid-cols-3 gap-2">
+                <div className="mt-5 grid grid-cols-1 gap-2 min-[480px]:grid-cols-3">
                   {[{ l: "Collections", v: "₹18.6L", c: "text-mint-600" }, { l: "Expenses", v: "₹9.8L", c: "text-blush-600" }, { l: "Balance", v: "₹8.8L", c: "text-brand-700" }].map((s) => (
                     <div key={s.l} className="rounded-xl border border-line bg-white px-3 py-2.5">
                       <p className="text-xs font-semibold uppercase tracking-wide text-muted">{s.l}</p>
@@ -251,7 +252,7 @@ export default async function LandingPage() {
               </div>
             </Reveal>
 
-            <Reveal className="md:col-span-3" delay={0.26}>
+            <Reveal className="lg:col-span-3" delay={0.26}>
               <div className="h-full rounded-[26px] border border-line bg-white p-6 shadow-soft sm:p-7">
                 <div className="flex items-center justify-between">
                   <div className="grid size-10 place-items-center rounded-xl bg-blush-50 text-blush-500"><MessageCircle className="size-5" /></div>
@@ -274,7 +275,7 @@ export default async function LandingPage() {
 
         {/* ── Roles ───────────────────────────────────────────────────── */}
         <section id="resident" className="relative scroll-mt-24 border-y border-line bg-white py-20 sm:py-28">
-          <div className="mx-auto max-w-[1180px] px-5">
+          <div className="mx-auto max-w-[1180px] landing-gutter">
             <Reveal>
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
                 <div className="max-w-2xl">
@@ -288,41 +289,12 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        {/* ── A day in the community ──────────────────────────────────── */}
-        <section id="admin" className="scroll-mt-24 px-5 py-20 sm:py-28">
-          <div className="mx-auto max-w-[1180px]">
-            <Reveal>
-              <div className="max-w-xl">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-blush-500">A day in the community</p>
-                <h2 className="mt-3 text-[36px] font-semibold leading-[1.05] tracking-[-0.04em] text-ink sm:text-[46px]">Quietly working,<br />from gate to ledger.</h2>
-                <p className="mt-4 text-[15px] leading-relaxed text-ink-soft">The best community software is the kind you stop noticing. Here&apos;s a Tuesday at Verdant Heights, running on Nivaasa.</p>
-              </div>
-            </Reveal>
-            <div className="mt-12 grid gap-4 lg:grid-cols-5">
-              {[
-                { time: "6:05 AM", title: "Patrol checkpoint scanned", body: "Ramesh checks in at the main gate. The control room sees the round live; the missed terrace check retries at 8.", icon: ShieldCheck, tone: "bg-brand-50 text-brand-600" },
-                { time: "8:12 AM", title: "Sunita arrives at A-402", body: "Daily help attendance is logged at the gate. Aarav gets a quiet notification; the guard gets a verified profile.", icon: Users, tone: "bg-blush-50 text-blush-600" },
-                { time: "9:38 AM", title: "Delivery waiting at the gate", body: "Aarav taps 'leave at gate' from a meeting. The guard logs the parcel and a 6-digit pickup code goes to Aarav.", icon: BellRing, tone: "bg-[#f2effc] text-[#6a54c8]" },
-                { time: "11:15 AM", title: "Complaint assigned with an SLA", body: "The kitchen tap leak is assigned to Ravi with a 6-hour SLA. Aarav sees the ETA instead of calling the office.", icon: Wrench, tone: "bg-mint-50 text-mint-600" },
-                { time: "7:30 PM", title: "Diwali Mela RSVPs close", body: "142 residents have RSVP'd. The committee exports the food count and the deposit is already reconciled.", icon: PartyPopper, tone: "bg-amber-soft text-amber-ink" },
-              ].map((s, i) => (
-                <Reveal key={s.time} delay={i * 0.05} className="lg:col-span-1">
-                  <div className="relative h-full rounded-2xl border border-line bg-white p-5 shadow-soft">
-                    <span className="font-display text-[19px] italic text-brand-600">{s.time}</span>
-                    <div className={`mt-4 grid size-9 place-items-center rounded-xl ${s.tone}`}><s.icon className="size-4" /></div>
-                    <h3 className="mt-3 text-sm font-semibold leading-snug text-ink">{s.title}</h3>
-                    <p className="mt-1.5 text-xs leading-relaxed text-muted">{s.body}</p>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </section>
+        <CommunityDay />
 
         {/* ── Security ────────────────────────────────────────────────── */}
-        <section id="security" className="scroll-mt-24 px-3 pb-20 sm:px-5 sm:pb-28">
+        <section id="security" className="scroll-mt-24 landing-gutter [--landing-gutter:0.75rem] pb-20 sm:[--landing-gutter:1.25rem] sm:pb-28">
           <div className="mx-auto max-w-[1240px] overflow-hidden rounded-[32px] bg-[#0f1c33] text-white shadow-[0_40px_100px_-40px_rgba(15,28,51,0.8)]">
-            <div className="relative grid gap-10 p-7 sm:p-12 lg:grid-cols-[1fr_0.95fr] lg:p-16">
+            <div className="relative grid grid-cols-1 gap-8 p-4 sm:gap-10 sm:p-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)] lg:p-16">
               <div className="absolute inset-0 grid-paper opacity-[0.06]" />
               <div className="relative">
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/70">
@@ -330,7 +302,7 @@ export default async function LandingPage() {
                 </div>
                 <h2 className="mt-6 max-w-lg text-[36px] font-semibold leading-[1.04] tracking-[-0.04em] sm:text-[46px]">Built to be trusted,<br /><span className="font-display italic text-blush-300">not just used.</span></h2>
                 <p className="mt-4 max-w-lg text-[14px] leading-relaxed text-white/80">Every approval, payment and edit is logged. Access is scoped by role. Sensitive resident data can be masked, and the whole platform runs on infrastructure you control.</p>
-                <div className="mt-8 grid grid-cols-2 gap-3">
+                <div className="mt-8 grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
                   {[
                     { icon: KeyRound, t: "Granular roles", d: "Admin, treasurer, auditor, guard & custom scopes" },
                     { icon: FileCheck2, t: "Full audit trail", d: "Who did what, when, and from where" },
@@ -383,8 +355,8 @@ export default async function LandingPage() {
 
         {/* ── Open source ─────────────────────────────────────────────── */}
         <section id="open-source" className="scroll-mt-24 border-y border-line bg-white py-20 sm:py-28">
-          <div className="mx-auto max-w-[1180px] px-5">
-            <div className="grid items-center gap-12 lg:grid-cols-2">
+          <div className="mx-auto max-w-[1180px] landing-gutter">
+            <div className="grid grid-cols-1 items-center gap-8 sm:gap-12 lg:grid-cols-2">
               <Reveal>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-600">Open source, by design</p>
                 <h2 className="mt-3 max-w-lg text-[36px] font-semibold leading-[1.05] tracking-[-0.04em] text-ink sm:text-[44px]">Software your community can <span className="font-display italic text-brand-600">actually own.</span></h2>
@@ -409,7 +381,7 @@ export default async function LandingPage() {
                     <div className="flex gap-1.5"><span className="size-2.5 rounded-full bg-[#ff6b6b]/70" /><span className="size-2.5 rounded-full bg-[#ffd166]/70" /><span className="size-2.5 rounded-full bg-[#5fd38d]/70" /></div>
                     <span className="font-mono text-xs text-white/70">terminal — nivaasa</span>
                   </div>
-                  <pre className="overflow-x-auto p-5 font-mono text-xs leading-[1.9] text-white/70"><code><span className="text-white/70"># clone and run your community</span>{"\n"}<span className="text-blush-300">$</span> git clone https://github.com/your-org/nivaasa{"\n"}<span className="text-blush-300">$</span> cd nivaasa{"\n"}<span className="text-blush-300">$</span> npm install{"\n"}<span className="text-blush-300">$</span> npm run setup{"\n"}<span className="text-blush-300">$</span> npm run dev{"\n\n"}<span className="text-emerald-300">✓</span> DB seeded at data/nivaasa.db{"\n"}<span className="text-emerald-300">✓</span> Web ready at http://localhost:3000{"\n"}<span className="text-emerald-300">✓</span> Mobile ready with Expo{"\n\n"}<span className="text-white/70"># demo: resident@nivaasa.app / demo1234</span></code></pre>
+                  <pre className="max-w-full whitespace-pre-wrap break-words p-4 font-mono text-xs leading-[1.9] text-white/70 sm:p-5"><code><span className="text-white/70"># clone and run your community</span>{"\n"}<span className="text-blush-300">$</span> git clone https://github.com/your-org/nivaasa{"\n"}<span className="text-blush-300">$</span> cd nivaasa{"\n"}<span className="text-blush-300">$</span> npm install{"\n"}<span className="text-blush-300">$</span> npm run setup{"\n"}<span className="text-blush-300">$</span> npm run dev{"\n\n"}<span className="text-emerald-300">✓</span> DB seeded at data/nivaasa.db{"\n"}<span className="text-emerald-300">✓</span> Web ready at http://localhost:3000{"\n"}<span className="text-emerald-300">✓</span> Mobile ready with Expo{"\n\n"}<span className="text-white/70"># demo: resident@nivaasa.app / demo1234</span></code></pre>
                 </div>
               </Reveal>
             </div>
@@ -431,7 +403,7 @@ export default async function LandingPage() {
         </section>
 
         {/* ── Community voices ───────────────────────────────────────── */}
-        <section className="px-5 py-20 sm:py-24">
+        <section className="landing-gutter py-20 sm:py-24">
           <div className="mx-auto max-w-[1180px]">
             <Reveal>
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -465,7 +437,7 @@ export default async function LandingPage() {
 
         {/* ── FAQ ─────────────────────────────────────────────────────── */}
         <section className="border-t border-line bg-white py-20 sm:py-24">
-          <div className="mx-auto grid max-w-[1180px] gap-10 px-5 lg:grid-cols-[0.8fr_1.2fr]">
+          <div className="mx-auto grid max-w-[1180px] gap-10 landing-gutter lg:grid-cols-[0.8fr_1.2fr]">
             <Reveal>
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-600">Questions, answered</p>
               <h2 className="mt-3 text-[34px] font-semibold leading-[1.05] tracking-[-0.04em] text-ink">A few things<br />worth knowing.</h2>
@@ -494,7 +466,7 @@ export default async function LandingPage() {
         </section>
 
         {/* ── CTA ─────────────────────────────────────────────────────── */}
-        <section id="cta" className="scroll-mt-24 px-3 py-16 sm:px-5 sm:py-24">
+        <section id="cta" className="scroll-mt-24 landing-gutter [--landing-gutter:0.75rem] py-16 sm:[--landing-gutter:1.25rem] sm:py-24">
           <div className="relative mx-auto max-w-[1180px] overflow-hidden rounded-[32px] border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-blush-50 px-6 py-14 text-center shadow-soft sm:py-20">
             <div className="absolute inset-0 dot-paper opacity-40 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
             <div className="relative mx-auto max-w-2xl">
@@ -538,14 +510,14 @@ function HeroMock() {
             </div>
             <span className="hidden rounded-full border border-line px-2.5 py-1 text-xs font-semibold text-ink-soft sm:inline">Tue, 4 Nov</span>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className="mt-4 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2 min-[480px]:grid-cols-3">
             {[
               { l: "Collected", v: "₹18.6L", h: "84% of billed", c: "bg-gradient-to-br from-brand-600 to-brand-800 text-white" },
               { l: "Outstanding", v: "₹2.4L", h: "42 invoices", c: "bg-white border border-line" },
               { l: "Open tickets", v: "7", h: "2 near SLA", c: "bg-blush-50 border border-blush-200" },
             ].map((s) => (
-              <div key={s.l} className={`rounded-xl p-3 ${s.c}`}>
-                <p className={`text-xs font-semibold uppercase tracking-[0.08em] ${s.l === "Collected" ? "text-white/80" : "text-muted"}`}>{s.l}</p>
+              <div key={s.l} className={`min-w-0 rounded-xl p-2 sm:p-3 ${s.l === "Collected" ? "col-span-full min-[480px]:col-span-1" : ""} ${s.c}`}>
+                <p className={`break-words text-xs font-semibold uppercase tracking-[0.04em] ${s.l === "Collected" ? "text-white/80" : "text-muted"}`}>{s.l}</p>
                 <p className={`mt-1 text-[19px] font-semibold tracking-[-0.03em] ${s.l === "Collected" ? "text-white" : "text-ink"}`}>{s.v}</p>
                 <p className={`mt-0.5 text-xs ${s.l === "Collected" ? "text-white/80" : "text-ink-soft"}`}>{s.h}</p>
               </div>
@@ -602,7 +574,7 @@ function HeroMock() {
         </div>
       </div>
 
-      <div className="absolute -left-3 -bottom-5 w-[210px] rounded-2xl border border-line bg-white p-3 shadow-[0_24px_50px_-20px_rgba(19,26,42,0.3)] sm:-left-8">
+      <div className="relative mt-3 w-full rounded-2xl sm:absolute sm:-bottom-5 sm:mt-0 sm:w-[210px] border border-line bg-white p-3 shadow-[0_24px_50px_-20px_rgba(19,26,42,0.3)] sm:-left-8">
         <div className="flex items-center justify-between">
           <span className="rounded-full bg-blush-100 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-blush-600">Visitor approval</span>
           <span className="text-xs text-muted">Now</span>
@@ -630,7 +602,7 @@ function HeroMock() {
 
 function Footer() {
   return (
-    <footer className="border-t border-line bg-[#0f1c33] px-5 py-14 text-white">
+    <footer className="border-t border-line bg-[#0f1c33] landing-gutter pt-14 pb-[calc(3.5rem+env(safe-area-inset-bottom))] text-white">
       <div className="mx-auto max-w-[1180px]">
         <div className="grid gap-10 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>
@@ -655,7 +627,7 @@ function Footer() {
         </div>
         <div className="mt-12 flex flex-col items-start justify-between gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center">
           <p className="text-xs text-white/70">© {new Date().getFullYear()} Nivaasa. Open source under the MIT licence.</p>
-          <div className="flex items-center gap-5 text-xs text-white/70">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-white/70">
             <Link href="/#security" className="hover:text-white/70">Privacy</Link>
             <Link href="/#security" className="hover:text-white/70">Security</Link>
             <Link href="/#open-source" className="hover:text-white/70">Licence</Link>

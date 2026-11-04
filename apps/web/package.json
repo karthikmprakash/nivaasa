@@ -1,6 +1,6 @@
 {
   "name": "@mycommunity/web",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3000",
@@ -8,7 +8,7 @@
     "start": "next start --port 3000",
     "typecheck": "tsc --noEmit",
     "db:seed": "tsx src/db/seed.ts",
-    "db:push": "drizzle-kit push --force",
+    "db:push": "drizzle-kit push",
     "test:ui": "tsx --test src/lib/ui-regressions.test.ts"
   },
   "dependencies": {

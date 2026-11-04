@@ -34,6 +34,8 @@ export function CollectionsChart({ data }: { data: Point[] }) {
         </AreaChart>
       </ResponsiveContainer>
     </div>
-    <table className="sr-only"><caption>Monthly collections and expenses in Indian rupees</caption><thead><tr><th scope="col">Month</th><th scope="col">Collected</th><th scope="col">Expenses</th></tr></thead><tbody>{data.map((point) => <tr key={point.month}><th scope="row">{point.month}</th><td>{currency.format(point.collected)}</td><td>{currency.format(point.expenses)}</td></tr>)}</tbody></table>
+    <div className="sr-only">
+      <table><caption>Monthly collections and expenses in Indian rupees</caption><thead><tr><th scope="col">Month</th><th scope="col">Collected</th><th scope="col">Expenses</th></tr></thead><tbody>{data.map((point) => <tr key={point.month}><th scope="row">{point.month}</th><td>{currency.format(point.collected)}</td><td>{currency.format(point.expenses)}</td></tr>)}</tbody></table>
+    </div>
   </div>;
 }

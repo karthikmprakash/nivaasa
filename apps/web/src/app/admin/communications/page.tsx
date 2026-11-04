@@ -30,7 +30,12 @@ export default async function CommunicationsPage() {
   const rsvpBy = new Map(rsvpRows.map((r) => [r.eventId, r.count]));
   return (
     <div>
-      <PageHeader eyebrow="Community engagement" title="Communications" description="Notices, polls, events and conversations — with moderation that keeps the feed useful." actions={<><PublishNoticeDialog /><CreatePollDialog /><CreateEventDialog /></>} />
+      <PageHeader
+        eyebrow="Community engagement"
+        title="Communications"
+        description="Notices, polls, events and conversations — with moderation that keeps the feed useful."
+        actions={<div className="flex flex-wrap gap-2"><PublishNoticeDialog /><CreatePollDialog /><CreateEventDialog /></div>}
+      />
       <div className="mt-5 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         <Stat label="Notices" value={noticeRows.length} hint="Published updates" tone="blue" icon={<Megaphone className="size-4" />} />
         <Stat label="Moderation queue" value={pendingRows.length} hint={pendingRows.length ? "Needs review" : "All clear"} tone={pendingRows.length ? "pink" : "green"} icon={<Flag className="size-4" />} />

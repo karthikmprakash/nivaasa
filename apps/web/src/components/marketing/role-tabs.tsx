@@ -58,7 +58,7 @@ export function RoleTabs() {
           );
         })}
       </div>
-      <div className="mt-6 grid items-stretch gap-6 lg:grid-cols-[1fr_1.05fr]">
+      <div className="mt-6 grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
         <div className="flex flex-col justify-between rounded-[26px] border border-line bg-white p-6 shadow-soft sm:p-8">
           <div>
             <div className={cn("mb-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em]", role.accent === "pink" ? "bg-blush-100 text-blush-600" : role.accent === "ink" ? "bg-[#eef1f8] text-ink-soft" : "bg-brand-50 text-brand-700")}>
@@ -79,7 +79,7 @@ export function RoleTabs() {
             Explore the {role.id === "admin" ? "admin console" : role.id === "guard" ? "guard console" : "resident app"} <ArrowRight className="size-3.5" />
           </a>
         </div>
-        <div className={cn("relative min-h-[420px] overflow-hidden rounded-[26px] border p-4 sm:p-6", role.accent === "pink" ? "border-blush-200 bg-blush-50" : role.accent === "ink" ? "border-[#d9dfec] bg-[#eef1f8]" : "border-brand-100 bg-brand-50/70")}>
+        <div className={cn("relative min-w-0 rounded-[26px] border p-2 min-[360px]:p-4 sm:p-6", role.accent === "pink" ? "border-blush-200 bg-blush-50" : role.accent === "ink" ? "border-[#d9dfec] bg-[#eef1f8]" : "border-brand-100 bg-brand-50/70")}>
           <div className="absolute inset-0 dot-paper opacity-40" />
           <div className="relative h-full">
             {active === "resident" ? <ResidentPreview /> : active === "admin" ? <AdminPreview /> : <GuardPreview />}
@@ -115,7 +115,7 @@ function ResidentPreview() {
             <span className="text-[9px] text-white/70">2 invoices · 1 overdue</span>
           </div>
         </div>
-        <div className="mt-3 grid grid-cols-4 gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-2 min-[400px]:grid-cols-4">
           {[
             { label: "Pre-approve", icon: UserRound },
             { label: "Helpdesk", icon: ClipboardList },
@@ -134,7 +134,7 @@ function ResidentPreview() {
             <span className="text-[8px] text-muted">Just now</span>
           </div>
           <p className="mt-2 text-[11px] font-semibold leading-snug text-ink">Yash from Swiggy is waiting with your order</p>
-          <div className="mt-2 flex gap-1.5">
+          <div className="mt-2 flex flex-wrap gap-1.5">
             <span className="rounded-lg bg-white px-2.5 py-1 text-[8.5px] font-semibold text-ink-soft">Deny</span>
             <span className="rounded-lg bg-white px-2.5 py-1 text-[8.5px] font-semibold text-ink-soft">Leave at gate</span>
             <span className="rounded-lg bg-mint-600 px-2.5 py-1 text-[8.5px] font-semibold text-white">Approve</span>

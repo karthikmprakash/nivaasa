@@ -1,81 +1,147 @@
 import { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from "react-native";
+import { Alert, Linking, Pressable, Share, Switch, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { CheckCircle2, KeyRound } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
 import { useAuth } from "@/lib/auth";
-import { api, todayLocal } from "@/lib/api";
+import { api, API_URL, dateLabel } from "@/lib/api";
 import { colors, fonts, shadow } from "@/lib/theme";
 import { BackButton, Button, Input, Screen } from "@/components/ui";
 
-const types = [{ v: "guest", l: "Guest" }, { v: "delivery", l: "Delivery" }, { v: "cab", l: "Cab" }, { v: "domestic_help", l: "Daily help" }, { v: "vendor", l: "Vendor" }, { v: "other", l: "Other" }];
+const types = [
+  { value: "guest", label: "Guest" },
+  { value: "delivery", label: "Delivery" },
+  { value: "cab", label: "Cab" },
+  { value: "vendor", label: "Vendor" },
+  { value: "daily_help", label: "Daily help" },
+] as const;
+
+function communityDate(offset = 0) {
+  return new Date(Date.now() + 330 * 60_000 + offset * 86_400_000).toISOString().slice(0, 10);
+}
+
+const heading = { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink, marginBottom: 8 } as const;
+const body = { fontFamily: fonts.regular, fontSize: 14, lineHeight: 21, color: colors.inkSoft } as const;
 
 export default function VisitorNewScreen() {
   const { token } = useAuth();
   const router = useRouter();
-  const [type, setType] = useState("guest");
+  const [type, setType] = useState<(typeof types)[number]["value"]>("guest");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [company, setCompany] = useState("");
-  const [purpose, setPurpose] = useState("");
-  const [date, setDate] = useState(todayLocal());
-  const [days, setDays] = useState(1);
+  const [validFrom, setValidFrom] = useState(communityDate);
+  const [validTo, setValidTo] = useState(communityDate);
+  const [recurringCab, setRecurringCab] = useState(false);
+  const [preset, setPreset] = useState("Today");
   const [notes, setNotes] = useState("");
   const [leaveAtGate, setLeaveAtGate] = useState(false);
   const [busy, setBusy] = useState(false);
   const [code, setCode] = useState<string | null>(null);
 
+  const range = type === "guest" || (type === "cab" && recurringCab);
+
+  function dates(label: string, start: number, length: number) {
+    setPreset(label);
+    setValidFrom(communityDate(start));
+    setValidTo(communityDate(start + length - 1));
+  }
+
+  function option(label: string, selected: boolean, onPress: () => void) {
+    return <Pressable key={label} accessibilityRole="button" accessibilityState={{ selected }} onPress={onPress}
+      style={{ justifyContent: "center", minHeight: 44, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: selected ? colors.brand600 : colors.line, backgroundColor: selected ? colors.brand50 : colors.surface }}>
+      <Text style={{ fontFamily: fonts.semibold, fontSize: 14, color: selected ? colors.brand700 : colors.inkSoft }}>{label}</Text>
+    </Pressable>;
+  }
+
   async function submit() {
-    if (!token) return;
-    if (!name.trim()) return Alert.alert("Visitor name required", "Add the person you're expecting.");
+    if (!token || busy) return;
+    if (type === "guest" && !name.trim()) return Alert.alert("Guest name required", "Add the guest you are expecting.");
     setBusy(true);
     try {
-      const res = await api<any>("/api/mobile/preapprove", { method: "POST", token, body: { name, phone, type, company, purpose, date, days, notes, leaveAtGate } });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => null);
-      setCode(res.code);
-    } catch (e) { Alert.alert("Could not create pass", e instanceof Error ? e.message : "Try again"); }
-    finally { setBusy(false); }
+      const result = await api<{ code: string }>("/api/mobile/preapprove", { method: "POST", token, body: { name, phone, type, company, validFrom, validTo: range ? validTo : undefined, recurringCab, notes, leaveAtGate } });
+      setCode(result.code);
+    } catch (e) {
+      Alert.alert("Could not create pass", e instanceof Error ? e.message : "Try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (code) return (
     <Screen>
-      <View style={{ alignItems: "center", backgroundColor: colors.surface, borderRadius: 24, borderWidth: 1, borderColor: colors.line, padding: 24, marginTop: 40, ...shadow }}>
-        <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: colors.mint50, alignItems: "center", justifyContent: "center" }}><CheckCircle2 size={30} color={colors.mint600} /></View>
-        <Text style={{ fontFamily: fonts.serif, fontSize: 28, color: colors.ink, marginTop: 12 }}>Pass is ready.</Text>
-        <Text style={{ fontFamily: fonts.regular, fontSize: 12, color: colors.muted, textAlign: "center", marginTop: 4 }}>Share this code with {name}. The guard will verify it at the gate.</Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.brand50, borderRadius: 16, paddingHorizontal: 20, paddingVertical: 14, marginTop: 18 }}><KeyRound size={18} color={colors.brand600} /><Text style={{ fontFamily: fonts.bold, fontSize: 26, letterSpacing: 7, color: colors.brand700 }}>{code}</Text></View>
-        <Text style={{ fontFamily: fonts.medium, fontSize: 12, color: colors.muted, marginTop: 10 }}>Valid from {date} for {days} day{days > 1 ? "s" : ""}</Text>
-        <Button title="Done" onPress={() => router.back()} full style={{ marginTop: 20 }} />
+      <View style={{ alignItems: "center", backgroundColor: colors.surface, borderRadius: 22, borderWidth: 1, borderColor: colors.line, padding: 22, marginTop: 36, ...shadow }}>
+        <CheckCircle2 size={32} color={colors.mint600} />
+        <Text style={{ fontFamily: fonts.semibold, fontSize: 26, color: colors.ink, marginTop: 12 }}>Pass ready</Text>
+        <Text style={{ ...body, textAlign: "center", marginTop: 4 }}>{recurringCab ? "Valid for one pickup each day." : "Valid for one entry."} {dateLabel(validFrom)}{range && validTo !== validFrom ? ` – ${dateLabel(validTo)}` : ""}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.brand50, borderRadius: 14, padding: 14, marginTop: 16 }}><KeyRound size={18} color={colors.brand600} /><Text selectable style={{ fontFamily: fonts.bold, fontSize: 26, letterSpacing: 6, color: colors.brand700 }}>{code}</Text></View>
+        <Button title="Share gate code" onPress={() => { void Share.share({ message: `Your Nivaasa gate pass code is ${code}. Valid ${dateLabel(validFrom)}${range && validTo !== validFrom ? ` through ${dateLabel(validTo)}` : ""}.` }).catch(() => Alert.alert("Could not share", "You can select and copy the code.")); }} full style={{ marginTop: 18 }} />
+        <Button title="Done" variant="outline" onPress={() => router.back()} full style={{ marginTop: 8 }} />
       </View>
     </Screen>
   );
 
+  const presets = recurringCab ? [["7 days", 0, 7], ["14 days", 0, 14], ["30 days", 0, 30]] as const
+    : range ? [["Today", 0, 1], ["Tomorrow", 1, 1], ["Next 7 days", 0, 7]] as const
+    : [["Today", 0, 1], ["Tomorrow", 1, 1]] as const;
+
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: colors.canvas }}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-        <BackButton />
-        <View style={{ marginTop: 8, marginBottom: 14 }}>
-          <Text style={{ fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1.3, textTransform: "uppercase", color: colors.brand600 }}>Visitors</Text>
-          <Text accessibilityRole="header" style={{ fontFamily: fonts.semibold, fontSize: 28, color: colors.ink, marginTop: 2 }}>Pre-approve a visitor</Text>
-          <Text style={{ fontFamily: fonts.regular, fontSize: 12, color: colors.inkSoft, marginTop: 3 }}>Skip the gate call with a 6-digit passcode.</Text>
+    <Screen>
+      <BackButton />
+      <Text accessibilityRole="header" style={{ ...heading, fontSize: 28, marginTop: 10 }}>Pre-approve a visitor</Text>
+      <Text style={body}>Choose a visitor type to create a gate pass.</Text>
+      <View style={{ marginVertical: 18 }}>
+        <Text style={heading}>Who are you expecting?</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {types.map(({ value, label }) => option(label, type === value, () => {
+            setType(value); setRecurringCab(false); setCompany(""); setNotes(""); setLeaveAtGate(false); dates("Today", 0, 1);
+          }))}
         </View>
-        <Text style={{ fontFamily: fonts.semibold, fontSize: 14, color: colors.inkSoft, marginBottom: 6 }}>Visitor type</Text>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>{types.map((t) => <Pressable accessibilityRole="button" key={t.v} onPress={() => setType(t.v)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: type === t.v ? colors.brand600 : colors.line, backgroundColor: type === t.v ? colors.brand50 : colors.surface }}><Text style={{ fontFamily: fonts.semibold, fontSize: 14, color: type === t.v ? colors.brand700 : colors.inkSoft }}>{t.l}</Text></Pressable>)}</View>
-        <View style={{ marginTop: 8 }}>
-          <Input label="Visitor name *" value={name} onChangeText={setName} placeholder="e.g. Rohit Sharma" />
-          <Input label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+91…" />
-          <Input label={type === "delivery" ? "Company / platform" : "Company / note"} value={company} onChangeText={setCompany} placeholder={type === "delivery" ? "Swiggy, Amazon…" : "Optional"} />
-          <Input label="Purpose" value={purpose} onChangeText={setPurpose} placeholder="Dinner, delivery, service…" />
-          <Text style={{ fontFamily: fonts.semibold, fontSize: 14, color: colors.inkSoft, marginBottom: 6 }}>Valid from</Text>
-          <View style={{ flexDirection: "row", gap: 6, marginBottom: 10 }}>{[{ l: "Today", d: todayLocal() }, { l: "Tomorrow", d: todayLocal(1) }, { l: "In a week", d: todayLocal(7) }].map((d) => <Pressable accessibilityRole="button" key={d.l} onPress={() => setDate(d.d)} style={{ flex: 1, alignItems: "center", paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: date === d.d ? colors.brand600 : colors.line, backgroundColor: date === d.d ? colors.brand50 : colors.surface }}><Text style={{ fontFamily: fonts.semibold, fontSize: 14, color: date === d.d ? colors.brand700 : colors.inkSoft }}>{d.l}</Text></Pressable>)}</View>
-          <Text style={{ fontFamily: fonts.semibold, fontSize: 14, color: colors.inkSoft, marginBottom: 6 }}>Valid for</Text>
-          <View style={{ flexDirection: "row", gap: 6, marginBottom: 10 }}>{[1, 3, 7, 14].map((n) => <Pressable accessibilityRole="button" key={n} onPress={() => setDays(n)} style={{ flex: 1, alignItems: "center", paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: days === n ? colors.brand600 : colors.line, backgroundColor: days === n ? colors.brand50 : colors.surface }}><Text style={{ fontFamily: fonts.semibold, fontSize: 14, color: days === n ? colors.brand700 : colors.inkSoft }}>{n === 1 ? "1 day" : `${n} days`}</Text></Pressable>)}</View>
-          <Input label="Notes for the guard" value={notes} onChangeText={setNotes} placeholder="Anything security should know?" multiline />
-          {type === "delivery" ? <View style={{ flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.line, padding: 11, marginBottom: 6 }}><View style={{ flex: 1 }}><Text style={{ fontFamily: fonts.semibold, fontSize: 14, color: colors.ink }}>Allow leave at gate</Text><Text style={{ fontFamily: fonts.regular, fontSize: 12, color: colors.muted }}>Keep the parcel at the gate and send a pickup code.</Text></View><Switch value={leaveAtGate} onValueChange={setLeaveAtGate} trackColor={{ true: colors.brand500 }} /></View> : null}
+      </View>
+      {type === "daily_help" ? (
+        <View>
+          <Text style={heading}>Register daily help</Text>
+          <Text style={body}>Open My home on the web to register daily help, view verified profiles and attendance, or leave a private review.</Text>
+          <Button title="Open My home" onPress={() => { void Linking.openURL(`${API_URL}/app/my-home#help`).catch(() => Alert.alert("Could not open My home", "Use the Nivaasa web app.")); }} full style={{ marginTop: 16 }} />
         </View>
-        <Button title={busy ? "Creating pass…" : "Generate visitor pass"} onPress={submit} loading={busy} size="lg" full style={{ marginTop: 8 }} />
-        <Text style={{ fontFamily: fonts.regular, fontSize: 12, color: colors.muted, textAlign: "center", marginTop: 10 }}>A 6-digit code will be generated. It is valid for the dates you chose.</Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      ) : (
+        <View>
+          {type === "guest" ? (
+            <>
+              <Input label="Guest name" value={name} onChangeText={setName} maxLength={80} placeholder="e.g. Rohit Sharma" />
+              <Input label="Phone number (optional)" value={phone} onChangeText={setPhone} keyboardType="phone-pad" maxLength={30} placeholder="+91…" />
+            </>
+          ) : (
+            <>
+              <Text style={{ ...body, marginBottom: 10 }}>Security will record the visitor’s name and phone number{type === "cab" ? ", plus the cab registration," : ""} at the gate.</Text>
+              <Input label={type === "delivery" ? "Delivery platform (optional)" : type === "cab" ? "Cab service (optional)" : "Company (optional)"} value={company} onChangeText={setCompany} maxLength={100} />
+            </>
+          )}
+          {type === "cab" ? (
+            <View style={{ marginBottom: 16 }}>
+              <Text style={heading}>Pickup frequency</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {option("One visit", !recurringCab, () => { setRecurringCab(false); dates("Today", 0, 1); })}
+                {option("Daily pickup", recurringCab, () => { setRecurringCab(true); dates("7 days", 0, 7); })}
+              </View>
+            </View>
+          ) : null}
+          <Text style={heading}>{range ? "Pass validity" : "Visit date"}</Text>
+          <Text style={{ ...body, marginBottom: 8 }}>{recurringCab ? "One pickup each day with the same code." : range ? "One entry within the date range." : "One visit on the selected date."}</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+            {presets.map(([label, start, length]) => option(label, label === preset, () => dates(label, start, length)))}
+          </View>
+          <Input label={range ? "Valid from" : "Date"} value={validFrom} onChangeText={(date) => { setValidFrom(date); setPreset(""); }} placeholder="YYYY-MM-DD" maxLength={10} />
+          {range ? <Input label="Valid to" value={validTo} onChangeText={(date) => { setValidTo(date); setPreset(""); }} placeholder="YYYY-MM-DD" maxLength={10} /> : null}
+          <Input label="Notes for security (optional)" value={notes} onChangeText={setNotes} maxLength={300} multiline />
+          {type === "delivery" ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <Text style={{ ...body, flex: 1 }}>Leave the parcel at the gate</Text>
+              <Switch accessibilityLabel="Leave the parcel at the gate" value={leaveAtGate} onValueChange={setLeaveAtGate} trackColor={{ true: colors.brand500 }} />
+            </View>
+          ) : null}
+          <Button title={busy ? "Creating pass…" : recurringCab ? "Create daily pickup pass" : "Create gate pass"} onPress={submit} loading={busy} size="lg" full style={{ marginTop: 8 }} />
+        </View>
+      )}
+    </Screen>
   );
 }

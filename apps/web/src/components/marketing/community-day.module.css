@@ -1,0 +1,238 @@
+.timeline {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 2rem;
+  padding-inline-start: 1.5rem;
+}
+
+.timeline::before,
+.timeline::after {
+  position: absolute;
+  inset-block: 0.875rem 0;
+  inset-inline-start: 0.3125rem;
+  z-index: -1;
+  inline-size: 2px;
+  border-radius: 2px;
+  background: var(--color-line-strong);
+  content: "";
+}
+
+.timeline::after {
+  background: var(--color-brand-500);
+  transform-origin: top;
+}
+
+.event {
+  --scene-solid: var(--color-brand-600);
+  --scene-wash: #dbe6ff;
+  --scene-paper: #f8faff;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(5.25rem, 24vw, 8rem);
+  align-items: center;
+  gap: 0.625rem 0.75rem;
+  padding-block: 0.25rem 1.25rem;
+  border-block-end: 1px solid var(--color-line);
+}
+
+.event:last-child {
+  padding-block-end: 0;
+  border-block-end: 0;
+}
+
+.event::before {
+  position: absolute;
+  inset-block-start: 0.625rem;
+  inset-inline-start: -1.5rem;
+  inline-size: 0.75rem;
+  block-size: 0.75rem;
+  border: 2px solid var(--scene-solid);
+  border-radius: 50%;
+  background: var(--color-canvas);
+  content: "";
+}
+
+.event[data-scene="arrival"] {
+  --scene-solid: #ae4b6e;
+  --scene-wash: #f9d9e3;
+  --scene-paper: #fff8fa;
+}
+
+.event[data-scene="delivery"] {
+  --scene-solid: #6551ac;
+  --scene-wash: #e4dcfc;
+  --scene-paper: #fcfaff;
+}
+
+.event[data-scene="helpdesk"] {
+  --scene-solid: #177459;
+  --scene-wash: #cdece1;
+  --scene-paper: #f6fdf9;
+}
+
+.event[data-scene="festival"] {
+  --scene-solid: #995118;
+  --scene-wash: #f8ddb1;
+  --scene-paper: #fffaf1;
+}
+
+.eventHeading {
+  grid-area: 1 / 1;
+}
+
+.time {
+  display: block;
+  color: var(--scene-solid);
+  font-size: var(--text-caption);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.illustration {
+  display: grid;
+  grid-area: 1 / 2;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: var(--scene-paper);
+}
+
+.art {
+  inline-size: 100%;
+  block-size: auto;
+  color: var(--scene-solid);
+}
+
+.description {
+  grid-column: 1 / -1;
+  color: var(--color-ink-soft);
+  font-size: var(--text-body);
+  line-height: 1.6;
+}
+
+@media (min-width: 40rem) and (max-width: 63.999rem) {
+  .event {
+    grid-template-columns: minmax(0, 1fr) 10rem;
+    column-gap: 2rem;
+  }
+
+  .illustration {
+    grid-area: 1 / 2 / 3 / 3;
+  }
+
+  .description {
+    grid-column: 1;
+  }
+}
+
+@media (min-width: 64rem) {
+  .timeline {
+    --scene-height: 10rem;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0;
+    margin-top: 2.5rem;
+    padding: 0;
+    background: linear-gradient(105deg, #fff0e4, #f7eaf2 27%, #eceafd 51%, #e8f4f0 73%, #f9eddf) no-repeat;
+    background-size: 100% var(--scene-height);
+    border-radius: 1rem 1rem 0 0;
+  }
+
+  .timeline::before,
+  .timeline::after {
+    inset-block: calc(var(--scene-height) + 1.125rem) auto;
+    inset-inline: 1.25rem calc(20% - 1.25rem);
+    inline-size: auto;
+    block-size: 2px;
+    transform-origin: left;
+  }
+
+  .event {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0 0.875rem;
+    border: 0;
+  }
+
+  .event::before {
+    inset-block-start: calc(var(--scene-height) + 0.8125rem);
+    inset-inline-start: 0.875rem;
+  }
+
+  .illustration {
+    block-size: var(--scene-height);
+    overflow: visible;
+    background: transparent;
+  }
+
+  .art {
+    max-inline-size: 11rem;
+  }
+
+  .eventHeading {
+    margin-top: 2.375rem;
+  }
+
+  .eventHeading h3 {
+    min-block-size: 2lh;
+  }
+
+  .description {
+    margin-top: 0.5rem;
+  }
+}
+
+/* The rail and artwork enhance the story. The timestamps and copy stay still. */
+@supports (animation-timeline: view()) and (animation-range: entry 0% exit 75%) {
+  @media (prefers-reduced-motion: no-preference) {
+    .timeline {
+      view-timeline: --community-day;
+    }
+
+    .timeline::after {
+      animation: trace-vertical linear both;
+      animation-timeline: --community-day;
+      animation-range: entry 8% exit 75%;
+    }
+
+    .art {
+      animation: scene-depth linear both;
+      animation-timeline: view();
+      animation-range: cover;
+    }
+
+    @media (min-width: 64rem) {
+      .timeline::after {
+        animation-name: trace-horizontal;
+        animation-range: entry 8% contain 25%;
+      }
+
+      .art {
+        animation-name: scene-depth-desktop;
+      }
+    }
+  }
+}
+
+@keyframes trace-vertical {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes trace-horizontal {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes scene-depth {
+  from { transform: translateY(-3px); }
+  to { transform: translateY(3px); }
+}
+
+@keyframes scene-depth-desktop {
+  from { transform: translateY(-10px); }
+  to { transform: translateY(10px); }
+}

@@ -2654,7 +2654,16 @@
       "copyrightNotice": "",
       "copyrightUrl": "",
       "created": 1793740091,
-      "modified": 1793740091
+      "modified": 1793759577
+    },
+    "last_view": {
+      "name": "",
+      "center": {
+        "x": 1900.4772951363357,
+        "y": -361.5782498283354
+      },
+      "zoom": 0.1446425412255381,
+      "rotation": 0.0
     }
   },
   "images": {}

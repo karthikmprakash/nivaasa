@@ -61,23 +61,47 @@ export async function addResident(_prev: AdminState, formData: FormData): Promis
   const role = String(formData.get("role") ?? "owner") as "owner" | "tenant" | "committee";
   if (!name || !email || !phone) return { error: "Name, email and phone are required." };
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: "Enter a valid email address." };
-  const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
-  if (existing) return { error: "A user with this email already exists." };
   const [unit] = await db.select().from(units).where(and(eq(units.id, unitId), eq(units.societyId, ctx.society.id))).limit(1);
   if (!unit) return { error: "Choose a valid home." };
   const [occupied] = await db.select({ id: memberships.id }).from(memberships).where(and(eq(memberships.unitId, unitId), eq(memberships.status, "active"))).limit(1);
   if (occupied) return { error: "This home already has an active resident. Use the household page to add a family member." };
-  const tempPassword = `Nv-${randomBytes(4).toString("hex")}`;
-  const userId = crypto.randomUUID();
+
+  // A Nivaasa account can belong to more than one society. Reuse the account
+  // and add a membership instead of rejecting a familiar email.
+  const [existing] = await db.select({ id: users.id, name: users.name }).from(users).where(eq(users.email, email)).limit(1);
+  if (existing) {
+    const [alreadyHere] = await db.select({ id: memberships.id, status: memberships.status }).from(memberships).where(and(eq(memberships.userId, existing.id), eq(memberships.societyId, ctx.society.id))).limit(1);
+    if (alreadyHere) return { error: alreadyHere.status === "active" ? "This person is already a member of this society." : "This person already has a membership record here. Update that record instead of adding a duplicate." };
+  }
+  const [otherMembership] = existing ? await db.select({ id: memberships.id }).from(memberships).where(eq(memberships.userId, existing.id)).limit(1) : [];
+  const isPrimary = !existing || !otherMembership;
+
+  const tempPassword = existing ? null : `Nv-${randomBytes(4).toString("hex")}`;
+  const userId = existing?.id ?? crypto.randomUUID();
+  const displayName = existing?.name ?? name;
   const now = new Date();
-  await db.insert(users).values({ id: userId, name, email, phone, passwordHash: hashPassword(tempPassword), avatarColor: "#3155d8", createdAt: now });
-  await db.insert(memberships).values({ id: crypto.randomUUID(), userId, societyId: ctx.society.id, unitId, role, designation: role === "committee" ? "Committee member" : null, status: "active", isPrimary: true, joinedAt: now });
+  if (!existing) {
+    await db.insert(users).values({ id: userId, name, email, phone, passwordHash: hashPassword(tempPassword!), avatarColor: "#3155d8", createdAt: now });
+  }
+  await db.insert(memberships).values({ id: crypto.randomUUID(), userId, societyId: ctx.society.id, unitId, role, designation: role === "committee" ? "Committee member" : null, status: "active", isPrimary, joinedAt: now });
   await db.update(units).set({ status: "occupied", ownership: role === "tenant" ? "tenanted" : "owner_occupied" }).where(eq(units.id, unitId));
-  await db.insert(notifications).values({ id: crypto.randomUUID(), userId, societyId: ctx.society.id, title: `Welcome to ${ctx.society.name}`, body: `Your account was created by ${ctx.user.name}. Sign in with your email and the temporary password shared by the community office.`, type: "system", link: "/app", createdAt: now });
-  await db.insert(auditLogs).values({ id: crypto.randomUUID(), societyId: ctx.society.id, actorId: ctx.user.id, actorName: ctx.user.name, action: "resident.created", entity: "membership", entityId: userId, metadata: { name, unit: unit.number, role }, createdAt: now });
+  await db.insert(notifications).values({
+    id: crypto.randomUUID(), userId, societyId: ctx.society.id, title: `Welcome to ${ctx.society.name}`,
+    body: existing
+      ? `${ctx.user.name} added your existing Nivaasa account to ${ctx.society.name}. Sign in with your current password to open Home ${unit.number}.`
+      : `Your account was created by ${ctx.user.name}. Sign in with your email and the temporary password shared by the community office.`,
+    type: "system", link: "/app", createdAt: now,
+  });
+  await db.insert(auditLogs).values({ id: crypto.randomUUID(), societyId: ctx.society.id, actorId: ctx.user.id, actorName: ctx.user.name, action: existing ? "resident.linked" : "resident.created", entity: "membership", entityId: userId, metadata: { name: displayName, unit: unit.number, role }, createdAt: now });
   revalidatePath("/admin/residents");
   revalidatePath("/app/directory");
-  return { ok: true, message: `${name} added to Home ${unit.number}.`, tempPassword };
+  return {
+    ok: true,
+    message: existing
+      ? `${displayName} now has access to Home ${unit.number} with their existing Nivaasa account.`
+      : `${displayName} added to Home ${unit.number}.`,
+    tempPassword: tempPassword ?? undefined,
+  };
 }
 
 import { amenities, amenityBookings, payments } from "@/db/schema";
@@ -128,7 +152,8 @@ export async function adminCancelBooking(formData: FormData) {
   revalidatePath("/app/amenities");
 }
 
-import { staff, staffAttendance } from "@/db/schema";
+import { staff } from "@/db/schema";
+import { recordStaffAttendance } from "@/lib/staff-attendance";
 
 export async function addStaffMember(_prev: AdminState, formData: FormData): Promise<AdminState> {
   const ctx = await requireAdmin();
@@ -171,14 +196,9 @@ export async function markStaffAttendance(formData: FormData) {
   if (!ctx.society) return;
   if (!["admin", "manager", "security_manager"].includes(ctx.membership?.role ?? "") && ctx.user.globalRole !== "super_admin") return;
   const staffId = String(formData.get("staffId") ?? "");
-  const today = todayISO();
-  const [existing] = await db.select().from(staffAttendance).where(and(eq(staffAttendance.staffId, staffId), eq(staffAttendance.date, today))).limit(1);
-  if (existing) {
-    await db.update(staffAttendance).set({ checkOutAt: new Date() }).where(eq(staffAttendance.id, existing.id));
-  } else {
-    await db.insert(staffAttendance).values({ id: crypto.randomUUID(), societyId: ctx.society.id, staffId, date: today, checkInAt: new Date(), method: "guard", markedBy: ctx.user.id });
-  }
-  revalidatePath("/admin/staff");
+  const action = formData.get("action") === "out" ? "out" : "in";
+  recordStaffAttendance(ctx.society.id, ctx.user.id, staffId, action);
+  for (const path of ["/admin/staff", "/gate", "/app/my-home", "/app/visitors"]) revalidatePath(path);
 }
 
 import { assets, vendors } from "@/db/schema";

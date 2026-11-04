@@ -3,19 +3,24 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { Bell, ChevronDown, ChevronRight, House, LayoutGrid, LogOut, Menu, Plus, Search, Settings as SettingsIcon, ShieldAlert, X } from "lucide-react";
+import { Bell, Building2, Check, ChevronDown, ChevronRight, House, LayoutGrid, LogOut, Menu, Plus, Search, Settings as SettingsIcon, ShieldAlert, X } from "lucide-react";
 import { Logo, LogoMark } from "@/components/brand/logo";
 import { Avatar, buttonClass } from "@/components/ui/primitives";
 import { Dropdown, DropdownItem, DropdownLabel, DropdownSeparator, Sheet } from "@/components/ui/client";
 import { logoutAction } from "@/lib/actions/auth";
+import { switchSocietyAction } from "@/lib/actions/societies";
+import type { SocietyOption } from "@/lib/society-access";
 import { cn } from "@/lib/utils";
 import { isNavigationActive, navigationTitle, type NavigationGroup, type NavigationItem } from "./navigation";
+import { SocietySwitcher } from "./society-switcher";
 
 type ShellProps = {
   children: React.ReactNode;
   variant: "resident" | "admin";
   user: { name: string; email: string; avatarColor: string | null };
   society: { name: string };
+  societies: SocietyOption[];
+  currentSocietyId: string;
   context: string;
   groups: NavigationGroup[];
   mobileHrefs: string[];
@@ -25,12 +30,13 @@ type ShellProps = {
   isSuper?: boolean;
 };
 
-export function ApplicationShell({ children, variant, user, society, context, groups, mobileHrefs, unread, demo, hasUnit, isSuper }: ShellProps) {
+export function ApplicationShell({ children, variant, user, society, societies = [], currentSocietyId = "", context, groups, mobileHrefs, unread, demo, hasUnit, isSuper }: ShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
   const [signingOut, startSignOut] = useTransition();
+  const [switchingSociety, startSocietySwitch] = useTransition();
   const root = variant === "resident" ? "/app" : "/admin";
   const title = navigationTitle(pathname, groups, root);
   const items = groups.flatMap((g) => g.items);
@@ -54,10 +60,7 @@ export function ApplicationShell({ children, variant, user, society, context, gr
 
   function navContents(close?: () => void) {
     return <>
-      <div className="mx-4 mb-5 flex items-center gap-3 rounded-xl border border-line bg-canvas/65 p-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-line bg-white"><House aria-hidden="true" className="size-[18px] text-ink-soft" /></span>
-        <div className="min-w-0"><p className="truncate text-body font-semibold text-ink">{society.name}</p><p className="mt-0.5 text-caption text-muted">{context}</p></div>
-      </div>
+      <SocietySwitcher societies={societies} currentId={currentSocietyId} context={context} />
       <nav aria-label={variant === "admin" ? "Admin navigation" : "Resident navigation"} className="fine-scroll min-h-0 flex-1 overflow-y-auto px-3 pb-4">
         {groups.map((g) => <div key={g.label} className="mb-5 last:mb-0">
           <p className="mb-1.5 px-3 text-caption font-medium text-muted">{g.label}</p>
@@ -80,14 +83,14 @@ export function ApplicationShell({ children, variant, user, society, context, gr
     </>;
   }
 
-  return <div className="min-h-dvh bg-canvas" data-app-shell>
+  return <div className="min-h-dvh bg-canvas [--shell-gutter:1rem] sm:[--shell-gutter:1.5rem] lg:[--shell-gutter:2rem]" data-app-shell>
     <a href="#main-content" className="fixed left-4 top-3 z-[100] -translate-y-24 rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white focus:translate-y-0">Skip to content</a>
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-[256px] flex-col border-r border-line bg-white lg:flex">
       <div className="flex h-[76px] shrink-0 items-center px-6"><Link href={root} aria-label="Nivaasa home"><Logo size={32} /></Link></div>
       {navContents()}
     </aside>
     <div className="lg:pl-[256px]">
-      <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-line bg-white px-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-20 flex min-h-[calc(4rem+env(safe-area-inset-top))] items-center justify-between gap-3 border-b border-line bg-white pl-[max(var(--shell-gutter),env(safe-area-inset-left))] pr-[max(var(--shell-gutter),env(safe-area-inset-right))] pt-[env(safe-area-inset-top)]">
         <div className="flex min-w-0 items-center gap-2">
           <button onClick={() => setMenuOpen(true)} className="grid size-11 shrink-0 place-items-center rounded-lg text-ink-soft hover:bg-canvas lg:hidden" aria-label="Open navigation"><Menu className="size-5" /></button>
           <Link href={root} aria-label="Nivaasa home" className="shrink-0 lg:hidden"><LogoMark size={28} /></Link>
@@ -104,6 +107,21 @@ export function ApplicationShell({ children, variant, user, society, context, gr
           </Link>
           <Dropdown trigger={<button className="flex min-h-11 items-center gap-1 rounded-lg px-1 hover:bg-canvas" aria-label="Account menu"><Avatar name={user.name} color={user.avatarColor} size="sm" /><ChevronDown className="hidden size-4 text-muted sm:block" /></button>}>
             <DropdownLabel>{user.name}</DropdownLabel><p className="px-3 pb-2 text-caption text-muted">{context} · {society.name}</p><DropdownSeparator />
+            {societies.length > 1 ? <>
+              <DropdownLabel>Societies</DropdownLabel>
+              {societies.map((option) => {
+                const current = option.id === currentSocietyId;
+                return <DropdownItem key={option.id} onClick={() => {
+                  if (current || switchingSociety) return;
+                  startSocietySwitch(() => { void switchSocietyAction(option.slug, pathname); });
+                }} className={cn(current && "bg-brand-50/70")}>
+                  <Building2 className="size-4 shrink-0 text-muted" />
+                  <span className="min-w-0 flex-1 truncate">{option.name}</span>
+                  {current ? <Check className="size-4 shrink-0 text-brand-600" /> : null}
+                </DropdownItem>;
+              })}
+              <DropdownSeparator />
+            </> : null}
             {variant === "resident" ? <><DropdownItem href="/app/my-home"><House className="size-4" /> My home</DropdownItem><DropdownItem href="/app/settings"><SettingsIcon /> Settings</DropdownItem><DropdownItem href="/app/emergency"><ShieldAlert className="size-4" /> Emergency</DropdownItem></> : <>
               {items.some((i) => i.href === "/admin/settings") ? <DropdownItem href="/admin/settings"><SettingsIcon /> Society settings</DropdownItem> : null}
               {hasUnit ? <DropdownItem href="/app"><House className="size-4" /> Resident app</DropdownItem> : null}
@@ -113,9 +131,9 @@ export function ApplicationShell({ children, variant, user, society, context, gr
           </Dropdown>
         </div>
       </header>
-      <main id="main-content" tabIndex={-1} className="px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 outline-none sm:px-6 lg:px-8 lg:pb-10 lg:pt-8"><div className="mx-auto max-w-[1280px]">{children}</div></main>
+      <main id="main-content" tabIndex={-1} className="pb-[calc(6rem+env(safe-area-inset-bottom))] pl-[max(var(--shell-gutter),env(safe-area-inset-left))] pr-[max(var(--shell-gutter),env(safe-area-inset-right))] pt-6 outline-none lg:pb-10 lg:pt-8"><div className="mx-auto max-w-[1280px]">{children}</div></main>
     </div>
-    <nav aria-label="Quick navigation" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white pb-[env(safe-area-inset-bottom)] lg:hidden">
+    <nav aria-label="Quick navigation" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] lg:hidden">
       <div className="flex">{mobileItems.map((item) => {
         const active = isNavigationActive(pathname, item.href, root);
         return <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={cn("flex min-h-16 min-w-0 flex-1 flex-col items-center justify-center gap-1 text-caption font-medium", active ? "text-brand-700" : "text-muted")}><item.icon className="size-5" aria-hidden="true" strokeWidth={active ? 2.2 : 1.8} /><span>{item.href === "/admin/residents" ? "Homes" : item.href === "/admin/security" ? "Gate" : item.href.endsWith("billing") ? "Billing" : item.href.endsWith("payments") ? "Pay" : item.label}</span></Link>;

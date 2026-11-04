@@ -69,7 +69,7 @@ export default function VisitorsScreen() {
           <Card key={v.id} style={{ marginTop: 9 }}>
             <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}><Avatar name={v.name} color={v.photoColor} size={36} /><View><Text style={{ fontFamily: fonts.semibold, fontSize: 14, color: colors.ink }}>{v.name}</Text><Text style={{ fontFamily: fonts.regular, fontSize: 12, color: colors.muted }}>{v.company ?? v.type.replace("_", " ")}</Text></View></View>
-              <Badge label={v.leaveAtGate ? "Leave at gate" : "Pre-approved"} tone={v.leaveAtGate ? "amber" : "green"} />
+              <Badge label={v.recurringCab ? "Daily pickup" : v.leaveAtGate ? "Leave at gate" : "Pre-approved"} tone={v.leaveAtGate ? "amber" : "green"} />
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.canvas, borderRadius: 12, padding: 10, marginTop: 10 }}>
               <KeyRound size={14} color={colors.brand600} />

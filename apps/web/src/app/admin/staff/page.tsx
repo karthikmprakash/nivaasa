@@ -27,11 +27,11 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: P
   ]);
   const filtered = kind === "all" ? staffRows : staffRows.filter((s) => s.kind === kind);
   const activeStaff = staffRows.filter((s) => s.active);
-  const presentIds = new Set(attendanceRows.map((a) => a.person.id));
+  const presentIds = new Set(attendanceRows.filter(({ attendance, person }) => person.active && attendance.checkInAt && !attendance.checkOutAt).map((a) => a.person.id));
   const monthlyPayroll = activeStaff.reduce((s, x) => s + (x.monthlyRate ?? 0), 0);
   const pendingVerification = activeStaff.filter((s) => !s.policeVerified);
   const attendanceBy = new Map(attendanceRows.map((a) => [a.person.id, a.attendance]));
-  const attendanceRate = activeStaff.length ? Math.round((weekRows.length / (activeStaff.length * 7)) * 100) : 0;
+  const attendanceRate = activeStaff.length ? Math.round((weekRows.filter((row) => activeStaff.some((person) => person.id === row.staffId)).length / (activeStaff.length * 7)) * 100) : 0;
   return (
     <div>
       <PageHeader eyebrow="People operations" title="Staff & attendance" description="Society staff, security and daily help — verified, present and paid on time." actions={<AddStaffDialog />} />
@@ -59,7 +59,7 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: P
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-2.5">
                     <span className={`text-caption font-medium ${a ? "text-mint-600" : "text-muted"}`}>{a ? <><CheckCircle2 className="mr-1 inline size-4" />In {formatTime(a.checkInAt)}{a.checkOutAt ? ` · Out ${formatTime(a.checkOutAt)}` : ""}</> : "Not checked in"}</span>
                     <div className="flex flex-wrap items-center gap-1.5">
-                      {s.active ? <form action={markStaffAttendance}><input type="hidden" name="staffId" value={s.id} /><button className="rounded-full bg-brand-50 px-2 py-1 text-caption font-semibold text-brand-700">{a ? "Check out" : "Mark present"}</button></form> : null}
+                      {!a?.checkOutAt && (a?.checkInAt || (s.active && (s.kind !== "daily_help" || s.policeVerified))) ? <form action={markStaffAttendance}><input type="hidden" name="staffId" value={s.id} /><input type="hidden" name="action" value={a?.checkInAt ? "out" : "in"} /><button className="rounded-full bg-brand-50 px-2 py-1 text-caption font-semibold text-brand-700">{a ? "Check out" : "Mark present"}</button></form> : null}
                       <form action={toggleStaffVerification}><input type="hidden" name="id" value={s.id} /><button className="rounded-full bg-canvas px-2 py-1 text-caption font-semibold text-ink-soft">{s.policeVerified ? "Verified" : "Verify ID"}</button></form>
                       <form action={toggleStaffActive}><input type="hidden" name="id" value={s.id} /><button aria-label={`${s.active ? "Deactivate" : "Activate"} ${s.name}`} className="grid size-10 place-items-center rounded-lg bg-canvas text-muted">{s.active ? <UserX className="size-4" /> : <UserCheck className="size-4" />}</button></form>
                     </div>

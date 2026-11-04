@@ -5,7 +5,7 @@ FRESH=false
 if [ ! -f "$DATABASE_PATH" ]; then FRESH=true; fi
 mkdir -p "$(dirname "$DATABASE_PATH")"
 cd /app/apps/web
-npx drizzle-kit push --force
+npm run db:push
 if [ "$FRESH" = "true" ] && [ "${SEED_DEMO:-true}" != "false" ]; then
   npm run db:seed
 fi

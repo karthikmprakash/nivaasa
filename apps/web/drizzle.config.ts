@@ -6,5 +6,5 @@ export default defineConfig({
   dialect: "sqlite",
   dbCredentials: { url: process.env.DATABASE_PATH ?? "../../data/nivaasa.db" },
   verbose: true,
-  strict: true,
+  strict: false,
 });
