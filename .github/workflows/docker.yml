@@ -25,16 +25,53 @@ env:
   IMAGE_NAME: ${{ github.repository_owner }}/nivaasa
 
 jobs:
-  image:
-    name: Build and publish image
-    runs-on: ubuntu-latest
+  build:
+    name: Build ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push ${{ matrix.arch }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ github.sha }}-${{ matrix.arch }}
+          build-args: |
+            NEXT_PUBLIC_APP_URL=https://nivaasa.karthikmprakash.online
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
+          provenance: false
+          sbom: false
+
+  merge:
+    name: Publish multi-arch manifest
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -48,23 +85,17 @@ jobs:
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=branch
-            type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix=sha-,format=short
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          # The Dokploy VPS is amd64. Add linux/arm64 here if you deploy on ARM.
-          platforms: linux/amd64
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            NEXT_PUBLIC_APP_URL=https://nivaasa.karthikmprakash.online
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: false
-          sbom: false
+      - name: Create manifest list
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          args=""
+          while IFS= read -r tag; do
+            [ -n "$tag" ] && args="$args -t $tag"
+          done <<< "$TAGS"
+          docker buildx imagetools create $args \
+            "$REGISTRY/$IMAGE_NAME:build-${GITHUB_SHA}-amd64" \
+            "$REGISTRY/$IMAGE_NAME:build-${GITHUB_SHA}-arm64"

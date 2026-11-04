@@ -12,7 +12,7 @@ This is the production runbook for **nivaasa.karthikmprakash.online**. The image
 
 ## 1. Make the image available
 
-The published `karthikmprakash/nivaasa` package is **public**, so Dokploy can pull it without credentials.
+The published `karthikmprakash/nivaasa` package is **public** and multi-arch (`linux/amd64` + `linux/arm64`), so Dokploy can pull it without credentials. The production VPS is arm64; the compose file attaches to Dokploy’s external `dokploy-network` instead of allocating a new bridge network.
 
 If you fork the repository and keep your package private, either make it public (GitHub → your profile → Packages → `nivaasa` → Package settings → Change visibility) or create a GitHub PAT (classic) with `read:packages` and add it in Dokploy under **Settings → Registries** (registry `ghcr.io`, username your GitHub username, token = PAT).
 
@@ -27,14 +27,14 @@ docker-compose.dokploy.yml
 If you prefer not to connect the repo, paste that file into the compose editor. Set:
 
 ```env
-NIVAASA_IMAGE=ghcr.io/karthikmprakash/nivaasa:1.0.0
+NIVAASA_IMAGE=ghcr.io/karthikmprakash/nivaasa:1.0.1
 NEXT_PUBLIC_APP_URL=https://nivaasa.karthikmprakash.online
 CORS_ORIGIN=https://nivaasa.karthikmprakash.online
 NEXT_PUBLIC_DEMO_MODE=true
 SEED_DEMO=true
 ```
 
-Use `latest` instead of `1.0.0` only if you want every redeploy to pull the newest main build.
+Use `latest` instead of `1.0.1` only if you want every redeploy to pull the newest main build.
 
 ### Real deployment instead of the demo
 

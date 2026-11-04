@@ -1,8 +1,8 @@
 {
   "name": "my-community",
   "private": true,
-  "version": "1.0.0",
-  "description": "MyCommunity \u2014 open-source community operating system for gated societies",
+  "version": "1.0.1",
+  "description": "MyCommunity — open-source community operating system for gated societies",
   "license": "MIT",
   "workspaces": [
     "apps/*"

@@ -2,7 +2,7 @@
 # The image is published by .github/workflows/docker.yml.
 services:
   nivaasa:
-    image: ${NIVAASA_IMAGE:-ghcr.io/karthikmprakash/nivaasa:latest}
+    image: ${NIVAASA_IMAGE:-ghcr.io/karthikmprakash/nivaasa:1.0.1}
     pull_policy: always
     init: true
     restart: unless-stopped
@@ -28,3 +28,8 @@ services:
 volumes:
   nivaasa-data:
   nivaasa-uploads:
+
+networks:
+  default:
+    external: true
+    name: dokploy-network
