@@ -152,7 +152,7 @@ SEED_DEMO=true docker compose up --build
 Every push to `main` and every `v*` tag publishes a multi-arch (`linux/amd64` + `linux/arm64`) image to GHCR:
 
 ```bash
-docker pull ghcr.io/karthikmprakash/nivaasa:1.0.2
+docker pull ghcr.io/karthikmprakash/nivaasa:1.0.3
 ```
 
 For Dokploy, use [`docker-compose.dokploy.yml`](docker-compose.dokploy.yml) and follow [`docs/deploy-dokploy.md`](docs/deploy-dokploy.md). The compose file expects a named `nivaasa-data` volume for SQLite and `nivaasa-uploads` for uploads.
