@@ -8,7 +8,10 @@
 <key>CFBundleShortVersionString</key><string>0.1</string>
 <key>CFBundleVersion</key><string>1</string>
 <key>UIAppFonts</key><array><string>PlusJakartaSans_400Regular.ttf</string><string>PlusJakartaSans_500Medium.ttf</string><string>PlusJakartaSans_600SemiBold.ttf</string><string>PlusJakartaSans_700Bold.ttf</string><string>PlusJakartaSans_800ExtraBold.ttf</string></array>
+<key>NSCameraUsageDescription</key><string>Scan visitor QR passes to verify access at the gate.</string>
+<key>NSContactsUsageDescription</key><string>Pick a guest from your contacts to pre-fill their name and phone number on a gate pass.</string>
 <key>UILaunchScreen</key><dict/>
+<key>UIBackgroundModes</key><array><string>remote-notification</string></array>
 <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
 <key>NivaasaAPIURL</key><string>$(NIVAASA_API_URL)</string>
 </dict></plist>

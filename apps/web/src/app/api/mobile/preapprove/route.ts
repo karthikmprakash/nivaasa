@@ -19,5 +19,5 @@ export async function POST(req: Request) {
   }, todayISO());
   if (!result.pass) return NextResponse.json({ error: data.type === "domestic_help" ? "Register daily help in My home." : Object.values(result.fieldErrors)[0] ?? "Enter the pass details." }, { status: 400 });
   const saved = saveVisitorPass(result.pass, { societyId: session.society.id, unitId: session.unit.id, userId: session.user.id, name: session.user.name });
-  return NextResponse.json({ ok: true, code: saved.code });
+  return NextResponse.json({ ok: true, id: saved.id, code: saved.code });
 }

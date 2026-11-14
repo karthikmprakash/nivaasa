@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { invoices, payments } from "@/db/schema";
+import { invoiceItems, invoices, payments } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 
 export async function GET() {
@@ -13,10 +13,14 @@ export async function GET() {
     db.select().from(payments).where(eq(payments.unitId, unitId)).orderBy(desc(payments.createdAt)),
     db.select({ total: sql<number>`coalesce(sum(${payments.amount}),0)` }).from(payments).where(sql`${payments.unitId} = ${unitId} and ${payments.kind} = 'advance' and ${payments.status} = 'success'`),
   ]);
+  const latestInvoice = invoiceRows.find(invoice => invoice.status !== "cancelled");
+  const breakdown = latestInvoice ? await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, latestInvoice.id)) : [];
   return NextResponse.json({
     invoices: invoiceRows,
     payments: paymentRows,
     advance: advanceRows[0]?.total ?? 0,
     dues: invoiceRows.filter((i) => ["due", "overdue", "partially_paid"].includes(i.status)).reduce((s, i) => s + i.total - i.amountPaid, 0),
+    breakdown,
+    bank: { name: session.society?.bankName ?? null, last4: session.society?.bankAccount?.replace(/\s/g, "").slice(-4) ?? null, ifsc: session.society?.ifsc ?? null },
   });
 }

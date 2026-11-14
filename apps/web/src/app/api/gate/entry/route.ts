@@ -1,6 +1,6 @@
 import { randomInt } from "node:crypto";
-import { NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
+import { NextResponse, after } from "next/server";
+import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
@@ -10,6 +10,8 @@ import { filterRecipientsByPref } from "@/lib/notifications";
 import { todayISO } from "@/lib/utils";
 import { validVisitorPhone } from "@/lib/visitor-pass-rules";
 import { nextVisitorCode } from "@/lib/visitor-passes";
+import { saveVisitorPhoto } from "@/lib/visitor-photo";
+import { sendVisitorGatePush } from "@/lib/push/apns";
 
 const schema = z.object({
   type: z.enum(["guest", "delivery", "cab", "domestic_help", "vendor", "other"]),
@@ -21,14 +23,30 @@ const schema = z.object({
   vehicleNo: z.string().trim().max(30).optional(),
   code: z.string().regex(/^\d{6}$/).optional(),
   notes: z.string().max(300).optional(),
-});
+  passId: z.string().min(1).max(100).optional(),
+}).refine((entry) => !entry.passId || !!entry.code);
 
 export async function POST(req: Request) {
-  const session = await gateSession();
+  const session = await gateSession({ allowManager: true });
   if (!session?.society) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const parsed = schema.safeParse(await req.json().catch(() => null));
+  const contentType = req.headers.get("content-type") ?? "";
+  let raw: unknown;
+  let photo: File | null = null;
+  if (contentType.includes("multipart/form-data")) {
+    const form = await req.formData();
+    const value = form.get("photo");
+    photo = typeof File !== "undefined" && value instanceof File ? value : null;
+    raw = Object.fromEntries([...form.entries()].filter(([key, entry]) => key !== "photo" && typeof entry === "string"));
+  } else {
+    raw = await req.json().catch(() => null);
+  }
+  const parsed = schema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: "Enter valid visitor details." }, { status: 400 });
   const d = parsed.data;
+  if (photo && photo.size > 6 * 1024 * 1024) return NextResponse.json({ error: "Use a visitor photo up to 6 MB." }, { status: 400 });
+  if (session.membership?.role === "manager" && session.user.globalRole !== "super_admin" && !d.passId) {
+    return NextResponse.json({ error: "Verify a pre-approved visitor pass first." }, { status: 403 });
+  }
   const societyId = session.society.id;
   const guardId = session.user.id;
   const [unit] = await db.select().from(units).where(and(eq(units.id, d.unitId), eq(units.societyId, societyId))).limit(1);
@@ -42,9 +60,10 @@ export async function POST(req: Request) {
   const result = db.transaction((tx) => {
     const pass = d.code ? tx.select().from(visitors).where(and(
       eq(visitors.societyId, societyId), eq(visitors.unitId, unit.id), eq(visitors.code, d.code),
-      eq(visitors.preApproved, true), eq(visitors.status, "approved"),
+      eq(visitors.preApproved, true), inArray(visitors.status, ["approved", "exited"]),
+      d.passId ? eq(visitors.id, d.passId) : undefined,
     )).get() : undefined;
-    if (d.code && !pass) return fail("That passcode is invalid or has already been used.", 404);
+    if (d.code && !pass) return fail("That passcode is invalid or no longer active.", 404);
     if (pass?.validFrom && pass.validFrom > now) return fail("This pass is not valid yet.", 409);
     if (pass?.validTo && pass.validTo < now) return fail("This pass has expired.", 409);
 
@@ -111,10 +130,35 @@ export async function POST(req: Request) {
       action: leaveAtGate ? "visitor.delivery.left_at_gate" : pass ? "visitor.entered" : "visitor.requested",
       entity: "visitor", entityId: visitorId, metadata: { name, type, unit: unit.number, passId: pass?.id }, createdAt: now,
     }).run();
-    return { ok: true, status, name, unit: unit.number };
+    return { ok: true, status, name, unit: unit.number, visitorId };
   }, { behavior: "immediate" });
 
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
+  const visitorId = result.visitorId;
+  const origin = process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin;
+  const gatePhone = session.user.phone || null;
+  after(async () => {
+    if (photo) {
+      try {
+        const photoFile = await saveVisitorPhoto(visitorId, photo);
+        await db.update(visitors).set({ photoUrl: photoFile }).where(and(eq(visitors.id, visitorId), eq(visitors.societyId, societyId)));
+      } catch (photoError) {
+        console.error("Visitor photo upload failed", { visitorId, message: photoError instanceof Error ? photoError.message : "unknown" });
+      }
+    }
+    if (result.status === "pending" && notifyHosts.length) {
+      const [latest] = await db.select().from(visitors).where(and(eq(visitors.id, visitorId), eq(visitors.societyId, societyId))).limit(1);
+      if (latest) {
+        await sendVisitorGatePush({
+          visitor: latest,
+          unitNumber: unit.number,
+          hostUserIds: notifyHosts.map(host => host.userId),
+          origin,
+          gatePhone,
+        });
+      }
+    }
+  });
   for (const path of ["/gate", "/app", "/app/visitors", "/app/deliveries", "/admin/security"]) revalidatePath(path);
   return NextResponse.json(result);
 }

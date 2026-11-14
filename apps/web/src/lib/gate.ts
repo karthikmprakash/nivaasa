@@ -4,11 +4,13 @@ import { db } from "@/db";
 import { memberships } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 
-export async function gateSession() {
+export async function gateSession({ allowManager = false } = {}) {
   const session = await getSession();
   if (!session) return null;
   const role = session.membership?.role;
-  if (role !== "guard" && role !== "security_manager" && role !== "admin" && session.user.globalRole !== "super_admin") return null;
+  const authorized = role === "guard" || role === "security_manager" || role === "admin"
+    || (allowManager && role === "manager") || session.user.globalRole === "super_admin";
+  if (!authorized) return null;
   if (!session.society) return null;
   return session;
 }

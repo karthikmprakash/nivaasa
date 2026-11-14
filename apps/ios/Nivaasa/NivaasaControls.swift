@@ -4,11 +4,15 @@ import UIKit
 // MARK: - Interaction
 
 struct NivaasaPressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.975 : 1)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
             .opacity(configuration.isPressed ? 0.9 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(NivaasaMotion.quick(reduceMotion), value: configuration.isPressed)
+            .onChange(of: configuration.isPressed) { _, pressed in
+                if pressed { Haptics.shared.play(.tap) }
+            }
     }
 }
 
@@ -20,7 +24,7 @@ struct NivaasaTextButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 5) {
-                if let icon { Image(systemName: icon).font(.system(size: 12, weight: .semibold)) }
+                if let icon { NivaasaIcon(name: icon, size: 16) }
                 Text(title).font(.nivaasaCaptionMedium)
             }
             .foregroundStyle(NK.brand700)
@@ -37,8 +41,8 @@ struct NivaasaCloseBar: View {
         HStack {
             Spacer()
             Button(action: close) {
-                Image(systemName: "xmark").font(.system(size: 14, weight: .semibold)).foregroundStyle(NK.inkSoft)
-                    .frame(width: 36, height: 36).background(NK.canvas, in: Circle())
+                NivaasaIcon(name: "xmark", size: 20).foregroundStyle(NK.inkSoft)
+                    .frame(width: 44, height: 44).background(NK.canvas, in: RoundedRectangle(cornerRadius: 10))
             }
             .buttonStyle(NivaasaPressStyle())
             .accessibilityLabel("Close")
@@ -86,6 +90,51 @@ struct NivaasaInput: View {
     }
 }
 
+/// Six-digit OTP-style entry. Auto-submits via `onComplete` the moment the
+/// sixth digit lands, so the guard never taps a separate confirm button.
+struct OtpCodeField: View {
+    @Binding var code: String
+    var onComplete: (String) -> Void
+    var identifier: String = "lookup-code"
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(0..<6, id: \.self) { index in
+                let digit = index < code.count ? String(code[code.index(code.startIndex, offsetBy: index)]) : ""
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(NK.surface)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .strokeBorder(index < code.count ? NK.brand500 : NK.lineStrong, lineWidth: index < code.count ? 1.5 : 1)
+                        }
+                    Text(digit)
+                        .font(.jakarta(22, .bold)).foregroundStyle(NK.ink).monospacedDigit()
+                }
+                .frame(width: 44, height: 56)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .background {
+            TextField("", text: Binding(
+                get: { code },
+                set: { new in
+                    code = String(new.filter { $0.isASCII && $0.isNumber }.prefix(6))
+                    if code.count == 6 { onComplete(code) }
+                }
+            ))
+            .keyboardType(.numberPad)
+            .focused($focused)
+            .opacity(0.02)
+            .accessibilityIdentifier(identifier)
+            .accessibilityLabel("6-digit entry code")
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { focused = true }
+    }
+}
+
 struct NivaasaTextArea: View {
     let label: String
     @Binding var text: String
@@ -119,11 +168,16 @@ struct NivaasaChips: View {
     let options: [String]
     @Binding var selection: String
     var label: String?
+    var icons: [String: String]
+    var activeColor: Color
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(label: String? = nil, options: [String], selection: Binding<String>) {
+    init(label: String? = nil, options: [String], selection: Binding<String>, icons: [String: String] = [:], activeColor: Color = NK.brand600) {
         self.label = label
         self.options = options
         self._selection = selection
+        self.icons = icons
+        self.activeColor = activeColor
     }
 
     var body: some View {
@@ -132,14 +186,22 @@ struct NivaasaChips: View {
             FlowLayout(spacing: 7) {
                 ForEach(options, id: \.self) { option in
                     let active = option == selection
-                    Button { selection = option } label: {
-                        Text(option.replacingOccurrences(of: "_", with: " ").capitalized)
+                    Button {
+                        guard selection != option else { return }
+                        selection = option
+                        Haptics.shared.play(.selection)
+                    } label: {
+                        HStack(spacing: 6) {
+                            if let icon = icons[option] { NivaasaIcon(name: icon, size: 14) }
+                            Text(option == option.lowercased() ? option.replacingOccurrences(of: "_", with: " ").capitalized : option)
+                        }
                             .font(.nivaasaCaptionMedium)
                             .foregroundStyle(active ? .white : NK.inkSoft)
                             .padding(.horizontal, 13)
                             .frame(minHeight: 36)
-                            .background(active ? NK.brand600 : NK.surface, in: Capsule())
+                            .background(active ? activeColor : NK.surface, in: Capsule())
                             .overlay { if !active { Capsule().strokeBorder(NK.line, lineWidth: 1) } }
+                            .animation(NivaasaMotion.spring(reduceMotion), value: active)
                     }
                     .buttonStyle(NivaasaPressStyle())
                     .accessibilityAddTraits(active ? .isSelected : [])
@@ -153,14 +215,21 @@ struct NivaasaToggleRow: View {
     let label: String
     @Binding var isOn: Bool
     var help: String?
+    var onChange: ((Bool) -> Void)? = nil
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        Button { isOn.toggle() } label: {
+        Button {
+            isOn.toggle()
+            Haptics.shared.play(isOn ? .success : .selection)
+            onChange?(isOn)
+        } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(label).font(.nivaasaBodyMedium).foregroundStyle(NK.ink)
                     if let help { Text(help).font(.nivaasaCaption).foregroundStyle(NK.muted) }
                 }
+                .fixedSize(horizontal: false, vertical: true)
                 Spacer()
                 Capsule()
                     .fill(isOn ? NK.brand600 : NK.lineStrong)
@@ -168,8 +237,10 @@ struct NivaasaToggleRow: View {
                     .overlay(alignment: isOn ? .trailing : .leading) {
                         Circle().fill(.white).frame(width: 22, height: 22).padding(2)
                     }
+                    .animation(NivaasaMotion.spring(reduceMotion), value: isOn)
             }
             .padding(.horizontal, 14)
+            .padding(.vertical, 12)
             .frame(minHeight: 50)
             .background(NK.surface, in: RoundedRectangle(cornerRadius: NKRadius.control, style: .continuous))
             .overlay { RoundedRectangle(cornerRadius: NKRadius.control, style: .continuous).strokeBorder(NK.line, lineWidth: 1) }
@@ -184,6 +255,7 @@ struct NivaasaToggleRow: View {
 struct NivaasaSheetHeader: View {
     let title: String
     var subtitle: String?
+    var closeIdentifier: String?
     let close: () -> Void
 
     var body: some View {
@@ -195,11 +267,12 @@ struct NivaasaSheetHeader: View {
             }
             Spacer()
             Button(action: close) {
-                Image(systemName: "xmark").font(.system(size: 14, weight: .semibold)).foregroundStyle(NK.inkSoft)
-                    .frame(width: 36, height: 36).background(NK.canvas, in: Circle())
+                NivaasaIcon(name: "xmark", size: 20).foregroundStyle(NK.inkSoft)
+                    .frame(width: 44, height: 44).background(NK.canvas, in: RoundedRectangle(cornerRadius: 10))
             }
             .buttonStyle(NivaasaPressStyle())
             .accessibilityLabel("Close")
+            .accessibilityIdentifier(closeIdentifier ?? "sheet-close")
         }
         .padding(.horizontal, 20)
         .padding(.top, 18)
@@ -209,84 +282,96 @@ struct NivaasaSheetHeader: View {
 
 // MARK: - Dates
 
+var communityCalendar: Calendar {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(identifier: "Asia/Kolkata") ?? .current
+    return calendar
+}
+
+func communityDateKey(_ date: Date) -> String {
+    let parts = communityCalendar.dateComponents([.year, .month, .day], from: date)
+    return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+}
+
 struct NivaasaDateField: View {
     let label: String
     @Binding var date: Date
     let range: ClosedRange<Date>
+    @State private var draft = Date()
     @State private var showPicker = false
+    @Environment(\.dynamicTypeSize) private var textSize
 
-    private var days: [Date] {
-        var values: [Date] = []
-        var day = range.lowerBound
-        while day <= range.upperBound {
-            values.append(day)
-            day = Calendar.current.date(byAdding: .day, value: 1, to: day) ?? day.addingTimeInterval(86_400)
-        }
-        return values
+    private var formattedDate: String {
+        var style = Date.FormatStyle.dateTime.weekday(.abbreviated).day().month(.abbreviated).year()
+            .locale(Locale(identifier: "en_IN"))
+        style.timeZone = communityCalendar.timeZone
+        return date.formatted(style)
     }
 
     var body: some View {
-        Button { showPicker = true } label: {
+        Button {
+            draft = min(max(date, range.lowerBound), range.upperBound)
+            showPicker = true
+        } label: {
             HStack(spacing: 10) {
-                Image(systemName: "calendar").font(.system(size: 16, weight: .medium)).foregroundStyle(NK.muted)
+                NivaasaIcon(name: "calendar").foregroundStyle(NK.muted)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(label).font(.nivaasaCaption).foregroundStyle(NK.muted)
-                    Text(date.formatted(.dateTime.weekday(.abbreviated).day().month(.wide).locale(Locale(identifier: "en_IN"))))
-                        .font(.nivaasaBodyMedium).foregroundStyle(NK.ink)
+                    Text(formattedDate).font(.nivaasaBodyMedium).foregroundStyle(NK.ink)
                 }
-                Spacer()
-                Image(systemName: "chevron.down").font(.system(size: 12, weight: .semibold)).foregroundStyle(NK.muted)
+                Spacer(minLength: 6)
+                NivaasaIcon(name: "chevron.down").foregroundStyle(NK.muted)
             }
             .padding(.horizontal, 14)
             .frame(minHeight: 54)
-            .background(NK.surface, in: RoundedRectangle(cornerRadius: NKRadius.control, style: .continuous))
-            .overlay { RoundedRectangle(cornerRadius: NKRadius.control, style: .continuous).strokeBorder(NK.lineStrong, lineWidth: 1) }
+            .background(NK.surface, in: RoundedRectangle(cornerRadius: NKRadius.control))
+            .overlay { RoundedRectangle(cornerRadius: NKRadius.control).strokeBorder(NK.lineStrong) }
         }
         .buttonStyle(NivaasaPressStyle())
+        .accessibilityLabel(label)
+        .accessibilityValue(formattedDate)
         .accessibilityIdentifier(label)
-        .fullScreenCover(isPresented: $showPicker) {
-            NivaasaDateChoice(title: label, days: days, selected: $date, close: { showPicker = false })
-        }
-    }
-}
-
-struct NivaasaDateChoice: View {
-    let title: String
-    let days: [Date]
-    @Binding var selected: Date
-    let close: () -> Void
-    private let columns = [GridItem(.adaptive(minimum: 92), spacing: 8)]
-
-    var body: some View {
-        VStack(spacing: 0) {
-            NivaasaSheetHeader(title: title, subtitle: "Choose a day in the next 30 days.", close: close)
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: 8) {
-                    ForEach(days, id: \.self) { day in
-                        let active = Calendar.current.isDate(day, inSameDayAs: selected)
-                        Button {
-                            selected = day
-                            close()
-                        } label: {
-                            VStack(spacing: 3) {
-                                Text(day.formatted(.dateTime.weekday(.abbreviated).locale(Locale(identifier: "en_IN"))).uppercased())
-                                    .font(.nivaasaEyebrow).foregroundStyle(active ? .white.opacity(0.8) : NK.muted)
-                                Text(day.formatted(.dateTime.day().locale(Locale(identifier: "en_IN"))))
-                                    .font(.jakarta(20, .semibold)).foregroundStyle(active ? .white : NK.ink)
-                                Text(day.formatted(.dateTime.month(.abbreviated).locale(Locale(identifier: "en_IN"))))
-                                    .font(.nivaasaCaption).foregroundStyle(active ? .white.opacity(0.8) : NK.muted)
-                            }
-                            .frame(maxWidth: .infinity, minHeight: 84)
-                            .background(active ? NK.brand600 : NK.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .overlay { if !active { RoundedRectangle(cornerRadius: 12).strokeBorder(NK.line, lineWidth: 1) } }
+        .sheet(isPresented: $showPicker) {
+            NavigationStack {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if textSize.isAccessibilitySize {
+                            picker.datePickerStyle(.wheel)
+                        } else {
+                            picker.datePickerStyle(.graphical)
                         }
-                        .buttonStyle(NivaasaPressStyle())
+                        Text("Dates use India Standard Time.")
+                            .font(.footnote).foregroundStyle(NK.muted)
+                    }
+                    .padding(16)
+                    .frame(maxWidth: 520)
+                    .frame(maxWidth: .infinity)
+                }
+                .background(AppWash())
+                .navigationTitle(label)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showPicker = false } }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") {
+                            date = communityCalendar.startOfDay(for: draft)
+                            showPicker = false
+                        }
                     }
                 }
-                .padding(20)
             }
+            .environment(\.calendar, communityCalendar)
+            .environment(\.timeZone, communityCalendar.timeZone)
+            .environment(\.locale, Locale(identifier: "en_IN"))
+            .presentationDragIndicator(.visible)
         }
-        .background(AppWash())
+    }
+
+    private var picker: some View {
+        DatePicker(label, selection: $draft, in: range, displayedComponents: .date)
+            .labelsHidden()
+            .accessibilityIdentifier("community-calendar")
+            .tint(NK.brand600)
     }
 }
 
@@ -301,10 +386,11 @@ struct NivaasaCopyButton: View {
         Button {
             UIPasteboard.general.string = value
             copied = true
+            Haptics.shared.play(.success)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { copied = false }
         } label: {
             HStack(spacing: 8) {
-                Image(systemName: copied ? "checkmark" : "doc.on.doc").font(.system(size: 16, weight: .semibold))
+                NivaasaIcon(name: copied ? "checkmark" : "doc.on.doc")
                 Text(copied ? "Copied" : label).font(.nivaasaBodySemibold)
             }
             .foregroundStyle(copied ? NK.mint600 : NK.brand700)
@@ -322,7 +408,7 @@ struct NivaasaFeedback: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: "checkmark.circle.fill").font(.system(size: 16, weight: .semibold))
+            NivaasaIcon(name: tone == .danger ? "exclamationmark.shield" : "checkmark.circle")
             Text(text).font(.nivaasaCaptionMedium)
         }
         .foregroundStyle(tone == .danger ? NK.dangerInk : NK.mint600)

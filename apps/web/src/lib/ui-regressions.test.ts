@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { avatarForeground, cn, formatDate, formatTime } from "./utils";
 import { adminNavigation, isNavigationActive, navigationTitle, residentNavigation } from "../components/shell/navigation";
 import { Field, Input } from "../components/ui/field";
-import { validatePassRequest } from "./visitor-pass-rules";
+import { validatePassRequest, VENDOR_PASS_HOURS } from "./visitor-pass-rules";
 import { isSafeInternalPath, resolveSwitchPath, societyHomePath, stableSwitchPath } from "./society-access";
 import { canViewNoticeAudience, canVoteInPollAudience, pollIsOpen } from "./community-access";
 import { communityDayEnd, communityDayStart, communityMonthKey, parseCommunityDateTime } from "./datetime";
@@ -137,15 +137,19 @@ test("guest passes use inclusive community dates and reject impossible or excess
   assert.ok(validatePassRequest({ type: "guest", name: "Guest", validFrom: today, validTo: "2026-12-04" }, today).fieldErrors?.validTo);
 });
 
-test("non-guest passes collect identity at the gate and only daily cabs keep a date range", () => {
+test("non-guest passes collect identity at the gate and get a 1-hour window; only daily cabs keep a date range", () => {
   const today = "2026-11-04";
   const requested = { name: "Unverified driver", phone: "9999999999", validFrom: today, validTo: "2026-11-10", recurringCab: true };
   const delivery = validatePassRequest({ ...requested, type: "delivery" }, today).pass;
   const cab = validatePassRequest({ ...requested, type: "cab" }, today).pass;
+  const oneOffCab = validatePassRequest({ ...requested, type: "cab", recurringCab: false }, today).pass;
+  const vendor = validatePassRequest({ ...requested, type: "vendor" }, today).pass;
   assert.equal(delivery?.name, "Delivery");
   assert.equal(delivery?.phone, null);
   assert.equal(delivery?.recurringCab, false);
-  assert.equal(delivery!.validTo.getTime() - delivery!.validFrom.getTime(), 86_400_000 - 1);
+  assert.equal(delivery!.validTo.getTime() - delivery!.validFrom.getTime(), VENDOR_PASS_HOURS * 3_600_000);
+  assert.equal(oneOffCab!.validTo.getTime() - oneOffCab!.validFrom.getTime(), VENDOR_PASS_HOURS * 3_600_000);
+  assert.equal(vendor!.validTo.getTime() - vendor!.validFrom.getTime(), VENDOR_PASS_HOURS * 3_600_000);
   assert.equal(cab?.name, "Daily cab pickup");
   assert.equal(cab?.phone, null);
   assert.equal(cab?.recurringCab, true);

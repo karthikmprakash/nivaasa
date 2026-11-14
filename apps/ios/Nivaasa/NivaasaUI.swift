@@ -125,6 +125,11 @@ func shortDate(_ value: String?, month: Bool = true) -> String {
         : date.formatted(.dateTime.day().locale(Locale(identifier: "en_IN")))
 }
 
+func shortTime(_ value: String?) -> String {
+    guard let date = nivaasaDate(value) else { return "" }
+    return date.formatted(.dateTime.hour().minute().locale(Locale(identifier: "en_IN")))
+}
+
 func longDate(_ value: String?) -> String {
     guard let date = nivaasaDate(value) else { return "—" }
     return date.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "en_IN")))
@@ -177,7 +182,7 @@ struct NivaasaCard<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
-        content
+        VStack(alignment: .leading, spacing: 12) { content }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(padding)
             .background {
@@ -208,7 +213,7 @@ struct SectionHeading: View {
                 Button(action: run) {
                     HStack(spacing: 2) {
                         Text(action).font(.nivaasaCaptionMedium)
-                        Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold))
+                        NivaasaIcon(name: "chevron.right", size: 16)
                     }
                     .foregroundStyle(NK.brand700)
                     .frame(minHeight: 36)
@@ -257,10 +262,10 @@ struct PrimaryButton: View {
     var body: some View {
         Button(action: run) {
             HStack(spacing: 8) {
-                if let icon { Image(systemName: icon).font(.system(size: 16, weight: .semibold)) }
+                if let icon { NivaasaIcon(name: icon, size: 16) }
                 Text(title).font(.nivaasaBodySemibold)
             }
-            .frame(maxWidth: .infinity, minHeight: 48)
+            .frame(maxWidth: .infinity, minHeight: 44)
             .foregroundStyle(.white)
             .background(NK.brand600, in: RoundedRectangle(cornerRadius: NKRadius.control, style: .continuous))
         }
@@ -273,12 +278,13 @@ struct PrimaryButton: View {
 struct SoftButton: View {
     let title: String
     var icon: String? = nil
+    var disabled = false
     let run: () -> Void
 
     var body: some View {
         Button(action: run) {
             HStack(spacing: 8) {
-                if let icon { Image(systemName: icon).font(.system(size: 16, weight: .semibold)) }
+                if let icon { NivaasaIcon(name: icon, size: 16) }
                 Text(title).font(.nivaasaBodySemibold)
             }
             .frame(maxWidth: .infinity, minHeight: 44)
@@ -286,18 +292,21 @@ struct SoftButton: View {
             .background(NK.dangerSoft, in: RoundedRectangle(cornerRadius: NKRadius.control, style: .continuous))
         }
         .buttonStyle(NivaasaPressStyle())
+        .disabled(disabled)
+        .opacity(disabled ? 0.55 : 1)
     }
 }
 
 struct OutlineButton: View {
     let title: String
     var icon: String? = nil
+    var disabled = false
     let run: () -> Void
 
     var body: some View {
         Button(action: run) {
             HStack(spacing: 8) {
-                if let icon { Image(systemName: icon).font(.system(size: 16, weight: .semibold)) }
+                if let icon { NivaasaIcon(name: icon, size: 16) }
                 Text(title).font(.nivaasaBodySemibold)
             }
             .frame(maxWidth: .infinity, minHeight: 44)
@@ -306,6 +315,8 @@ struct OutlineButton: View {
             .overlay { RoundedRectangle(cornerRadius: NKRadius.control, style: .continuous).strokeBorder(NK.lineStrong, lineWidth: 1) }
         }
         .buttonStyle(NivaasaPressStyle())
+        .disabled(disabled)
+        .opacity(disabled ? 0.55 : 1)
     }
 }
 
@@ -342,6 +353,9 @@ struct StatCard: View {
     private var background: AnyShapeStyle {
         switch tone {
         case .pink: AnyShapeStyle(LinearGradient(colors: [NK.blush50, NK.surface, NK.brand50.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing))
+        case .blue: AnyShapeStyle(NK.brand50.opacity(0.6))
+        case .green: AnyShapeStyle(NK.mint50.opacity(0.4))
+        case .amber: AnyShapeStyle(NK.amberSoft.opacity(0.6))
         default: AnyShapeStyle(NK.surface)
         }
     }
@@ -367,14 +381,14 @@ struct StatCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top) {
-                Text(label).font(.nivaasaBody).foregroundStyle(NK.inkSoft)
+                Text(label).font(.nivaasaBodyMedium).foregroundStyle(NK.inkSoft)
                 Spacer(minLength: 4)
-                if let icon { Image(systemName: icon).font(.system(size: 16, weight: .medium)).foregroundStyle(iconColor) }
+                if let icon { NivaasaIcon(name: icon).foregroundStyle(iconColor) }
             }
-            Text(value).font(.jakarta(24, .bold)).tracking(-0.5).foregroundStyle(NK.ink).monospacedDigit()
+            Text(value).font(.jakarta(24, .semibold)).tracking(-0.72).foregroundStyle(NK.ink).monospacedDigit()
             if let hint { Text(hint).font(.nivaasaCaption).foregroundStyle(NK.inkSoft).lineLimit(2) }
         }
-        .padding(14)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(border, lineWidth: 1) }
@@ -395,8 +409,8 @@ struct QuickActionTile: View {
     var body: some View {
         Button(action: run) {
             HStack(spacing: 8) {
-                Image(systemName: icon).font(.system(size: 15, weight: .medium)).foregroundStyle(NK.muted)
-                Text(title).font(.nivaasaBodyMedium).foregroundStyle(NK.inkSoft).lineLimit(1)
+                NivaasaIcon(name: icon, size: 18).foregroundStyle(NK.muted)
+                Text(title).font(.nivaasaBodyMedium).foregroundStyle(NK.inkSoft).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 12)
@@ -404,6 +418,235 @@ struct QuickActionTile: View {
             .background(NK.canvas, in: RoundedRectangle(cornerRadius: NKRadius.control, style: .continuous))
         }
         .buttonStyle(NivaasaPressStyle())
+    }
+}
+
+// MARK: - Gate entry helpers
+
+/// Color-coded type badge used across gate screens (cab / delivery / guest …).
+func typeBadge(_ type: String) -> NivaasaBadge {
+    let label = type.replacingOccurrences(of: "_", with: " ").capitalized
+    switch type {
+    case "delivery": return NivaasaBadge(text: label, tone: .blue)
+    case "cab": return NivaasaBadge(text: label, tone: .amber)
+    case "vendor": return NivaasaBadge(text: label, tone: .mint)
+    case "guest": return NivaasaBadge(text: label, tone: .pink)
+    default: return NivaasaBadge(text: label, tone: .neutral)
+    }
+}
+
+/// Live "Xh Ym inside" timer that re-renders on a timeline.
+struct ElapsedSince: View {
+    let from: Date
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            Text(elapsedLabel(from, context.date))
+                .font(.nivaasaCaptionMedium)
+                .foregroundStyle(NK.mint600)
+        }
+    }
+
+    private func elapsedLabel(_ from: Date, _ now: Date) -> String {
+        let seconds = max(0, Int(now.timeIntervalSince(from)))
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        if hours > 0 { return "\(hours)h \(minutes)m inside" }
+        if minutes > 0 { return "\(minutes)m inside" }
+        return "\(seconds)s inside"
+    }
+}
+
+// MARK: - Icon tiles
+
+/// Lucide icon key for a helpdesk category.
+func categoryIcon(_ category: String) -> String {
+    switch category.lowercased() {
+    case "plumbing": return "droplets"
+    case "electrical": return "lightbulb"
+    case "lifts": return "arrow.up.down"
+    case "housekeeping": return "sparkles"
+    case "security": return "shield.check"
+    case "parking": return "package"
+    case "common areas": return "dumbbell"
+    case "intercom": return "lock"
+    case "internet": return "wifi"
+    default: return "wrench.and.screwdriver"
+    }
+}
+
+/// Deterministic soft tint per name, so each amenity/category gets a stable color.
+func iconTint(_ name: String) -> (bg: Color, fg: Color) {
+    let palette: [(Color, Color)] = [
+        (NK.brand50, NK.brand600),
+        (NK.blush100, NK.blush700),
+        (NK.mint50, NK.mint600),
+        (Color(hex: 0xFFF4E0), NK.amberInk),
+        (Color(hex: 0xF3EFFF), Color(hex: 0x6A54C8)),
+    ]
+    let hash = name.unicodeScalars.reduce(0) { $0 &+ Int($1.value) }
+    return palette[abs(hash) % palette.count]
+}
+
+/// Logo-style tile: tinted icon tile + label (+ optional badge). Used for
+/// amenity grids and helpdesk quick categories instead of big per-item cards.
+struct IconTile: View {
+    let icon: String
+    let title: String
+    var subtitle: String?
+    var badge: String?
+    var badgeTone: NivaasaBadge.Tone = .neutral
+    var tintedBy: String? = nil
+    var identifier: String? = nil
+    let action: () -> Void
+
+    var body: some View {
+        let tint = iconTint(tintedBy ?? title)
+        Button(action: action) {
+            VStack(spacing: 7) {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(tint.bg)
+                    .frame(width: 62, height: 62)
+                    .overlay {
+                        NivaasaIcon(name: icon, size: 30).foregroundStyle(tint.fg)
+                    }
+                Text(title)
+                    .font(.jakarta(11.5, .semibold)).foregroundStyle(NK.ink)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .frame(minHeight: 28)
+                if let subtitle {
+                    Text(subtitle).font(.jakarta(10, .medium)).foregroundStyle(NK.muted).lineLimit(1)
+                }
+                if let badge {
+                    NivaasaBadge(text: badge, tone: badgeTone).scaleEffect(0.9)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 4)
+            .background(NK.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(NK.line) }
+        }
+        .buttonStyle(NivaasaPressStyle())
+        .accessibilityIdentifier(identifier ?? "icon-tile-" + title.lowercased().replacingOccurrences(of: " ", with: "-"))
+    }
+}
+
+// MARK: - Toasts
+
+struct ToastItem: Identifiable, Equatable {
+    enum Tone { case success, error, info }
+    let id = UUID()
+    let message: String
+    let tone: Tone
+
+    init(_ message: String, _ tone: Tone = .info) {
+        self.message = message
+        self.tone = tone
+    }
+}
+
+/// Top banner toast: green check for success, red shield for failure.
+/// Slides down, auto-dismisses, and respects Reduce Motion.
+struct ToastOverlay: ViewModifier {
+    @Binding var toast: ToastItem?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        ZStack(alignment: .top) {
+            content
+            if let toast {
+                HStack(spacing: 10) {
+                    NivaasaIcon(name: toast.tone == .success ? "checkmark.circle.fill" : toast.tone == .error ? "exclamationmark.shield" : "bell", size: 18)
+                        .foregroundStyle(toast.tone == .success ? NK.mint600 : toast.tone == .error ? NK.danger : NK.brand600)
+                    Text(toast.message).font(.nivaasaBodyMedium).foregroundStyle(NK.ink)
+                        .lineLimit(2)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 14)
+                .frame(minHeight: 48)
+                .background(NK.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(toast.tone == .success ? NK.mint600.opacity(0.45) : toast.tone == .error ? NK.danger.opacity(0.45) : NK.line, lineWidth: 1)
+                }
+                .shadow(color: NK.ink.opacity(0.14), radius: 16, y: 8)
+                .padding(.top, 72)
+                .padding(.horizontal, 16)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .id(toast.id)
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) {
+                        withAnimation(NivaasaMotion.spring(reduceMotion)) { self.toast = nil }
+                    }
+                }
+            }
+        }
+        .animation(NivaasaMotion.spring(reduceMotion), value: toast?.id)
+    }
+}
+
+extension View {
+    func nivaasaToast(_ toast: Binding<ToastItem?>) -> some View {
+        modifier(ToastOverlay(toast: toast))
+    }
+}
+
+/// Single horizontal row of circular icon actions with optional count badges.
+struct IconActionRow: View {
+    struct Item: Identifiable {
+        let id = UUID()
+        let title: String
+        let icon: String
+        var count: Int?
+        let run: () -> Void
+
+        init(title: String, icon: String, count: Int? = nil, run: @escaping () -> Void) {
+            self.title = title
+            self.icon = icon
+            self.count = count
+            self.run = run
+        }
+    }
+
+    let items: [Item]
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(items) { item in
+                    Button(action: item.run) {
+                        VStack(spacing: 6) {
+                            ZStack(alignment: .topTrailing) {
+                                Circle()
+                                    .fill(NK.brand50)
+                                    .frame(width: 46, height: 46)
+                                    .overlay {
+                                        NivaasaIcon(name: item.icon, size: 20).foregroundStyle(NK.brand600)
+                                    }
+                                if let count = item.count, count > 0 {
+                                    Text("\(count)")
+                                        .font(.jakarta(10, .bold)).foregroundStyle(.white)
+                                        .padding(.horizontal, 5).padding(.vertical, 2)
+                                        .background(NK.blush500, in: Capsule())
+                                        .offset(x: 7, y: -7)
+                                }
+                            }
+                            Text(item.title)
+                                .font(.jakarta(10.5, .medium)).foregroundStyle(NK.inkSoft)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                        }
+                        .frame(width: 78)
+                    }
+                    .buttonStyle(NivaasaPressStyle())
+                    .accessibilityIdentifier("action-" + item.title.lowercased().replacingOccurrences(of: " ", with: "-"))
+                }
+            }
+            .padding(.horizontal, 2)
+            .padding(.vertical, 2)
+        }
     }
 }
 
@@ -415,7 +658,7 @@ struct EmptyPanel: View {
     var body: some View {
         NivaasaCard {
             HStack(spacing: 12) {
-                Image(systemName: icon).font(.system(size: 22, weight: .medium)).foregroundStyle(NK.mint600)
+                NivaasaIcon(name: icon, size: 24).foregroundStyle(NK.mint600)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title).font(.nivaasaBodySemibold).foregroundStyle(NK.ink)
                     Text(detail).font(.nivaasaCaption).foregroundStyle(NK.muted)
@@ -428,26 +671,45 @@ struct EmptyPanel: View {
 struct TabStrip: View {
     let tabs: [String]
     @Binding var selection: String
+    var counts: [String: Int] = [:]
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Namespace private var tabSpace
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
+            HStack(spacing: 20) {
                 ForEach(tabs, id: \.self) { tab in
                     let active = tab == selection
-                    Button { selection = tab } label: {
-                        Text(tab)
-                            .font(.nivaasaCaptionMedium)
-                            .foregroundStyle(active ? .white : NK.inkSoft)
-                            .padding(.horizontal, 14)
-                            .frame(minHeight: 36)
-                            .background(active ? NK.brand600 : NK.surface, in: Capsule())
-                            .overlay { if !active { Capsule().strokeBorder(NK.line, lineWidth: 1) } }
+                    Button {
+                        guard selection != tab else { return }
+                        selection = tab
+                        Haptics.shared.play(.selection)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Text(tab).font(.nivaasaBodyMedium)
+                            if let count = counts[tab] {
+                                Text("\(count)").font(.nivaasaCaption).foregroundStyle(NK.inkSoft)
+                                    .padding(.horizontal, 6).background(NK.canvas, in: RoundedRectangle(cornerRadius: 6))
+                            }
+                        }
+                        .foregroundStyle(active ? NK.brand700 : NK.muted)
+                        .padding(.horizontal, 4)
+                        .frame(minHeight: 48)
+                        .overlay(alignment: .bottom) {
+                            if active {
+                                Rectangle().fill(NK.brand600).frame(height: 2)
+                                    .matchedGeometryEffect(id: "tab-underline", in: tabSpace)
+                            }
+                        }
+                        .animation(NivaasaMotion.spring(reduceMotion), value: active)
                     }
                     .buttonStyle(NivaasaPressStyle())
+                    .accessibilityIdentifier("section-" + tab)
+                    .accessibilityAddTraits(active ? .isSelected : [])
                 }
             }
-            .padding(.vertical, 2)
         }
+        .overlay(alignment: .bottom) { Rectangle().fill(NK.line).frame(height: 1).allowsHitTesting(false) }
     }
 }
 
@@ -479,18 +741,20 @@ struct NivaasaTopBar: View {
     var body: some View {
         HStack(spacing: 10) {
             Button(action: onMenu) {
-                Image(systemName: "line.3.horizontal").font(.system(size: 20, weight: .medium)).frame(width: 44, height: 44)
+                NivaasaIcon(name: "line.3.horizontal", size: 20).frame(width: 44, height: 44)
             }
             .accessibilityLabel("Open navigation")
-            Image("NivaasaMark").resizable().frame(width: 32, height: 32).accessibilityLabel("Nivaasa")
+            .buttonStyle(NivaasaPressStyle())
+            Image("NivaasaMark").resizable().frame(width: 28, height: 28).accessibilityLabel("Nivaasa")
             Spacer(minLength: 0)
             Button(action: onSearch) {
-                Image(systemName: "magnifyingglass").font(.system(size: 20, weight: .regular)).frame(width: 40, height: 44)
+                NivaasaIcon(name: "magnifyingglass", size: 18).frame(width: 44, height: 44)
             }
             .accessibilityLabel("Search community")
+            .buttonStyle(NivaasaPressStyle())
             Button(action: onNotifications) {
                 ZStack(alignment: .topTrailing) {
-                    Image(systemName: "bell").font(.system(size: 20, weight: .regular)).frame(width: 40, height: 44)
+                    NivaasaIcon(name: "bell", size: 20).frame(width: 44, height: 44)
                     if unread > 0 {
                         Text(unread > 9 ? "9+" : "\(unread)")
                             .font(.jakarta(10, .bold)).foregroundStyle(.white)
@@ -501,12 +765,14 @@ struct NivaasaTopBar: View {
                 }
             }
             .accessibilityLabel(unread > 0 ? "Notifications, \(unread) unread" : "Notifications")
-            Button(action: onAccount) { NivaasaAvatar(name: userName, color: NK.brand600, size: 36) }
+            .buttonStyle(NivaasaPressStyle())
+            Button(action: onAccount) { NivaasaAvatar(name: userName, color: NK.brand600, size: 32).frame(minWidth: 44, minHeight: 44) }
                 .accessibilityLabel("Account menu")
+                .buttonStyle(NivaasaPressStyle())
         }
         .foregroundStyle(NK.inkSoft)
         .padding(.horizontal, 16)
-        .frame(height: 76)
+        .frame(height: 64)
         .background(NK.surface)
         .overlay(alignment: .bottom) { Rectangle().fill(NK.line).frame(height: 1) }
     }
@@ -516,6 +782,8 @@ struct NivaasaBottomBar: View {
     let selection: String
     let unread: Int
     let onSelect: (String) -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Namespace private var tabSpace
 
     private let items: [(String, String, String)] = [
         ("Home", "house", "Home"),
@@ -529,18 +797,22 @@ struct NivaasaBottomBar: View {
         HStack(spacing: 0) {
             ForEach(items, id: \.0) { title, icon, label in
                 let active = selection == title
-                Button { onSelect(title) } label: {
+                Button {
+                    // "More" opens the services menu even when already on a More page.
+                    guard title == "More" || selection != title else { return }
+                    onSelect(title)
+                    Haptics.shared.play(.selection)
+                } label: {
                     VStack(spacing: 4) {
                         ZStack(alignment: .topTrailing) {
-                            Image(systemName: icon).font(.system(size: 20, weight: active ? .semibold : .regular))
-                            if title == "More" && unread > 0 {
-                                Circle().fill(NK.blush400).frame(width: 6, height: 6).offset(x: 4, y: -2)
-                            }
+                            NivaasaIcon(name: icon, size: 20)
+                                .scaleEffect(active ? 1.08 : 1)
                         }
-                        Text(label).font(.jakarta(11, active ? .semibold : .medium))
+                        Text(label).font(.jakarta(13, active ? .semibold : .medium))
                     }
                     .frame(maxWidth: .infinity, minHeight: 64)
                     .foregroundStyle(active ? NK.brand700 : NK.muted)
+                    .animation(NivaasaMotion.spring(reduceMotion), value: active)
                 }
                 .buttonStyle(NivaasaPressStyle())
                 .accessibilityAddTraits(active ? .isSelected : [])
@@ -584,12 +856,14 @@ struct NivaasaStaffBottomBar: View {
     let tabs: [String]
     let selection: String
     let onSelect: (String) -> Void
+    var onScan: (() -> Void)? = nil
 
     private func icon(_ title: String) -> String {
         switch title {
         case "Homes": "building.2"
         case "Gate": "shield.lefthalf.filled"
         case "Billing": "wallet.bifold"
+        case "Activity": "clock"
         case "Deliveries": "shippingbox"
         case "More": "line.3.horizontal"
         default: "chart.bar.xaxis"
@@ -598,22 +872,55 @@ struct NivaasaStaffBottomBar: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(tabs, id: \.self) { title in
-                let active = selection == title
-                Button { onSelect(title) } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: icon(title)).font(.system(size: 20, weight: active ? .semibold : .regular))
-                        Text(title).font(.jakarta(11, active ? .semibold : .medium))
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 64)
-                    .foregroundStyle(active ? NK.brand700 : NK.muted)
+            let center = onScan != nil ? tabs.count / 2 : -1
+            ForEach(Array(tabs.enumerated()), id: \.offset) { index, title in
+                if index == center {
+                    scanButton
                 }
-                .buttonStyle(NivaasaPressStyle())
-                .accessibilityAddTraits(active ? .isSelected : [])
-                .accessibilityIdentifier("quick-" + title.lowercased())
+                tabButton(title)
             }
         }
         .background(NK.surface)
         .overlay(alignment: .top) { Rectangle().fill(NK.line).frame(height: 1) }
+    }
+
+    private func tabButton(_ title: String) -> some View {
+        let active = selection == title
+        return Button { onSelect(title) } label: {
+            VStack(spacing: 4) {
+                NivaasaIcon(name: icon(title), size: 20)
+                Text(title).font(.jakarta(11, active ? .semibold : .medium))
+            }
+            .frame(maxWidth: .infinity, minHeight: 80, alignment: .center)
+            .foregroundStyle(active ? NK.brand700 : NK.muted)
+        }
+        .buttonStyle(NivaasaPressStyle())
+        .accessibilityAddTraits(active ? .isSelected : [])
+        .accessibilityIdentifier("quick-" + title.lowercased())
+    }
+
+    /// Prominent center scan button: brand circle with the QR-in-scan-frame logo,
+    /// vertically centered inside the footer so it never crosses the hairline.
+    private var scanButton: some View {
+        Button {
+            Haptics.shared.play(.heavy)
+            onScan?()
+        } label: {
+            VStack(spacing: 3) {
+                Circle()
+                    .fill(NK.brand600)
+                    .frame(width: 54, height: 54)
+                    .shadow(color: NK.brand600.opacity(0.35), radius: 10, y: 4)
+                    .overlay {
+                        NivaasaIcon(name: "scan.qr.code", size: 26).foregroundStyle(.white)
+                    }
+                Text("Scan").font(.jakarta(11, .semibold)).foregroundStyle(NK.brand700)
+            }
+            .frame(maxWidth: .infinity, minHeight: 80, alignment: .center)
+        }
+        .buttonStyle(NivaasaPressStyle())
+        .accessibilityIdentifier("scan-visitor-qr")
+        .accessibilityLabel("Scan visitor QR pass")
+        .accessibilityAddTraits(.isButton)
     }
 }

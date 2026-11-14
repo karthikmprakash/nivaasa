@@ -2,6 +2,9 @@ import { z } from "zod";
 
 export const passTypes = ["guest", "delivery", "cab", "vendor"] as const;
 export const MAX_PASS_DAYS = 30;
+// Vendor/delivery/one-off cab passes are short approvals: the visitor never
+// presents a QR, security verifies against the pass at the gate within this window.
+export const VENDOR_PASS_HOURS = 1;
 
 export function shiftPassDate(day: string, offset: number) {
   const date = new Date(`${day}T00:00:00Z`);
@@ -50,23 +53,28 @@ export function validatePassRequest(input: unknown, today: string) {
   const d = parsed.data;
   const guest = d.type === "guest";
   const recurringCab = d.type === "cab" && !!d.recurringCab;
+  // Deliveries, one-off cabs and vendors get a short fixed window from creation.
+  const timedVendor = !guest && !recurringCab;
   const validTo = guest || recurringCab ? d.validTo : d.validFrom;
   const fieldErrors: Record<string, string> = {};
   if (guest && !d.name) fieldErrors.name = "Enter your guest’s name.";
   if (guest && d.phone && !validVisitorPhone(d.phone)) fieldErrors.phone = "Enter a valid phone number.";
-  if (d.validFrom < today) fieldErrors.validFrom = "Choose today or a future date.";
-  if (!validTo || validTo < d.validFrom) fieldErrors.validTo = "Choose an end date on or after the start date.";
-  else if (validTo > shiftPassDate(d.validFrom, MAX_PASS_DAYS - 1)) fieldErrors.validTo = "Choose a window of 30 days or less.";
+  if (!timedVendor) {
+    if (d.validFrom < today) fieldErrors.validFrom = "Choose today or a future date.";
+    if (!validTo || validTo < d.validFrom) fieldErrors.validTo = "Choose an end date on or after the start date.";
+    else if (validTo > shiftPassDate(d.validFrom, MAX_PASS_DAYS - 1)) fieldErrors.validTo = "Choose a window of 30 days or less.";
+  }
   if (Object.keys(fieldErrors).length || !validTo) return { fieldErrors } as const;
 
+  const now = new Date();
   return { pass: {
     type: d.type,
     name: guest ? d.name! : { delivery: "Delivery", cab: recurringCab ? "Daily cab pickup" : "Cab", vendor: "Service visit" }[d.type as Exclude<typeof d.type, "guest">],
     phone: guest ? d.phone || null : null,
     company: d.company || null,
     purpose: d.purpose || null,
-    validFrom: passDateBoundary(d.validFrom),
-    validTo: passDateBoundary(validTo, true),
+    validFrom: timedVendor ? now : passDateBoundary(d.validFrom),
+    validTo: timedVendor ? new Date(now.getTime() + VENDOR_PASS_HOURS * 60 * 60 * 1000) : passDateBoundary(validTo, true),
     recurringCab,
     notes: d.notes || null,
     leaveAtGate: d.type === "delivery" && !!d.leaveAtGate,

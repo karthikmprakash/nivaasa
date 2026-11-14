@@ -220,25 +220,73 @@ private fun shortDay(value: String): String = runCatching {
 private fun VisitorsScreen(token: String) {
     var data by remember { mutableStateOf<JSONObject?>(null) }
     var tab by remember { mutableStateOf("Waiting") }
-    var showPass by remember { mutableStateOf(false) }
+    var passType by remember { mutableStateOf<String?>(null) }
+    var cancelPass by remember { mutableStateOf<JSONObject?>(null) }
+    var feedback by remember { mutableStateOf<String?>(null) }
+    val context = androidx.compose.ui.platform.LocalContext.current
     var error by remember { mutableStateOf<String?>(null) }
     var pending by remember { mutableStateOf<Set<String>>(emptySet()) }
     val scope = rememberCoroutineScope()
-    suspend fun load() { runCatching { Api.request("mobile/visitors", token) }.onSuccess { data = it }.onFailure { error = it.localizedMessage } }
+    suspend fun load() {
+        try { data = Api.request("mobile/visitors", token) }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (failure: Exception) { error = failure.localizedMessage ?: "Could not load visits." }
+    }
+    fun mutate(id: String, path: String, body: JSONObject, message: String) {
+        if (id in pending) return
+        pending = pending + id
+        error = null
+        feedback = null
+        scope.launch {
+            try {
+                Api.request(path, token, body)
+                feedback = message
+                load()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                error = failure.localizedMessage ?: "Could not update this visit."
+                load()
+            } finally { pending = pending - id }
+        }
+    }
     LaunchedEffect(token) { load() }
-    if (showPass) VisitorActionSheet(false, token) { showPass = false; scope.launch { load() } }
+    passType?.let { initialType ->
+        VisitorActionSheet(false, token, initialType) {
+            passType = null
+            scope.launch { load() }
+        }
+    }
+    cancelPass?.let { pass ->
+        AlertDialog(
+            onDismissRequest = { cancelPass = null },
+            title = { Text("Cancel this pass?") },
+            text = { Text("Security will no longer accept this entry code.") },
+            dismissButton = { TextButton(onClick = { cancelPass = null }) { Text("Keep pass") } },
+            confirmButton = {
+                TextButton(onClick = {
+                    cancelPass = null
+                    val id = pass.str("id")
+                    mutate(id, "mobile/visitors/cancel", JSONObject().put("visitorId", id), "Pass cancelled.")
+                }) { Text("Cancel pass", color = NK.dangerInk) }
+            }
+        )
+    }
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-                PageHeading("Gate & security", "Visitors", "Approve arrivals, share passes and keep the gate moving.")
-                IconButton(onClick = { showPass = true }) { Icon(Icons.Outlined.AddCircle, contentDescription = "Create a visitor pass", tint = NK.brand600) }
-            }
+            PageHeading("Gate & security", "Visitors", "Approve arrivals, share passes and keep the gate moving.")
+            Spacer(Modifier.height(10.dp))
+            PrimaryButton("Pre-approve a visitor", Icons.Outlined.AddCircle) { passType = "guest" }
             Spacer(Modifier.height(12.dp))
             TabStrip(listOf("Waiting", "Passes", "History", "Daily help"), tab) { tab = it }
         }
         error?.let { item { NivaasaCard { Text(it, color = NK.dangerInk) } } }
+        feedback?.let { item { NivaasaCard { Text(it, color = NK.ink) } } }
         val snapshot = data
-        if (snapshot == null) item { LinearProgressIndicator(Modifier.fillMaxWidth(), color = NK.brand600) }
+        if (snapshot == null) item {
+            if (error == null) LinearProgressIndicator(Modifier.fillMaxWidth(), color = NK.brand600)
+            else TextButton(onClick = { error = null; scope.launch { load() } }) { Text("Try again") }
+        }
         else when (tab) {
             "Passes" -> {
                 val passes = snapshot.rows("passes")
@@ -246,7 +294,7 @@ private fun VisitorsScreen(token: String) {
                     NivaasaCard {
                         Text("No active passes", color = NK.ink, style = MaterialTheme.typography.titleMedium)
                         Text("Create a pass for a guest, delivery, cab or vendor.", color = NK.muted, style = MaterialTheme.typography.bodyMedium)
-                        PrimaryButton("Create a pass", Icons.Outlined.AddCircle) { showPass = true }
+                        PrimaryButton("Create a pass", Icons.Outlined.AddCircle) { passType = "guest" }
                     }
                 }
                 items(passes) { pass ->
@@ -257,6 +305,17 @@ private fun VisitorsScreen(token: String) {
                         }
                         Text(pass.str("code"), color = NK.ink, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                         Text("Valid ${shortDay(pass.str("validFrom"))} – ${shortDay(pass.str("validTo"))}", color = NK.muted, style = MaterialTheme.typography.bodyMedium)
+                        if (pass.optBoolean("recurringCab")) Text("One pickup per day", color = NK.muted)
+                        if (pass.str("status") == "approved") {
+                            val enabled = pass.str("id") !in pending
+                            val code = pass.str("code")
+                            if (code.isNotBlank()) OutlinedButton(enabled = enabled, onClick = {
+                                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")
+                                    .putExtra(android.content.Intent.EXTRA_TEXT, "Your Nivaasa entry code is $code. Show it at the gate.")
+                                context.startActivity(android.content.Intent.createChooser(intent, "Share visitor pass"))
+                            }) { Text("Share visitor pass") }
+                            TextButton(enabled = enabled, onClick = { cancelPass = pass }) { Text("Cancel pass", color = NK.dangerInk) }
+                        }
                     }
                 }
             }
@@ -271,14 +330,27 @@ private fun VisitorsScreen(token: String) {
                     }
                 }
             }
-            "Daily help" -> items(snapshot.rows("help")) { person ->
-                NivaasaCard {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column {
-                            Text(person.str("name"), color = NK.ink, style = MaterialTheme.typography.titleMedium)
-                            Text("${person.str("role")} · ${person.str("shift", "Flexible")}", color = NK.muted, style = MaterialTheme.typography.bodyMedium)
+            "Daily help" -> {
+                item {
+                    NivaasaCard(tinted = true) {
+                        Text("Daily help attendance", style = MaterialTheme.typography.titleMedium, color = NK.ink)
+                        Text("See who has checked in today or register someone new.", color = NK.muted)
+                        PrimaryButton("Register daily help", Icons.Outlined.AddCircle) { passType = "daily_help" }
+                    }
+                }
+                items(snapshot.rows("help"), key = { it.str("id") }) { person ->
+                    NivaasaCard {
+                        Text(person.str("name"), color = NK.ink, style = MaterialTheme.typography.titleMedium)
+                        Text(person.str("role"), color = NK.muted, style = MaterialTheme.typography.bodyMedium)
+                        val verified = person.optBoolean("policeVerified")
+                        NivaasaBadge(if (verified) "Verified" else "Verification pending", if (verified) BadgeTone.Mint else BadgeTone.Amber)
+                        val attendance = person.optJSONObject("attendance")
+                        val label = when {
+                            attendance?.str("checkOutAt").orEmpty().isNotEmpty() -> "Checked out today"
+                            attendance?.str("checkInAt").orEmpty().isNotEmpty() -> "Checked in today"
+                            else -> "No check-in today"
                         }
-                        if (person.optBoolean("policeVerified")) NivaasaBadge("Verified", BadgeTone.Mint)
+                        Text(label, color = NK.muted, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
@@ -292,19 +364,18 @@ private fun VisitorsScreen(token: String) {
                         NivaasaBadge("At the gate", BadgeTone.Amber, dot = true)
                     }
                     if (visitor.str("notes").isNotBlank()) Text(visitor.str("notes"), color = NK.muted, style = MaterialTheme.typography.bodyMedium)
+                    val id = visitor.str("id")
+                    val enabled = id !in pending
+                    fun respond(action: String, message: String) =
+                        mutate(id, "visitors/$id/respond", JSONObject().put("action", action), message)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = {
-                            pending = pending + visitor.str("id")
-                            scope.launch { runCatching { Api.request("visitors/${visitor.str("id")}/respond", token, JSONObject().put("action", "deny")) }; pending = pending - visitor.str("id"); load() }
-                        }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = NK.dangerSoft, contentColor = NK.dangerInk)) { Text("Deny") }
-                        Button(onClick = {
-                            pending = pending + visitor.str("id")
-                            scope.launch { runCatching { Api.request("visitors/${visitor.str("id")}/respond", token, JSONObject().put("action", "approve")) }; pending = pending - visitor.str("id"); load() }
-                        }, modifier = Modifier.weight(1f)) { Text("Approve") }
+                        Button(onClick = { respond("deny", "Entry declined.") }, enabled = enabled, modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = NK.dangerSoft, contentColor = NK.dangerInk)) { Text("Deny") }
+                        Button(onClick = { respond("approve", "Visitor approved.") }, enabled = enabled, modifier = Modifier.weight(1f)) { Text("Approve") }
                     }
-                    if (visitor.str("type") == "delivery") TextButton(onClick = {
-                        scope.launch { runCatching { Api.request("visitors/${visitor.str("id")}/respond", token, JSONObject().put("action", "leave_at_gate")) }; load() }
-                    }) { Text("Leave at gate") }
+                    if (visitor.str("type") == "delivery") TextButton(
+                        onClick = { respond("leave_at_gate", "Parcel will stay at the gate.") }, enabled = enabled
+                    ) { Text("Leave at gate") }
                 }
             }
         }

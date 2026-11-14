@@ -7,20 +7,14 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { auditLogs, helpdeskTickets, memberships, notifications, ticketComments, users } from "@/db/schema";
+import { auditLogs, helpdeskTickets, memberships, ticketComments, users } from "@/db/schema";
 import { requireAdmin, requireResident } from "@/lib/queries";
-import { filterRecipientsByPref } from "@/lib/notifications";
+import { changeResidentTicket, notifyTicket as notify } from "@/lib/resident-ticket";
 import { slaHoursForPriority } from "@/lib/helpdesk-sla";
 
 export type TicketState = { error?: string; fieldErrors?: Record<string, string> };
 
 const categories = ["Plumbing", "Electrical", "Lifts", "Housekeeping", "Security", "Parking", "Common areas", "Intercom", "Internet", "Other"];
-
-async function notify(stakeholders: { userId: string }[], societyId: string, title: string, body: string, link: string) {
-  const recipients = await filterRecipientsByPref(societyId, stakeholders, "helpdesk");
-  if (!recipients.length) return;
-  await db.insert(notifications).values(recipients.map((s) => ({ id: randomUUID(), userId: s.userId, societyId, title, body, type: "helpdesk" as const, link, createdAt: new Date() })));
-}
 
 async function savePhotos(files: File[]): Promise<string[]> {
   const saved: string[] = [];
@@ -68,52 +62,21 @@ export async function createTicket(_prev: TicketState, formData: FormData): Prom
 }
 
 export async function addTicketComment(formData: FormData) {
-  const ctx = await requireResident();
-  const ticketId = String(formData.get("ticketId") ?? "");
-  const body = String(formData.get("body") ?? "").trim();
-  if (!body) return;
-  const [ticket] = await db.select().from(helpdeskTickets).where(and(eq(helpdeskTickets.id, ticketId), eq(helpdeskTickets.societyId, ctx.society.id))).limit(1);
-  if (!ticket || ticket.unitId !== ctx.unit.id) return;
-  const now = new Date();
-  await db.insert(ticketComments).values({ id: randomUUID(), ticketId, authorId: ctx.user.id, body, internal: false, createdAt: now });
-  await db.update(helpdeskTickets).set({ updatedAt: now }).where(eq(helpdeskTickets.id, ticketId));
-  const recipients = ticket.assigneeId
-    ? [{ userId: ticket.assigneeId }]
-    : await db.select({ userId: memberships.userId }).from(memberships).where(and(
-        eq(memberships.societyId, ctx.society.id),
-        eq(memberships.status, "active"),
-        inArray(memberships.role, ["helpdesk_manager", "manager", "admin"]),
-      ));
-  await notify(recipients, ctx.society.id, "New reply on a helpdesk request", `${ctx.user.name} replied on ${ticket.subject}.`, `/admin/helpdesk/${ticketId}`);
-  revalidatePath(`/app/helpdesk/${ticketId}`);
+  await changeResidentTicket(await requireResident(), String(formData.get("ticketId") ?? ""), {
+    action: "reply", body: String(formData.get("body") ?? ""),
+  });
 }
 
 export async function reopenTicket(formData: FormData) {
-  const ctx = await requireResident();
-  const ticketId = String(formData.get("ticketId") ?? "");
-  const reason = String(formData.get("reason") ?? "The issue is not fully resolved.").trim();
-  const [ticket] = await db.select().from(helpdeskTickets).where(and(eq(helpdeskTickets.id, ticketId), eq(helpdeskTickets.unitId, ctx.unit.id))).limit(1);
-  if (!ticket || !["resolved", "closed"].includes(ticket.status)) return;
-  const now = new Date();
-  const reopenHours = slaHoursForPriority(ticket.priority, ctx.society.settings?.helpdeskSlaHours ?? 24);
-  await db.update(helpdeskTickets).set({ status: "reopened", resolvedAt: null, reopenedCount: ticket.reopenedCount + 1, updatedAt: now, slaDueAt: new Date(now.getTime() + reopenHours * 3600 * 1000) }).where(eq(helpdeskTickets.id, ticketId));
-  await db.insert(ticketComments).values({ id: randomUUID(), ticketId, authorId: ctx.user.id, body: `Reopened: ${reason}`, internal: false, createdAt: now });
-  const staff = await db.select({ userId: memberships.userId }).from(memberships).where(and(eq(memberships.societyId, ctx.society.id), eq(memberships.status, "active"), inArray(memberships.role, ["helpdesk_manager", "manager", "admin"])));
-  await notify(staff, ctx.society.id, "A ticket was reopened", `${ctx.user.name} reopened: ${ticket.subject}.`, `/admin/helpdesk/${ticketId}`);
-  revalidatePath(`/app/helpdesk/${ticketId}`);
-  revalidatePath("/admin/helpdesk");
+  await changeResidentTicket(await requireResident(), String(formData.get("ticketId") ?? ""), {
+    action: "reopen", reason: String(formData.get("reason") ?? "The issue is not fully resolved."),
+  });
 }
 
 export async function rateTicket(formData: FormData) {
-  const ctx = await requireResident();
-  const ticketId = String(formData.get("ticketId") ?? "");
-  const rating = Number(formData.get("rating") ?? 0);
-  const feedback = String(formData.get("feedback") ?? "").trim();
-  if (!Number.isInteger(rating) || rating < 1 || rating > 5 || feedback.length > 1000) return;
-  const [ticket] = await db.select().from(helpdeskTickets).where(and(eq(helpdeskTickets.id, ticketId), eq(helpdeskTickets.unitId, ctx.unit.id))).limit(1);
-  if (!ticket || !["resolved", "closed"].includes(ticket.status)) return;
-  await db.update(helpdeskTickets).set({ rating, feedback: feedback || null, status: "closed", updatedAt: new Date() }).where(eq(helpdeskTickets.id, ticketId));
-  revalidatePath(`/app/helpdesk/${ticketId}`);
+  await changeResidentTicket(await requireResident(), String(formData.get("ticketId") ?? ""), {
+    action: "rate", rating: Number(formData.get("rating") ?? 0), feedback: String(formData.get("feedback") ?? ""),
+  });
 }
 
 // ── Admin actions ─────────────────────────────────────────────────────────────

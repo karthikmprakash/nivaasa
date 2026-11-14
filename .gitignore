@@ -11,6 +11,9 @@ dist
 data/*.db*
 public/uploads/*
 !public/uploads/.gitkeep
+
+# Local development storage (contains user-uploaded photos)
+data/uploads/
 .expo
 .DS_Store
 *.tsbuildinfo

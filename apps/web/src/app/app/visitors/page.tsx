@@ -14,6 +14,7 @@ import { db } from "@/db";
 import { staff, staffAttendance, visitors } from "@/db/schema";
 import { cancelPreApproval } from "@/lib/actions/visitors";
 import { communityMonthKey } from "@/lib/datetime";
+import { VENDOR_PASS_HOURS } from "@/lib/visitor-pass-rules";
 import { formatDate, formatTime, timeAgo, todayISO } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Visitors" };
@@ -54,7 +55,7 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
             <CheckCircle2 aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-mint-600" />
             <div>
               <p className="break-words text-section font-semibold text-ink">{created.recurringCab ? "Daily cab pass ready" : `Pass ready for ${created.name}`}</p>
-              <p className="mt-1 text-caption text-ink-soft">{created.recurringCab ? "Share this code for one pickup each day in your date range." : "Share this code with your visitor for one entry."}</p>
+              <p className="mt-1 text-caption text-ink-soft">{created.recurringCab ? "Share this code for one pickup each day in your date range." : created.type === "guest" ? "Share this code or the invite page with your guest for entries within the window." : `Valid for ${VENDOR_PASS_HOURS} hour from creation — security verifies at the gate, no QR needed.`}</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">

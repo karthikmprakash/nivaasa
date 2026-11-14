@@ -477,6 +477,7 @@ export const visitors = sqliteTable(
     vehicleNo: text("vehicle_no"),
     company: text("company"),
     photoColor: text("photo_color").default("#dfe8ff"),
+    photoUrl: text("photo_url"),
     status: text("status", { enum: ["pending", "approved", "denied", "entered", "exited", "expired"] }).default("pending").notNull(),
     code: text("code"),
     leaveAtGate: integer("leave_at_gate", { mode: "boolean" }).default(false).notNull(),
@@ -610,6 +611,21 @@ export const auditLogs = sqliteTable("audit_logs", {
   metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
+
+export const pushDevices = sqliteTable("push_devices", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  societyId: text("society_id").notNull().references(() => societies.id, { onDelete: "cascade" }),
+  token: text("token").notNull(),
+  platform: text("platform", { enum: ["ios", "android"] }).default("ios").notNull(),
+  environment: text("environment", { enum: ["sandbox", "production"] }).default("sandbox").notNull(),
+  bundleId: text("bundle_id"),
+  deviceName: text("device_name"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  lastSeenAt: integer("last_seen_at", { mode: "timestamp_ms" }),
+  revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+}, (t) => [uniqueIndex("push_device_token_idx").on(t.token), index("push_device_user_idx").on(t.userId, t.societyId)]);
 
 export const sessions = sqliteTable("sessions", {
   id: text("id").primaryKey(),

@@ -8,7 +8,7 @@ import { Button, Field, Input, Textarea } from "@/components/ui/primitives";
 import { AddHelpDialog } from "@/components/app/household-dialogs";
 import { PlatformPicker } from "@/components/app/platform-picker";
 import { cn } from "@/lib/utils";
-import { MAX_PASS_DAYS, shiftPassDate } from "@/lib/visitor-pass-rules";
+import { MAX_PASS_DAYS, shiftPassDate, VENDOR_PASS_HOURS } from "@/lib/visitor-pass-rules";
 
 const types = [
   { value: "guest", label: "Guest", icon: UserRound },
@@ -36,6 +36,7 @@ export function PreApproveForm({ today, initialType, daily }: { today: string; i
   const [preset, setPreset] = useState(initialType === "cab" && daily ? "7 days" : "Today");
   const isDailyCab = type === "cab" && recurring;
   const dateRange = type === "guest" || isDailyCab;
+  const timedVendor = !dateRange && !isDailyCab;
   const maxEnd = shiftPassDate(validFrom, MAX_PASS_DAYS - 1);
 
   function chooseDates(label: string, start: string, days: number) {
@@ -116,26 +117,35 @@ export function PreApproveForm({ today, initialType, daily }: { today: string; i
           )}
 
           <section className={sectionClass} aria-labelledby="visit-validity">
-            <h2 id="visit-validity" className={legendClass}>{dateRange ? "Pass validity" : "Visit date"}</h2>
-            <p className="text-caption leading-relaxed text-muted">{isDailyCab ? "One pickup per day. Share the same code with the driver." : dateRange ? "The guest can enter once on any date within this window." : "Valid for one visit on the selected date."}</p>
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Date presets">
-              {(isDailyCab ? [["7 days", today, 7], ["14 days", today, 14], ["30 days", today, 30]] as const : dateRange ?
-                [["Today", today, 1], ["Tomorrow", shiftPassDate(today, 1), 1], ["Next 7 days", today, 7]] as const :
-                [["Today", today, 1], ["Tomorrow", shiftPassDate(today, 1), 1]] as const).map(([label, start, days]) => (
-                <button key={label} type="button" aria-pressed={preset === label} onClick={() => chooseDates(label, start, days)} className={cn("min-h-11 rounded-control border px-3 text-body font-medium", preset === label ? "border-brand-500 bg-brand-50 text-brand-700" : "border-line-strong text-ink-soft hover:bg-canvas")}>{label}</button>
-              ))}
-            </div>
-            <div className={cn("grid grid-cols-1 gap-3", dateRange && "sm:grid-cols-2")}>
-              <Field label={dateRange ? "Valid from" : "Date"} error={state.fieldErrors?.validFrom} className="min-w-0">
-                <Input name="validFrom" type="date" min={today} required value={validFrom} className="min-w-0" onChange={(e) => {
-                  const start = e.target.value;
-                  setPreset("");
-                  setValidFrom(start);
-                  if (start && (validTo < start || validTo > shiftPassDate(start, MAX_PASS_DAYS - 1))) setValidTo(start);
-                }} />
-              </Field>
-              {dateRange ? <Field label="Valid to" error={state.fieldErrors?.validTo} className="min-w-0"><Input name="validTo" type="date" required min={validFrom || today} max={maxEnd || undefined} value={validTo} className="min-w-0" onChange={(e) => { setPreset(""); setValidTo(e.target.value); }} /></Field> : null}
-            </div>
+            <h2 id="visit-validity" className={legendClass}>{dateRange || isDailyCab ? "Pass validity" : "Visit window"}</h2>
+            {timedVendor ? (
+              <>
+                <p className="text-caption leading-relaxed text-muted">Valid for {VENDOR_PASS_HOURS} hour from creation. No QR pass needed — security records the {type === "cab" ? "driver" : type === "delivery" ? "delivery partner" : "vendor"} at the gate and verifies against this pass.</p>
+                <input type="hidden" name="validFrom" value={today} />
+              </>
+            ) : (
+              <>
+                <p className="text-caption leading-relaxed text-muted">{isDailyCab ? "One pickup per day. Share the same code with the driver." : dateRange ? "The guest can enter and re-enter on any date within this window." : "Valid for one visit on the selected date."}</p>
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Date presets">
+                  {(isDailyCab ? [["7 days", today, 7], ["14 days", today, 14], ["30 days", today, 30]] as const : dateRange ?
+                    [["Today", today, 1], ["Tomorrow", shiftPassDate(today, 1), 1], ["Next 7 days", today, 7]] as const :
+                    [["Today", today, 1], ["Tomorrow", shiftPassDate(today, 1), 1]] as const).map(([label, start, days]) => (
+                    <button key={label} type="button" aria-pressed={preset === label} onClick={() => chooseDates(label, start, days)} className={cn("min-h-11 rounded-control border px-3 text-body font-medium", preset === label ? "border-brand-500 bg-brand-50 text-brand-700" : "border-line-strong text-ink-soft hover:bg-canvas")}>{label}</button>
+                  ))}
+                </div>
+                <div className={cn("grid grid-cols-1 gap-3", dateRange && "sm:grid-cols-2")}>
+                  <Field label={dateRange ? "Valid from" : "Date"} error={state.fieldErrors?.validFrom} className="min-w-0">
+                    <Input name="validFrom" type="date" min={today} required value={validFrom} className="min-w-0" onChange={(e) => {
+                      const start = e.target.value;
+                      setPreset("");
+                      setValidFrom(start);
+                      if (start && (validTo < start || validTo > shiftPassDate(start, MAX_PASS_DAYS - 1))) setValidTo(start);
+                    }} />
+                  </Field>
+                  {dateRange ? <Field label="Valid to" error={state.fieldErrors?.validTo} className="min-w-0"><Input name="validTo" type="date" required min={validFrom || today} max={maxEnd || undefined} value={validTo} className="min-w-0" onChange={(e) => { setPreset(""); setValidTo(e.target.value); }} /></Field> : null}
+                </div>
+              </>
+            )}
           </section>
 
           {type === "delivery" ? (
@@ -152,7 +162,7 @@ export function PreApproveForm({ today, initialType, daily }: { today: string; i
           {state.error ? <p role="alert" className="text-body font-medium text-[#b83244]">{state.error}</p> : null}
           <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4">
             <Button type="submit" disabled={pending} size="lg" className="w-full sm:w-auto"><KeyRound aria-hidden="true" className="size-4" />{pending ? "Creating pass…" : isDailyCab ? "Create daily pickup pass" : "Create gate pass"}</Button>
-            <p className="text-caption text-muted">You’ll get a six-digit code to share.</p>
+            <p className="text-caption text-muted">{timedVendor ? "Security verifies the code at the gate — no QR to share with the visitor." : "You’ll get a six-digit code to share."}</p>
           </div>
         </>
       )}

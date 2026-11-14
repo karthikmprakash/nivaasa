@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Car, Check, CheckCircle2, ChevronDown, Clock3, KeyRound, Loader2, MapPin, PackageOpen,
+  Car, Check, CheckCircle2, ChevronDown, Clock3, ImagePlus, KeyRound, Loader2, MapPin, PackageOpen,
   Search, ShieldCheck, UserRound, UserRoundCheck, Users, Wrench, X,
 } from "lucide-react";
 import { Button, Input } from "@/components/ui/primitives";
@@ -39,6 +39,9 @@ export function GateEntryWizard() {
   const [code, setCode] = useState("");
   const [notes, setNotes] = useState("");
   const [holdParcel, setHoldParcel] = useState(false);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState("");
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState<{ status: string; name: string; unit: string } | null>(null);
   const [searchError, setSearchError] = useState(false);
@@ -97,6 +100,8 @@ export function GateEntryWizard() {
 
   function reset() {
     setSuccess(null); setUnit(null); setHostName(""); setName(""); setPhone(""); setCompany(""); setPurpose(""); setVehicleNo(""); setCode(""); setNotes(""); setQuery(""); setType("guest"); setHoldParcel(false);
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    setPhoto(null); setPhotoPreview(null); setPhotoError("");
   }
 
   function changeHome() {
@@ -108,13 +113,40 @@ export function GateEntryWizard() {
     setHostName("");
   }
 
+  function addPhoto(file: File | undefined) {
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp", "image/heic"].includes(file.type)) {
+      setPhotoError("Use a JPG, PNG, WebP or HEIC photo.");
+      return;
+    }
+    if (file.size > 6 * 1024 * 1024) {
+      setPhotoError("Use a photo up to 6 MB.");
+      return;
+    }
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    setPhoto(file);
+    setPhotoPreview(URL.createObjectURL(file));
+    setPhotoError("");
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!unit) return toast.error("Choose the resident's home first.");
     if (needsIdentity && !name.trim()) return toast.error("Enter the visitor's name.");
     setBusy(true);
     try {
-      const res = await fetch("/api/gate/entry", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, unitId: unit.id, name, phone, company, purpose, vehicleNo: type === "cab" ? vehicleNo : undefined, code: code || undefined, notes }) });
+      const body = new FormData();
+      body.set("type", type);
+      body.set("unitId", unit.id);
+      body.set("name", name);
+      body.set("phone", phone);
+      body.set("company", company);
+      body.set("purpose", purpose);
+      if (type === "cab") body.set("vehicleNo", vehicleNo);
+      if (code) body.set("code", code);
+      body.set("notes", notes);
+      if (photo) body.set("photo", photo);
+      const res = await fetch("/api/gate/entry", { method: "POST", body });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not log entry");
       setSuccess({ status: data.status, name: data.name, unit: data.unit });
@@ -209,6 +241,16 @@ export function GateEntryWizard() {
           </details> : null}
         </>
       ) : null}
+      <div>
+        <div className="mb-1.5 flex items-center justify-between"><p className="text-caption font-semibold text-ink-soft">Visitor photo <span className="font-normal text-muted">(optional)</span></p>{photo ? <button type="button" onClick={() => { if (photoPreview) URL.revokeObjectURL(photoPreview); setPhoto(null); setPhotoPreview(null); }} className="text-caption font-semibold text-[#c43d4d]">Remove</button> : null}</div>
+        <label htmlFor="gate-visitor-photo" className="group flex min-h-24 cursor-pointer items-center gap-3 rounded-xl border border-dashed border-line-strong bg-[#fbfcff] p-3 transition-colors hover:border-brand-300 hover:bg-brand-50/40">
+          {photoPreview ? <img src={photoPreview} alt="Visitor photo preview" className="size-20 shrink-0 rounded-lg object-cover" /> : <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600"><ImagePlus className="size-5" /></span>}
+          <span className="min-w-0"><span className="block text-caption font-semibold text-ink">{photo ? photo.name : "Take or choose a photo"}</span><span className="mt-0.5 block text-caption leading-relaxed text-muted">Shown in the resident’s gate alert. Use the camera on a phone.</span></span>
+        </label>
+        <input id="gate-visitor-photo" type="file" accept="image/jpeg,image/png,image/webp,image/heic" capture="environment" className="sr-only" onChange={(event) => addPhoto(event.target.files?.[0])} />
+        {photoError ? <p role="alert" className="mt-1 text-caption font-medium text-[#b83244]">{photoError}</p> : null}
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
         <p className="flex items-center gap-1.5 text-caption text-muted"><ShieldCheck className="size-4 text-mint-600" /> {code ? "Confirm the pass to record this arrival." : "The resident will receive an approval request."}</p>
         <Button type="submit" size="lg" disabled={busy || !unit} className="min-w-40">{busy ? <><Loader2 className="size-4 animate-spin" /> Logging…</> : <><UserRoundCheck className="size-4" /> {code ? holdParcel ? "Verify and log parcel" : "Verify pass and admit" : "Request approval"}</>}</Button>

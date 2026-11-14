@@ -15,7 +15,7 @@ export async function GET() {
     home,
     user: { id: session.user.id, name: session.user.name, email: session.user.email, phone: session.user.phone, avatarColor: session.user.avatarColor, globalRole: session.user.globalRole },
     membership: session.membership ? { role: session.membership.role, unitId: session.membership.unitId, societyId: session.membership.societyId, designation: session.membership.designation } : null,
-    society: session.society ? { id: session.society.id, name: session.society.name, city: session.society.city, slug: session.society.slug } : null,
+    society: session.society ? { id: session.society.id, name: session.society.name, city: session.society.city, slug: session.society.slug, address: [session.society.address, session.society.city, session.society.state, session.society.pincode].filter(Boolean).join(", ") } : null,
     unit,
   });
 }

@@ -8,7 +8,10 @@ targets:
     platform: iOS
     sources:
       - path: Nivaasa
-        excludes: [Info.plist]
+        excludes: [Info.plist, Nivaasa.entitlements]
+    dependencies:
+      - target: NivaasaNotificationService
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.nivaasa.community
@@ -16,10 +19,26 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         DEVELOPMENT_TEAM: 3A567KLT3Y
         CODE_SIGN_STYLE: Automatic
+        "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": Nivaasa/Nivaasa.entitlements
         NIVAASA_API_URL: https://nivaasa.app
       configs:
         Debug:
           NIVAASA_API_URL: http://localhost:3100
+  NivaasaNotificationService:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: NivaasaNotificationService
+        excludes: [Info.plist]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.nivaasa.community.notificationservice
+        INFOPLIST_FILE: NivaasaNotificationService/Info.plist
+        DEVELOPMENT_TEAM: 3A567KLT3Y
+        CODE_SIGN_STYLE: Automatic
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
   NivaasaUITests:
     type: bundle.ui-testing
     platform: iOS

@@ -28,7 +28,7 @@ final class SnapshotTests: XCTestCase {
         capture(app, "resident-payments")
 
         app.buttons["quick-more"].tap()
-        XCTAssertTrue(app.staticTexts["More"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.descendants(matching: .any)["all-services"].waitForExistence(timeout: 15))
         capture(app, "resident-more")
     }
 
@@ -46,13 +46,37 @@ final class SnapshotTests: XCTestCase {
         password.typeText("demo1234\n")
         XCTAssertTrue(app.buttons["Pre-approve a visitor"].waitForExistence(timeout: 20))
         app.buttons["Pre-approve a visitor"].tap()
-        XCTAssertTrue(app.staticTexts["Who’s coming?"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Who are you expecting?"].waitForExistence(timeout: 10))
         capture(app, "resident-pass")
-        XCTAssertTrue(app.buttons["Guest"].exists)
-        XCTAssertTrue(app.buttons["Create pass"].exists)
-        app.buttons["Valid from"].firstMatch.tap()
-        XCTAssertTrue(app.staticTexts["Choose a day in the next 30 days."].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["visitor-type-guest"].exists)
+        XCTAssertTrue(app.buttons["Create gate pass"].exists)
+        let start = app.buttons["Valid from"].firstMatch
+        let original = start.value as? String
+        start.tap()
+        XCTAssertTrue(app.staticTexts["Dates use India Standard Time."].waitForExistence(timeout: 10))
         capture(app, "resident-date-picker")
+        app.buttons["Cancel"].tap()
+        XCTAssertEqual(start.value as? String, original)
+        app.buttons["Tomorrow"].tap()
+        XCTAssertNotEqual(start.value as? String, original)
+        start.tap()
+        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))
+        app.buttons["Done"].tap()
+        XCTAssertNotEqual(start.value as? String, original)
+        for _ in 0..<3 where !app.buttons["visitor-type-delivery"].isHittable { app.swipeDown() }
+        app.buttons["visitor-type-delivery"].tap()
+        XCTAssertTrue(app.staticTexts["1 hour from now"].waitForExistence(timeout: 8))
+        XCTAssertFalse(app.buttons["Date"].exists)
+        XCTAssertFalse(app.buttons["Valid to"].exists)
+        capture(app, "resident-pass-delivery")
+        app.buttons["visitor-type-cab"].tap()
+        XCTAssertTrue(app.staticTexts["1 hour from now"].waitForExistence(timeout: 8))
+        XCTAssertFalse(app.buttons["Date"].exists)
+        XCTAssertFalse(app.buttons["Valid to"].exists)
+        let daily = app.buttons["Daily pickup"]
+        for _ in 0..<3 where !daily.isHittable { app.swipeUp() }
+        daily.tap()
+        XCTAssertTrue(app.buttons["Valid to"].exists)
     }
 
     private func capture(_ app: XCUIApplication, _ name: String) {

@@ -8,13 +8,16 @@ final class RoleTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["At your gate"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.buttons["Pre-approve a visitor"].exists)
         app.buttons["quick-visitors"].tap()
+        XCTAssertTrue(app.buttons["section-Pre-approved"].waitForExistence(timeout: 10))
+        app.buttons["section-Pre-approved"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["group-passes"].waitForExistence(timeout: 15))
     }
 
     func testManagerOpensOverview() {
         let app = signIn(as: "admin")
-        XCTAssertTrue(app.buttons["destination-gate"].exists)
-        openPrimary(app)
+        app.buttons["Open navigation"].tap()
+        XCTAssertTrue(app.buttons["destination-gate"].waitForExistence(timeout: 5))
+        app.buttons["Close menu"].tap()
         XCTAssertTrue(app.staticTexts["Open requests"].waitForExistence(timeout: 15))
     }
 
@@ -54,12 +57,11 @@ final class RoleTests: XCTestCase {
 
         let guardApp = signIn(as: "guard", isolated: true)
         openPrimary(guardApp)
-        guardApp.buttons["visitor-action"].tap()
+        // The OTP field sits inline on the gate console and auto-verifies on the sixth digit.
         let lookup = guardApp.textFields["lookup-code"]
         XCTAssertTrue(lookup.waitForExistence(timeout: 10))
         lookup.tap()
         lookup.typeText(code)
-        guardApp.buttons["Find pass"].tap()
         let record = guardApp.buttons["Record arrival"]
         XCTAssertTrue(record.waitForExistence(timeout: 15))
         record.tap()
@@ -67,9 +69,9 @@ final class RoleTests: XCTestCase {
     }
 
     private func openPrimary(_ app: XCUIApplication) {
-        let button = app.buttons["primary-destination"]
-        XCTAssertTrue(button.waitForExistence(timeout: 10))
-        button.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        // Guard's primary destination is the gate console; admins land on Overview.
+        let gate = app.buttons["quick-gate"]
+        if gate.waitForExistence(timeout: 5) { gate.tap() }
     }
 
     private func signIn(as role: String, isolated: Bool = false) -> XCUIApplication {
@@ -84,7 +86,7 @@ final class RoleTests: XCTestCase {
         let password = app.secureTextFields["password"]
         password.tap()
         password.typeText("demo1234\n")
-        let signedIn = role == "resident" ? app.buttons["Pre-approve a visitor"] : app.navigationBars["Community"]
+        let signedIn = role == "resident" ? app.buttons["Pre-approve a visitor"] : app.buttons["Open navigation"]
         XCTAssertTrue(signedIn.waitForExistence(timeout: 15))
         let notNow = app.buttons["Not Now"]
         if notNow.waitForExistence(timeout: 3) {
